@@ -9,6 +9,7 @@ import QGroundControl.Controls
 SetupPage {
     id: escPage
     pageComponent: escPageComponent
+    showPageDescription: false   // title/hint live in left panel (match lock)
 
     FactPanelController {
         id: controller
@@ -17,9 +18,10 @@ SetupPage {
     Component {
         id: escPageComponent
 
-        ColumnLayout {
+        Item {
+            id: pageRoot
             width: availableWidth
-            spacing: _margins
+            height: availableHeight
 
             // ESC Configuration properties - supports both MOT_* (Copter/Rover/Sub) and Q_M_* (QuadPlane) prefixes
             property bool _isQuadPlane: !controller.parameterExists(-1, "MOT_PWM_TYPE") && controller.parameterExists(-1, "Q_M_PWM_TYPE")
@@ -55,116 +57,67 @@ SetupPage {
 
             QGCPalette { id: qgcPal; colorGroupEnabled: true }
 
-            QGCGroupBox {
-                title: qsTr("Configuration")
-                visible: _motPwmTypeAvailable
+            readonly property real _pad: ScreenTools.defaultFontPixelHeight * 0.55
+            readonly property real _gap: ScreenTools.defaultFontPixelWidth * 1.2
+            readonly property real _panelRadius: ScreenTools.defaultBorderRadius
+            readonly property bool _split: width >= ScreenTools.defaultFontPixelWidth * 55
 
-                ColumnLayout {
-                    spacing: _margins
+            RowLayout {
+                anchors.fill: parent
+                spacing: pageRoot._gap
+                visible: pageRoot._split
 
-                    LabelledFactComboBox {
-                        label: qsTr("Output type")
-                        fact: _motPwmType
-                        indexModel: false
-                        comboBoxPreferredWidth: _comboWidth
-                    }
+                Rectangle {
+                    id: configPanel
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.preferredWidth: 55
+                    color: qgcPal.window
+                    border.width: 1
+                    border.color: qgcPal.groupBorder
+                    radius: pageRoot._panelRadius
+                    // placeholder ColumnLayout for Task 2
+                }
 
-                    QGCLabel {
-                        text: _restartRequired
-                        font.pointSize: ScreenTools.smallFontPointSize
-                    }
-
-                    LabelledFactTextField {
-                        label: qsTr("Output PWM min")
-                        fact: _motPwmMin
-                        textFieldPreferredWidth: _fieldWidth
-                        visible: _motPwmMinAvailable
-                    }
-
-                    LabelledFactTextField {
-                        label: qsTr("Output PWM max")
-                        fact: _motPwmMax
-                        textFieldPreferredWidth: _fieldWidth
-                        visible: _motPwmMaxAvailable
-                    }
-
-                    LabelledFactTextField {
-                        label: qsTr("Spin when armed")
-                        fact: _motSpinArm
-                        textFieldPreferredWidth: _fieldWidth
-                        visible: _motSpinArmAvailable
-                    }
-
-                    LabelledFactTextField {
-                        label: qsTr("Spin minimum")
-                        fact: _motSpinMin
-                        textFieldPreferredWidth: _fieldWidth
-                        visible: _motSpinMinAvailable
-                    }
-
-                    LabelledFactTextField {
-                        label: qsTr("Spin maximum")
-                        fact: _motSpinMax
-                        textFieldPreferredWidth: _fieldWidth
-                        visible: _motSpinMaxAvailable
-                    }
-
-                    // DShot settings - visible when a DShot protocol is selected
-                    LabelledFactComboBox {
-                        label: qsTr("DShot ESC type")
-                        fact: _servoDshotEsc
-                        indexModel: false
-                        comboBoxPreferredWidth: _comboWidth
-                        visible: _isDshot && _servoDshotEscAvailable
-                    }
-
-                    LabelledFactComboBox {
-                        label: qsTr("DShot output rate")
-                        fact: _servoDshotRate
-                        indexModel: false
-                        comboBoxPreferredWidth: _comboWidth
-                        visible: _isDshot && _servoDshotRateAvailable
-                    }
+                Rectangle {
+                    id: calPanel
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.preferredWidth: 45
+                    color: qgcPal.window
+                    border.width: 1
+                    border.color: qgcPal.groupBorder
+                    radius: pageRoot._panelRadius
+                    // placeholder for Task 3
                 }
             }
 
-            QGCGroupBox {
-                title: qsTr("Calibration")
-                visible: _escCalibrationAvailable
+            ColumnLayout {
+                anchors.fill: parent
+                spacing: pageRoot._gap
+                visible: !pageRoot._split
 
-                ColumnLayout {
-                    spacing: _margins
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    color: qgcPal.window
+                    border.width: 1
+                    border.color: qgcPal.groupBorder
+                    radius: pageRoot._panelRadius
+                    // placeholder ColumnLayout for Task 2
+                }
 
-                    QGCLabel {
-                        text: qsTr("WARNING: Remove props prior to calibration!")
-                        color: qgcPal.warningText
-                    }
-
-                    RowLayout {
-                        spacing: _margins
-
-                        QGCButton {
-                            text: qsTr("Calibrate")
-                            enabled: _escCalibration && _escCalibration.rawValue === 0
-                            onClicked: if(_escCalibration) _escCalibration.rawValue = 3
-                        }
-
-                        ColumnLayout {
-                            enabled: _escCalibration && _escCalibration.rawValue === 3
-                            QGCLabel { text: _escCalibration ? (_escCalibration.rawValue === 3 ? qsTr("Now perform these steps:") : qsTr("Click Calibrate to start, then:")) : "" }
-                            QGCLabel { text: qsTr("- Disconnect USB and battery so flight controller powers down") }
-                            QGCLabel { text: qsTr("- Connect the battery") }
-                            QGCLabel { text: qsTr("- The arming tone will be played (if the vehicle has a buzzer attached)") }
-                            QGCLabel { text: qsTr("- If using a flight controller with a safety button press it until it displays solid red") }
-                            QGCLabel { text: qsTr("- You will hear a musical tone then two beeps") }
-                            QGCLabel { text: qsTr("- A few seconds later you should hear a number of beeps (one for each battery cell you're using)") }
-                            QGCLabel { text: qsTr("- And finally a single long beep indicating the end points have been set and the ESC is calibrated") }
-                            QGCLabel { text: qsTr("- Disconnect the battery and power up again normally") }
-                        }
-                    }
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    color: qgcPal.window
+                    border.width: 1
+                    border.color: qgcPal.groupBorder
+                    radius: pageRoot._panelRadius
+                    // placeholder for Task 3
                 }
             }
-        } // ColumnLayout
-    } // Component - escPageComponent
+        }
+    }
 
-} // SetupPage
+}
