@@ -188,3 +188,6 @@ Qt*-linux*.tar.*
 .tool-versions
 .python-version
 !tools/.python-version
+
+# Brainstorm visual companion sessions
+.superpowers/
