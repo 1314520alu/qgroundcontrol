@@ -388,8 +388,10 @@ pip install pymavlink
 ### ArduCopter SITL (Full Simulation)
 
 ```bash
-./tools/simulation/run-arducopter-sitl.sh       # Connect to tcp://localhost:5760
-./tools/simulation/run-arducopter-sitl.sh --with-latency  # Simulate network lag
+./tools/simulation/run-arducopter-sitl.sh                         # default frame +
+./tools/simulation/run-arducopter-sitl.sh --frame dodeca-hexa     # 12-motor coaxial
+./tools/simulation/run-arducopter-sitl.sh --with-latency          # Simulate network lag
+just android-sitl                                                 # DodecaHexa + UniRC emulator + APK
 ```
 
 See [simulation/README.md](simulation/README.md) for details.
