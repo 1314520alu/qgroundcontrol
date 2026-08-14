@@ -62,6 +62,121 @@ SetupPage {
             readonly property real _panelRadius: ScreenTools.defaultBorderRadius
             readonly property bool _split: width >= ScreenTools.defaultFontPixelWidth * 55
 
+            readonly property var _calSteps: [
+                qsTr("Disconnect USB and battery so the flight controller powers down"),
+                qsTr("Connect the battery"),
+                qsTr("The arming tone will play (if a buzzer is attached)"),
+                qsTr("If there is a safety button, press until solid red"),
+                qsTr("You will hear a musical tone then two beeps"),
+                qsTr("A few seconds later, beeps for each battery cell"),
+                qsTr("A single long beep means end points are set"),
+                qsTr("Disconnect the battery and power up normally")
+            ]
+
+            Component {
+                id: calPanelContent
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: pageRoot._pad
+                    spacing: ScreenTools.defaultFontPixelHeight * 0.4
+                    visible: _escCalibrationAvailable
+
+                    QGCLabel {
+                        text: qsTr("Calibration")
+                        font.bold: true
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        radius: ScreenTools.defaultBorderRadius
+                        color: Qt.rgba(qgcPal.warningText.r, qgcPal.warningText.g, qgcPal.warningText.b, 0.12)
+                        border.color: qgcPal.warningText
+                        border.width: 1
+                        implicitHeight: warnRow.implicitHeight + ScreenTools.defaultFontPixelHeight * 0.5
+
+                        RowLayout {
+                            id: warnRow
+                            anchors.fill: parent
+                            anchors.margins: ScreenTools.defaultFontPixelWidth * 0.8
+                            spacing: ScreenTools.defaultFontPixelWidth * 0.6
+
+                            QGCLabel {
+                                Layout.fillWidth: true
+                                text: qsTr("WARNING: Remove props prior to calibration!")
+                                color: qgcPal.warningText
+                                wrapMode: Text.WordWrap
+                                font.bold: true
+                            }
+                        }
+                    }
+
+                    QGCButton {
+                        Layout.fillWidth: true
+                        text: qsTr("Calibrate")
+                        backgroundColor: qgcPal.buttonHighlight
+                        textColor: qgcPal.buttonHighlightText
+                        enabled: _escCalibration && _escCalibration.rawValue === 0
+                        onClicked: if (_escCalibration) _escCalibration.rawValue = 3
+                    }
+
+                    QGCFlickable {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        contentWidth: width
+                        contentHeight: stepsCol.implicitHeight
+                        clip: true
+
+                        ColumnLayout {
+                            id: stepsCol
+                            width: parent.width
+                            spacing: ScreenTools.defaultFontPixelHeight * 0.28
+                            enabled: _escCalibration && _escCalibration.rawValue === 3
+                            opacity: enabled ? 1.0 : 0.55
+
+                            Repeater {
+                                model: pageRoot._calSteps
+                                delegate: Rectangle {
+                                    required property int index
+                                    required property string modelData
+                                    Layout.fillWidth: true
+                                    radius: ScreenTools.defaultBorderRadius
+                                    color: qgcPal.window
+                                    border.width: 1
+                                    border.color: qgcPal.groupBorder
+                                    implicitHeight: stepRow.implicitHeight + ScreenTools.defaultFontPixelHeight * 0.35
+
+                                    RowLayout {
+                                        id: stepRow
+                                        anchors.fill: parent
+                                        anchors.margins: ScreenTools.defaultFontPixelWidth * 0.6
+                                        spacing: ScreenTools.defaultFontPixelWidth * 0.7
+
+                                        Rectangle {
+                                            width: ScreenTools.defaultFontPixelHeight * 1.35
+                                            height: width
+                                            radius: width / 2
+                                            color: qgcPal.buttonHighlight
+                                            QGCLabel {
+                                                anchors.centerIn: parent
+                                                text: String(index + 1)
+                                                color: qgcPal.buttonHighlightText
+                                                font.bold: true
+                                            }
+                                        }
+                                        QGCLabel {
+                                            Layout.fillWidth: true
+                                            text: modelData
+                                            wrapMode: Text.WordWrap
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             RowLayout {
                 anchors.fill: parent
                 spacing: pageRoot._gap
@@ -207,7 +322,12 @@ SetupPage {
                     border.width: 1
                     border.color: qgcPal.groupBorder
                     radius: pageRoot._panelRadius
-                    // placeholder for Task 3
+                    clip: true
+
+                    Loader {
+                        anchors.fill: parent
+                        sourceComponent: calPanelContent
+                    }
                 }
             }
 
@@ -352,7 +472,12 @@ SetupPage {
                     border.width: 1
                     border.color: qgcPal.groupBorder
                     radius: pageRoot._panelRadius
-                    // placeholder for Task 3
+                    clip: true
+
+                    Loader {
+                        anchors.fill: parent
+                        sourceComponent: calPanelContent
+                    }
                 }
             }
         }
