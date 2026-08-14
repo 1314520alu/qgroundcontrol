@@ -58,7 +58,8 @@ SetupPage {
             readonly property real _pad: ScreenTools.defaultFontPixelHeight * 0.55
             readonly property real _gap: ScreenTools.defaultFontPixelWidth * 1.2
             readonly property real _panelRadius: ScreenTools.defaultBorderRadius
-            readonly property bool _split: width >= ScreenTools.defaultFontPixelWidth * 55
+            // Match MotorComponent (~×50); UniRC 10 Pro / G20 content viewport (~690–780px after sidebar) needs side-by-side Layout A.
+            readonly property bool _split: width >= ScreenTools.defaultFontPixelWidth * 48
 
             readonly property var _calSteps: [
                 qsTr("Disconnect USB and battery so the flight controller powers down"),
@@ -317,6 +318,7 @@ SetupPage {
 
                     Loader {
                         anchors.fill: parent
+                        active: pageRoot._split
                         sourceComponent: configPanelBody
                     }
                 }
@@ -334,6 +336,7 @@ SetupPage {
 
                     Loader {
                         anchors.fill: parent
+                        active: pageRoot._split
                         sourceComponent: calPanelContent
                     }
                 }
@@ -355,6 +358,7 @@ SetupPage {
 
                     Loader {
                         anchors.fill: parent
+                        active: !pageRoot._split
                         sourceComponent: configPanelBody
                     }
                 }
@@ -370,6 +374,7 @@ SetupPage {
 
                     Loader {
                         anchors.fill: parent
+                        active: !pageRoot._split
                         sourceComponent: calPanelContent
                     }
                 }
