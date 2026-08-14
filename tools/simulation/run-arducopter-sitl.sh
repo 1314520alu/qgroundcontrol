@@ -19,7 +19,7 @@ FRAME="+"
 WITH_LATENCY=0
 
 usage() {
-    sed -n '2,11p' "$0"
+    sed -n '2,10p' "$0"
 }
 
 while [[ $# -gt 0 ]]; do

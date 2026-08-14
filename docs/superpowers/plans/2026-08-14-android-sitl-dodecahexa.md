@@ -436,7 +436,7 @@ In `justfile` under Run & Deploy:
 
 ```just
 # DodecaHexa SITL + UniRC 10 Pro emulator + QGC APK
-# Extra args: just android-sitl -- --build
+# Extra args: just android-sitl --build
 android-sitl *ARGS:
     ./tools/simulation/run-android-sitl.sh {{ARGS}}
 ```
@@ -479,8 +479,8 @@ Add sections after ArduCopter SITL:
 ```bash
 # One-shot (APK must already exist, or pass --build)
 just android-sitl
-just android-sitl -- --build
-just android-sitl -- --no-emulator   # SITL only
+just android-sitl --build
+just android-sitl --no-emulator   # SITL only
 ```
 
 3. Comm link instructions (`127.0.0.1:5760` vs `10.0.2.2:5760`).
@@ -518,7 +518,7 @@ test -f build/Android-debug/android-build/QGroundControl.apk || echo "Need APK o
 
 ```bash
 just android-sitl
-# or: just android-sitl -- --build
+# or: just android-sitl --build
 ```
 
 - [ ] **Step 3: Verify in emulator QGC**

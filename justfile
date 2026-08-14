@@ -98,7 +98,7 @@ run:
     ./{{build_dir}}/{{build_type}}/QGroundControl
 
 # DodecaHexa SITL + UniRC 10 Pro emulator + QGC APK
-# Extra args: just android-sitl -- --build
+# Extra args: just android-sitl --build
 android-sitl *ARGS:
     ./tools/simulation/run-android-sitl.sh {{ARGS}}
 

@@ -90,9 +90,9 @@ One-command path for landscape GCS UI against a 12-motor coaxial SITL:
 # and either an existing Android-debug APK or --build after configure.
 
 just android-sitl
-just android-sitl -- --build          # cmake --build build/Android-debug first
-just android-sitl -- --no-emulator    # SITL only (desktop QGC)
-just android-sitl -- --force-avd      # recreate UniRC AVD
+just android-sitl --build          # cmake --build build/Android-debug first
+just android-sitl --no-emulator    # SITL only (desktop QGC)
+just android-sitl --force-avd      # recreate UniRC AVD
 ```
 
 Or: `./tools/simulation/run-android-sitl.sh` with the same flags.

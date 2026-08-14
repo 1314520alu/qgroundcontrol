@@ -13,6 +13,7 @@ FORCE_AVD=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --) shift ;;
         --build) BUILD_APK=1; shift ;;
         --no-emulator) NO_EMULATOR=1; shift ;;
         --with-latency) WITH_LATENCY=1; shift ;;
