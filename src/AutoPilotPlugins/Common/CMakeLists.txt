@@ -13,6 +13,10 @@ target_sources(${CMAKE_PROJECT_NAME}
         ScriptingComponent.h
         MotorComponent.cc
         MotorComponent.h
+        MotorComponentController.cc
+        MotorComponentController.h
+        MotorLayoutBuilder.cc
+        MotorLayoutBuilder.h
         JoystickComponent.cc
         JoystickComponent.h
         PowerModulePresetController.cc
@@ -42,6 +46,7 @@ qt_add_qml_module(AutoPilotPluginsCommonModule
         ScriptingComponent.qml
         JoystickComponentSummary.qml
         MotorComponent.qml
+        MotorTestDiagram.qml
         RadioComponent.qml
         SyslinkComponent.qml
     NO_PLUGIN

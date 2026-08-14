@@ -11,46 +11,56 @@ Item {
     anchors.bottom: parent.bottom
     width:          escIndicatorRow.width
 
-    property bool showIndicator: _escs.count > 0
+    property bool showIndicator: _escs && _escs.count > 0
 
     property var  _activeVehicle:   QGroundControl.multiVehicleManager.activeVehicle
     property var  _escs:            _activeVehicle ? _activeVehicle.escs : null
 
-    // ESC status properties derived from vehicle data
-    property int    _motorCount:        _escs && _escs.count > 0 ? _escs.get(0).count.rawValue : 0
-    property int    _onlineBitmask:       _escs && _escs.count > 0? _escs.get(0).info.rawValue : 0
-
+    property int    _motorCount:        _escs ? _escs.count : 0
     property int    _onlineMotorCount:  _getOnlineMotorCount()
     property bool   _escHealthy:        _getEscHealthStatus()
 
-    function _getOnlineMotorCount() {
-        if (_motorCount === 0) return 0;
-
-        let count = 0;
-        let mask = _onlineBitmask;
-
-        // Count all set bits in the bitmask
-        while (mask) {
-            count += mask & 1;
-            mask >>= 1;
+    function _bitOnline(esc) {
+        if (!esc) {
+            return false
         }
+        const id = Number(esc.id.rawValue)
+        const bit = id % 4
+        return (Number(esc.info.rawValue) & (1 << bit)) !== 0
+    }
 
-        return count;
+    function _getOnlineMotorCount() {
+        if (!_escs || _motorCount === 0) {
+            return 0
+        }
+        let count = 0
+        for (let i = 0; i < _motorCount; i++) {
+            if (_bitOnline(_escs.get(i))) {
+                count++
+            }
+        }
+        return count
     }
 
     function _getEscHealthStatus() {
-        // Health is good if all expected motors are online and have no failure flags
-        if (_onlineMotorCount !== _motorCount) return false
-
-        // Check failure flags for each motor (4 per group)
-        for (let index = 0; index < 4; index++) {
-            if ((_onlineBitmask & (1 << index)) !== 0) { // Motor is online
-                if (_escs.get(index).failureFlags > 0) { // Any failure flag set means unhealthy
-                    return false
-                }
+        if (!_escs || _motorCount === 0) {
+            return false
+        }
+        if (_onlineMotorCount !== _motorCount) {
+            return false
+        }
+        for (let index = 0; index < _motorCount; index++) {
+            const esc = _escs.get(index)
+            if (!_bitOnline(esc)) {
+                return false
+            }
+            if (Number(esc.failureFlags.rawValue) !== 0) {
+                return false
+            }
+            if (Number(esc.errorCount.rawValue) !== 0) {
+                return false
             }
         }
-
         return true
     }
 
@@ -91,7 +101,7 @@ Item {
 
             QGCLabel {
                 color:          getEscStatusColor()
-                text:           _escHealthy ? qsTr("OK") : qsTr("ERR")
+                text:           _escHealthy ? qsTr("正常") : qsTr("异常")
                 font.pointSize: ScreenTools.smallFontPointSize
             }
         }

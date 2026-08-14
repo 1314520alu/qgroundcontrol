@@ -8,15 +8,8 @@ APMAdvancedTuningCopterComponent::APMAdvancedTuningCopterComponent(Vehicle *vehi
 
 QUrl APMAdvancedTuningCopterComponent::setupSource() const
 {
-    switch (_vehicle->vehicleType()) {
-    case MAV_TYPE_QUADROTOR:
-    case MAV_TYPE_COAXIAL:
-    case MAV_TYPE_HELICOPTER:
-    case MAV_TYPE_HEXAROTOR:
-    case MAV_TYPE_OCTOROTOR:
-    case MAV_TYPE_TRICOPTER:
+    if (_vehicle->multiRotor()) {
         return QUrl::fromUserInput("qrc:/qml/QGroundControl/AutoPilotPlugins/APM/APMAdvancedTuningCopterComponent.qml");
-    default:
-        return QUrl::fromUserInput(QString());
     }
+    return QUrl::fromUserInput(QString());
 }

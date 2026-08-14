@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 
 import QGroundControl
@@ -11,40 +10,38 @@ Item {
     implicitHeight: mainLayout.implicitHeight
     width: parent.width
 
-    FactPanelController { id: controller; }
+    FactPanelController { id: controller }
 
     property bool _isQuadPlane: !controller.parameterExists(-1, "MOT_PWM_TYPE") && controller.parameterExists(-1, "Q_M_PWM_TYPE")
     property string _escPrefix: _isQuadPlane ? "Q_M_" : "MOT_"
-
     property bool _motPwmTypeAvailable: controller.parameterExists(-1, _escPrefix + "PWM_TYPE")
-    property Fact _motPwmType: controller.getParameterFact(-1, _escPrefix + "PWM_TYPE", false /* reportMissing */)
-
+    property Fact _motPwmType: controller.getParameterFact(-1, _escPrefix + "PWM_TYPE", false)
     property bool _isDshot: _motPwmTypeAvailable && _motPwmType && _motPwmType.rawValue >= 4
-    property bool _servoDshotEscAvailable: controller.parameterExists(-1, "SERVO_DSHOT_ESC")
-    property Fact _servoDshotEsc: controller.getParameterFact(-1, "SERVO_DSHOT_ESC", false /* reportMissing */)
-    property bool _servoDshotRateAvailable: controller.parameterExists(-1, "SERVO_DSHOT_RATE")
-    property Fact _servoDshotRate: controller.getParameterFact(-1, "SERVO_DSHOT_RATE", false /* reportMissing */)
+    property int _motorCount: controller.vehicle ? controller.vehicle.motorCount : -1
 
     ColumnLayout {
         id: mainLayout
-        spacing: 0
+        width: parent.width
+        spacing: ScreenTools.defaultFontPixelHeight * 0.35
 
-        VehicleSummaryRow {
-            labelText: qsTr("Output type")
-            valueText: _motPwmTypeAvailable ? _motPwmType.enumStringValue : ""
-            visible: _motPwmTypeAvailable
-        }
+        Flow {
+            Layout.fillWidth: true
+            spacing: ScreenTools.defaultFontPixelWidth * 0.5
 
-        VehicleSummaryRow {
-            labelText: qsTr("DShot ESC type")
-            valueText: _servoDshotEscAvailable ? _servoDshotEsc.enumStringValue : ""
-            visible: _isDshot && _servoDshotEscAvailable
-        }
-
-        VehicleSummaryRow {
-            labelText: qsTr("DShot output rate")
-            valueText: _servoDshotRateAvailable ? _servoDshotRate.enumStringValue : ""
-            visible: _isDshot && _servoDshotRateAvailable
+            SummaryChip {
+                text: qsTr("Out: %1").arg(_motPwmTypeAvailable ? _motPwmType.enumStringValue : qsTr("Unknown"))
+            }
+            SummaryChip {
+                text: qsTr("Motors: %1").arg(_motorCount > 0 ? _motorCount : "—")
+            }
+            SummaryChip {
+                text: _isDshot ? qsTr("Protocol: DShot") : qsTr("Protocol: PWM")
+            }
+            SummaryChip {
+                text: _isDshot ? qsTr("DShot: on") : qsTr("DShot: off")
+                border.color: _isDshot ? QGroundControl.globalPalette.colorGreen : QGroundControl.globalPalette.buttonBorder
+                textColor: _isDshot ? QGroundControl.globalPalette.colorGreen : QGroundControl.globalPalette.text
+            }
         }
     }
 }

@@ -55,4 +55,5 @@ echo "  JAVA:       ${JAVA_HOME}"
 #     -DANDROID_SDK_ROOT="$ANDROID_SDK_ROOT" \
 #     -DANDROID_NDK="$ANDROID_NDK" \
 #     -DQT_ANDROID_SIGN_APK=OFF
-#   cmake --build build/Android-debug --parallel
+#   cmake --build build/Android-debug -j4
+# Prefer a modest -j on Android: unlimited --parallel + AUTOMOC can thrash the host.

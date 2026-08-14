@@ -20,6 +20,8 @@ target_sources(
             StatusTextHandler.h
             SysStatusSensorInfo.cc
             SysStatusSensorInfo.h
+            VehicleStatusTextTranslator.cc
+            VehicleStatusTextTranslator.h
 )
 
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

@@ -184,6 +184,8 @@ qt_add_qml_module(QGroundControlControlsModule
         ValueSlider.qml
         VehicleRotationCal.qml
         VehicleSummaryRow.qml
+        SummaryChip.qml
+        SummaryStatusPill.qml
 
 # NOTE: ScreenTools.qml is declared here because CMake's
 # set_source_files_properties() has directory scope. The QT_QML_SINGLETON_TYPE

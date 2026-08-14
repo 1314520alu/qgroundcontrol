@@ -10,9 +10,9 @@ SetupPage {
     id:             servoPage
     pageComponent:  pageComponent
     showAdvanced:   false
+    showPageDescription: false   // title/hint live in-page (match C lock)
 
     readonly property int _maxServos: 16
-    readonly property real _margins: ScreenTools.defaultFontPixelHeight * 0.5
 
     FactPanelController {
         id: controller
@@ -27,9 +27,6 @@ SetupPage {
         colorGroupEnabled: true
     }
 
-    // Keep the "Position (us)" bar a stable width so the table doesn't reflow.
-    readonly property int _positionBarWidth: ScreenTools.defaultFontPixelWidth * 10
-
     function getFact(param) {
         return controller.parameterExists(-1, param)
                ? controller.getParameterFact(-1, param, false)
@@ -43,395 +40,333 @@ SetupPage {
     Component {
         id: pageComponent
 
-        Column {
-            width:   availableWidth
-            spacing: _margins
+        // Visual lock: Layout C — single compressed matrix, 16 equal rows, no ±.
+        Item {
+            id: pageRoot
+            width:  availableWidth
+            height: availableHeight
 
-            QGCLabel {
-                text:     qsTr("Configure ArduPilot servo outputs.")
-                wrapMode: Text.WordWrap
-                width:    parent.width
+            // Column ratios from C lock: 22 | 48 | 1.5fr | 40 | 40 | 40 | 36
+            readonly property real _gap: Math.max(2, ScreenTools.defaultFontPixelWidth * 0.35)
+            readonly property real _hPad: ScreenTools.defaultFontPixelWidth * 0.55
+            readonly property real _units: 22 + 48 + 60 + 40 + 40 + 40 + 36   // 1.5fr ≈ 60
+            readonly property real _innerW: Math.max(1, matrixPanel.width - 2 - _hPad * 2 - _gap * 6)
+            readonly property real _u: _innerW / _units
+            readonly property real _colIndex: 22 * _u
+            readonly property real _colPos:   48 * _u
+            readonly property real _colFunc:  60 * _u
+            readonly property real _colNum:   40 * _u
+            readonly property real _colRev:   36 * _u
+
+            readonly property real _headerH: Math.max(14, ScreenTools.defaultFontPixelHeight * 0.95)
+            // Title + hint ≈ 2 lines; keep controls short so 16 rows fit (C lock).
+            readonly property real _rowBudget: Math.max(1, (height - ScreenTools.defaultFontPixelHeight * 2.4 - _headerH) / 16)
+            readonly property real _ctrlH: Math.max(12, Math.min(ScreenTools.defaultFontPixelHeight * 1.05, _rowBudget - 3))
+            readonly property real _chipSize: Math.min(_colIndex * 0.72, _ctrlH * 0.85)
+            readonly property real _barH: Math.min(_ctrlH * 0.78, ScreenTools.defaultFontPixelHeight * 0.9)
+            readonly property real _revW: Math.min(_colRev * 0.85, _ctrlH * 1.85)
+            readonly property real _revH: Math.min(_ctrlH * 0.7, ScreenTools.defaultFontPixelHeight * 0.75)
+
+            ColumnLayout {
+                anchors.fill: parent
+                spacing: Math.max(2, ScreenTools.defaultFontPixelHeight * 0.15)
+
+                QGCLabel {
+                    text: qsTr("Servo Outputs")
+                    font.bold: true
+                    font.pointSize: ScreenTools.defaultFontPointSize
+                    Layout.fillWidth: true
+                }
+
+                QGCLabel {
+                    text: qsTr("Compressed 16-row table · no horizontal scroll")
+                    font.pointSize: ScreenTools.smallFontPointSize
+                    color: qgcPal.text
+                    opacity: 0.55
+                    Layout.fillWidth: true
+                }
+
+                // White matrix panel (C lock)
+                Rectangle {
+                    id: matrixPanel
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    color: qgcPal.window
+                    border.width: 1
+                    border.color: qgcPal.groupBorder
+                    radius: ScreenTools.defaultBorderRadius
+                    clip: true
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 1
+                        spacing: 0
+
+                        // Header strip
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: pageRoot._headerH
+                            color: Qt.rgba(qgcPal.text.r, qgcPal.text.g, qgcPal.text.b, 0.06)
+
+                            Row {
+                                anchors.fill: parent
+                                anchors.leftMargin: pageRoot._hPad
+                                anchors.rightMargin: pageRoot._hPad
+                                spacing: pageRoot._gap
+
+                                Repeater {
+                                    model: [
+                                        { t: "#", w: pageRoot._colIndex },
+                                        { t: qsTr("Position"), w: pageRoot._colPos },
+                                        { t: qsTr("Function"), w: pageRoot._colFunc },
+                                        { t: qsTr("Min"), w: pageRoot._colNum },
+                                        { t: qsTr("Trim"), w: pageRoot._colNum },
+                                        { t: qsTr("Max"), w: pageRoot._colNum },
+                                        { t: qsTr("Reversed"), w: pageRoot._colRev }
+                                    ]
+                                    QGCLabel {
+                                        required property var modelData
+                                        width: modelData.w
+                                        height: parent.height
+                                        text: modelData.t
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                        font.pointSize: ScreenTools.smallFontPointSize * 0.92
+                                        opacity: 0.6
+                                    }
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 1
+                            color: qgcPal.groupBorder
+                            opacity: 0.7
+                        }
+
+                        ColumnLayout {
+                            id: rowsColumn
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            spacing: 0
+
+                            Repeater {
+                                id: servoRepeater
+                                model: _maxServos
+
+                                Rectangle {
+                                    id: rowRoot
+                                    readonly property int servoIndex: index + 1
+                                    readonly property var functionFact: getFact("SERVO" + servoIndex + "_FUNCTION")
+                                    readonly property var minFact: getFact("SERVO" + servoIndex + "_MIN")
+                                    readonly property var trimFact: getFact("SERVO" + servoIndex + "_TRIM")
+                                    readonly property var maxFact: getFact("SERVO" + servoIndex + "_MAX")
+                                    readonly property var revFact: getFact("SERVO" + servoIndex + "_REVERSED")
+                                    readonly property bool exists: servoExists(servoIndex)
+
+                                    property int pwmValue: servoMonitor.servoValue(index)
+                                    readonly property double _rawValue: pwmValue >= 0 ? pwmValue : NaN
+                                    readonly property double _minValue: minFact ? minFact.value : NaN
+                                    readonly property double _maxValue: maxFact ? maxFact.value : NaN
+                                    readonly property double _range: _maxValue - _minValue
+                                    readonly property double _ratio: (_range > 0 && !isNaN(_rawValue) && !isNaN(_minValue))
+                                                                       ? Math.max(0, Math.min(1, (_rawValue - _minValue) / _range))
+                                                                       : 0
+                                    readonly property bool _hasValidValue: pwmValue >= 0 && !isNaN(_rawValue)
+                                                                          && !isNaN(_minValue) && !isNaN(_maxValue) && _range > 0
+                                    // C lock: dim chip when Disabled (function == 0)
+                                    readonly property bool _dimChip: !functionFact || Number(functionFact.value) === 0
+                                    readonly property bool _revOn: revFact ? (Number(revFact.value) !== 0) : false
+
+                                    visible: exists
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    Layout.minimumHeight: 1
+                                    color: (index % 2 === 1)
+                                           ? Qt.rgba(qgcPal.text.r, qgcPal.text.g, qgcPal.text.b, 0.025)
+                                           : "transparent"
+
+                                    Rectangle {
+                                        anchors.bottom: parent.bottom
+                                        width: parent.width
+                                        height: 1
+                                        color: qgcPal.groupBorder
+                                        opacity: 0.35
+                                    }
+
+                                    Row {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: pageRoot._hPad
+                                        anchors.rightMargin: pageRoot._hPad
+                                        spacing: pageRoot._gap
+
+                                        // Index chip
+                                        Item {
+                                            width: pageRoot._colIndex
+                                            height: parent.height
+                                            Rectangle {
+                                                anchors.centerIn: parent
+                                                width: pageRoot._chipSize
+                                                height: pageRoot._chipSize
+                                                radius: Math.max(2, pageRoot._chipSize * 0.22)
+                                                color: rowRoot._dimChip ? qgcPal.colorGrey : qgcPal.colorBlue
+                                                QGCLabel {
+                                                    anchors.centerIn: parent
+                                                    text: String(rowRoot.servoIndex)
+                                                    font.bold: true
+                                                    font.pointSize: ScreenTools.smallFontPointSize * 0.9
+                                                    color: "#ffffff"
+                                                }
+                                            }
+                                        }
+
+                                        // Position bar
+                                        Item {
+                                            width: pageRoot._colPos
+                                            height: parent.height
+                                            Rectangle {
+                                                id: track
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                width: parent.width
+                                                height: pageRoot._barH
+                                                color: Qt.rgba(qgcPal.colorGrey.r, qgcPal.colorGrey.g, qgcPal.colorGrey.b, 0.35)
+                                                border.width: 1
+                                                border.color: qgcPal.colorGrey
+                                                radius: Math.max(2, height * 0.25)
+                                                clip: true
+
+                                                Rectangle {
+                                                    anchors.top: parent.top
+                                                    anchors.bottom: parent.bottom
+                                                    anchors.left: parent.left
+                                                    width: rowRoot._hasValidValue
+                                                           ? Math.max(0, rowRoot._ratio * parent.width) : 0
+                                                    color: qgcPal.colorGreen
+                                                }
+
+                                                QGCLabel {
+                                                    anchors.centerIn: parent
+                                                    z: 1
+                                                    text: rowRoot._hasValidValue ? Math.round(rowRoot._rawValue) : "-"
+                                                    font.bold: true
+                                                    font.pointSize: ScreenTools.smallFontPointSize * 0.85
+                                                    horizontalAlignment: Text.AlignHCenter
+                                                    width: parent.width
+                                                }
+                                            }
+                                        }
+
+                                        // Function
+                                        Item {
+                                            width: pageRoot._colFunc
+                                            height: parent.height
+                                            FactComboBox {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                fact: rowRoot.functionFact
+                                                indexModel: false
+                                                sizeToContents: false
+                                                width: parent.width
+                                                height: pageRoot._ctrlH
+                                                font.pointSize: ScreenTools.smallFontPointSize
+                                                padding: 1
+                                            }
+                                        }
+
+                                        // Min / Trim / Max — compact fields, no ±
+                                        Item {
+                                            width: pageRoot._colNum
+                                            height: parent.height
+                                            FactTextField {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                fact: rowRoot.minFact
+                                                showUnits: false
+                                                width: parent.width
+                                                height: pageRoot._ctrlH
+                                                font.pointSize: ScreenTools.smallFontPointSize
+                                                _marginPadding: 1
+                                                horizontalAlignment: TextInput.AlignHCenter
+                                            }
+                                        }
+                                        Item {
+                                            width: pageRoot._colNum
+                                            height: parent.height
+                                            FactTextField {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                fact: rowRoot.trimFact
+                                                showUnits: false
+                                                width: parent.width
+                                                height: pageRoot._ctrlH
+                                                font.pointSize: ScreenTools.smallFontPointSize
+                                                _marginPadding: 1
+                                                horizontalAlignment: TextInput.AlignHCenter
+                                            }
+                                        }
+                                        Item {
+                                            width: pageRoot._colNum
+                                            height: parent.height
+                                            FactTextField {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                fact: rowRoot.maxFact
+                                                showUnits: false
+                                                width: parent.width
+                                                height: pageRoot._ctrlH
+                                                font.pointSize: ScreenTools.smallFontPointSize
+                                                _marginPadding: 1
+                                                horizontalAlignment: TextInput.AlignHCenter
+                                            }
+                                        }
+
+                                        // Compact reverse switch (C lock pill)
+                                        Item {
+                                            width: pageRoot._colRev
+                                            height: parent.height
+
+                                            Rectangle {
+                                                id: revSwitch
+                                                anchors.centerIn: parent
+                                                width: pageRoot._revW
+                                                height: pageRoot._revH
+                                                radius: height / 2
+                                                color: rowRoot._revOn ? qgcPal.colorBlue : Qt.rgba(qgcPal.colorGrey.r, qgcPal.colorGrey.g, qgcPal.colorGrey.b, 0.55)
+
+                                                Rectangle {
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    x: rowRoot._revOn ? parent.width - width - 1 : 1
+                                                    width: parent.height - 2
+                                                    height: parent.height - 2
+                                                    radius: height / 2
+                                                    color: "#ffffff"
+                                                }
+
+                                                MouseArea {
+                                                    anchors.fill: parent
+                                                    enabled: rowRoot.revFact !== null
+                                                    onClicked: {
+                                                        if (!rowRoot.revFact) {
+                                                            return
+                                                        }
+                                                        const onVal = rowRoot.revFact.typeIsBool ? true : 1
+                                                        const offVal = rowRoot.revFact.typeIsBool ? false : 0
+                                                        rowRoot.revFact.value = rowRoot._revOn ? offVal : onVal
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
-            QGCGroupBox {
-                title: qsTr("Servo Outputs")
-
-                GridLayout {
-                    columns:       7
-                    rowSpacing:    ScreenTools.defaultFontPixelHeight * 0.3
-                    columnSpacing: ScreenTools.defaultFontPixelWidth * 2
-
-                    // --- Headers (all explicitly in row 0) -----------------
-                    QGCLabel { text: "";         Layout.row: 0; Layout.column: 0; Layout.alignment: Qt.AlignHCenter }
-                    QGCLabel {
-                        text: qsTr("Position")
-                        Layout.row: 0
-                        Layout.column: 1
-                        Layout.alignment: Qt.AlignHCenter
-                    }
-                    QGCLabel { text: qsTr("Function");      Layout.row: 0; Layout.column: 2; Layout.alignment: Qt.AlignHCenter }
-                    QGCLabel { text: qsTr("Min");           Layout.row: 0; Layout.column: 3; Layout.alignment: Qt.AlignHCenter }
-                    QGCLabel { text: qsTr("Trim");          Layout.row: 0; Layout.column: 4; Layout.alignment: Qt.AlignHCenter }
-                    QGCLabel { text: qsTr("Max");           Layout.row: 0; Layout.column: 5; Layout.alignment: Qt.AlignHCenter }
-                    QGCLabel { text: qsTr("Reversed");      Layout.row: 0; Layout.column: 6; Layout.alignment: Qt.AlignHCenter }
-
-                    // --- Column 0: Servo number ----------------------------
-                    Repeater {
-                        model: _maxServos
-
-                        QGCLabel {
-                            text:          index + 1
-                            visible:       servoExists(index + 1)
-                            Layout.row:    index + 1
-                            Layout.column: 0
-                        }
-                    }
-
-                    // --- Column 1: Position --------------------------------
-                    Repeater {
-                        id: positionRepeater
-                        model: _maxServos
-
-                        Item {
-                            readonly property int _servoIndex: index + 1
-                            readonly property var _minFact:  getFact("SERVO" + _servoIndex + "_MIN")
-                            readonly property var _maxFact:  getFact("SERVO" + _servoIndex + "_MAX")
-
-                            property int pwmValue: servoMonitor.servoValue(index)
-                            readonly property double _rawValue: pwmValue >= 0 ? pwmValue : NaN
-                            readonly property double _minValue:  _minFact ? _minFact.value : NaN
-                            readonly property double _maxValue:  _maxFact ? _maxFact.value : NaN
-
-                            readonly property double _range: _maxValue - _minValue
-                            readonly property double _ratio: (_range > 0 && !isNaN(_rawValue) && !isNaN(_minValue))
-                                                               ? Math.max(0, Math.min(1, (_rawValue - _minValue) / _range))
-                                                               : 0
-
-                            height: ScreenTools.defaultFontPixelHeight * 0.95
-                            Layout.preferredWidth: _positionBarWidth
-                            Layout.fillWidth: false
-                            width: _positionBarWidth
-                            visible: servoExists(_servoIndex)
-                            Layout.row: index + 1
-                            Layout.column: 1
-
-                            readonly property color _trackColor: qgcPal.colorGrey
-                            // Use a themed accent so the fill is always clearly distinct from the track
-                            readonly property color _progressColor: qgcPal.colorGreen
-
-                            readonly property bool _hasValidValue: pwmValue >= 0 && !isNaN(_rawValue) && !isNaN(_minValue) && !isNaN(_maxValue) && _range > 0
-                            // Use the delegate width (cell width), not `parent.width` (Repeater/GridLayout width).
-                            readonly property real _progressWidth: _hasValidValue ? Math.max(0, _ratio * width) : 0
-
-                            // Keep the delegate's implicit width stable so GridLayout doesn't reflow
-                            // based on changing label text lengths.
-                            implicitWidth: 0
-
-                            Rectangle {
-                                anchors.fill: parent
-                                id:      track
-                                color:   _trackColor
-                                opacity: 0.45
-                                border.width: 1
-                                border.color: qgcPal.text
-                                radius: ScreenTools.defaultBorderRadius
-                            }
-
-                            Rectangle {
-                                anchors.top:    parent.top
-                                anchors.bottom: parent.bottom
-                                anchors.left:   parent.left
-                                width:          _progressWidth
-                                color:          _progressColor
-                                radius: ScreenTools.defaultBorderRadius
-                            }
-
-                            QGCLabel {
-                                id: valueLabel
-                                z:  1
-                                anchors.centerIn: parent
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment:   Text.AlignVCenter
-                                text: _hasValidValue ? Math.round(_rawValue) : "-"
-                                font.bold: true
-                                color: qgcPal.text
-                                width: parent.width
-                            }
-                        }
-                    }
-
-                    Connections {
-                        target: servoMonitor
-                        function onServoValueChanged(servo, pwmValue) {
-                            const item = positionRepeater.itemAt(servo)
-                            if (item) {
-                                item.pwmValue = pwmValue
-                            }
-                        }
-                    }
-
-                    // --- Column 2: Function --------------------------------
-                    Repeater {
-                        model: _maxServos
-
-                        FactComboBox {
-                            fact:           getFact("SERVO" + (index + 1) + "_FUNCTION")
-                            indexModel:     false
-                            sizeToContents: true
-                            visible:        servoExists(index + 1)
-                            Layout.row:    index + 1
-                            Layout.column: 2
-                        }
-                    }
-
-                    // --- Column 3: Min ---------------------------------------
-                    Repeater {
-                        model: _maxServos
-
-                        RowLayout {
-                            spacing:       ScreenTools.defaultFontPixelWidth / 2
-                            visible:       servoExists(index + 1)
-                            Layout.row:    index + 1
-                            Layout.column: 3
-
-                            readonly property var spFact: getFact("SERVO" + (index + 1) + "_MIN")
-                            property int _repeatDir: 0
-
-                            Timer {
-                                id: repeatInitial
-                                interval: 350
-                                repeat: false
-                                running: false
-                                onTriggered: repeatTimer.start()
-                            }
-
-                            Timer {
-                                id: repeatTimer
-                                interval: 80
-                                repeat: true
-                                running: false
-                                onTriggered: if (spFact && _repeatDir !== 0) { spFact.value += _repeatDir }
-                            }
-
-                            QGCButton {
-                                text: "-"
-                                leftPadding: 0
-                                rightPadding: 0
-                                topPadding: 0
-                                bottomPadding: 0
-                                Layout.preferredWidth:  ScreenTools.implicitTextFieldHeight
-                                Layout.preferredHeight: ScreenTools.implicitTextFieldHeight
-                                onPressed: {
-                                    if (!spFact) {
-                                        _repeatDir = 0
-                                        return
-                                    }
-                                    _repeatDir = -1
-                                    spFact.value -= 1
-                                    repeatInitial.start()
-                                }
-                                onReleased: {
-                                    _repeatDir = 0
-                                    repeatInitial.stop()
-                                    repeatTimer.stop()
-                                }
-                            }
-                            FactTextField { fact: spFact; showUnits: false; Layout.fillWidth: true }
-                            QGCButton {
-                                text: "+"
-                                leftPadding: 0
-                                rightPadding: 0
-                                topPadding: 0
-                                bottomPadding: 0
-                                Layout.preferredWidth:  ScreenTools.implicitTextFieldHeight
-                                Layout.preferredHeight: ScreenTools.implicitTextFieldHeight
-                                onPressed: {
-                                    if (!spFact) {
-                                        _repeatDir = 0
-                                        return
-                                    }
-                                    _repeatDir = 1
-                                    spFact.value += 1
-                                    repeatInitial.start()
-                                }
-                                onReleased: {
-                                    _repeatDir = 0
-                                    repeatInitial.stop()
-                                    repeatTimer.stop()
-                                }
-                            }
-                        }
-                    }
-
-                    // --- Column 4: Trim --------------------------------------
-                    Repeater {
-                        model: _maxServos
-
-                        RowLayout {
-                            spacing:       ScreenTools.defaultFontPixelWidth / 2
-                            visible:       servoExists(index + 1)
-                            Layout.row:    index + 1
-                            Layout.column: 4
-
-                            readonly property var spFact: getFact("SERVO" + (index + 1) + "_TRIM")
-                            property int _repeatDir: 0
-
-                            Timer {
-                                id: repeatInitialTrim
-                                interval: 350
-                                repeat: false
-                                running: false
-                                onTriggered: repeatTimerTrim.start()
-                            }
-
-                            Timer {
-                                id: repeatTimerTrim
-                                interval: 80
-                                repeat: true
-                                running: false
-                                onTriggered: if (spFact && _repeatDir !== 0) { spFact.value += _repeatDir }
-                            }
-
-                            QGCButton {
-                                text: "-"
-                                leftPadding: 0
-                                rightPadding: 0
-                                topPadding: 0
-                                bottomPadding: 0
-                                Layout.preferredWidth:  ScreenTools.implicitTextFieldHeight
-                                Layout.preferredHeight: ScreenTools.implicitTextFieldHeight
-                                onPressed: {
-                                    if (!spFact) {
-                                        _repeatDir = 0
-                                        return
-                                    }
-                                    _repeatDir = -1
-                                    spFact.value -= 1
-                                    repeatInitialTrim.start()
-                                }
-                                onReleased: {
-                                    _repeatDir = 0
-                                    repeatInitialTrim.stop()
-                                    repeatTimerTrim.stop()
-                                }
-                            }
-                            FactTextField { fact: spFact; showUnits: false; Layout.fillWidth: true }
-                            QGCButton {
-                                text: "+"
-                                leftPadding: 0
-                                rightPadding: 0
-                                topPadding: 0
-                                bottomPadding: 0
-                                Layout.preferredWidth:  ScreenTools.implicitTextFieldHeight
-                                Layout.preferredHeight: ScreenTools.implicitTextFieldHeight
-                                onPressed: {
-                                    if (!spFact) {
-                                        _repeatDir = 0
-                                        return
-                                    }
-                                    _repeatDir = 1
-                                    spFact.value += 1
-                                    repeatInitialTrim.start()
-                                }
-                                onReleased: {
-                                    _repeatDir = 0
-                                    repeatInitialTrim.stop()
-                                    repeatTimerTrim.stop()
-                                }
-                            }
-                        }
-                    }
-
-                    // --- Column 5: Max ---------------------------------------
-                    Repeater {
-                        model: _maxServos
-
-                        RowLayout {
-                            spacing:       ScreenTools.defaultFontPixelWidth / 2
-                            visible:       servoExists(index + 1)
-                            Layout.row:    index + 1
-                            Layout.column: 5
-
-                            readonly property var spFact: getFact("SERVO" + (index + 1) + "_MAX")
-                            property int _repeatDir: 0
-
-                            Timer {
-                                id: repeatInitialMax
-                                interval: 350
-                                repeat: false
-                                running: false
-                                onTriggered: repeatTimerMax.start()
-                            }
-
-                            Timer {
-                                id: repeatTimerMax
-                                interval: 80
-                                repeat: true
-                                running: false
-                                onTriggered: if (spFact && _repeatDir !== 0) { spFact.value += _repeatDir }
-                            }
-
-                            QGCButton {
-                                text: "-"
-                                leftPadding: 0
-                                rightPadding: 0
-                                topPadding: 0
-                                bottomPadding: 0
-                                Layout.preferredWidth:  ScreenTools.implicitTextFieldHeight
-                                Layout.preferredHeight: ScreenTools.implicitTextFieldHeight
-                                onPressed: {
-                                    if (!spFact) {
-                                        _repeatDir = 0
-                                        return
-                                    }
-                                    _repeatDir = -1
-                                    spFact.value -= 1
-                                    repeatInitialMax.start()
-                                }
-                                onReleased: {
-                                    _repeatDir = 0
-                                    repeatInitialMax.stop()
-                                    repeatTimerMax.stop()
-                                }
-                            }
-                            FactTextField { fact: spFact; showUnits: false; Layout.fillWidth: true }
-                            QGCButton {
-                                text: "+"
-                                leftPadding: 0
-                                rightPadding: 0
-                                topPadding: 0
-                                bottomPadding: 0
-                                Layout.preferredWidth:  ScreenTools.implicitTextFieldHeight
-                                Layout.preferredHeight: ScreenTools.implicitTextFieldHeight
-                                onPressed: {
-                                    if (!spFact) {
-                                        _repeatDir = 0
-                                        return
-                                    }
-                                    _repeatDir = 1
-                                    spFact.value += 1
-                                    repeatInitialMax.start()
-                                }
-                                onReleased: {
-                                    _repeatDir = 0
-                                    repeatInitialMax.stop()
-                                    repeatTimerMax.stop()
-                                }
-                            }
-                        }
-                    }
-
-                    // --- Column 6: Reversed ---------------------------------
-                    Repeater {
-                        model: _maxServos
-
-                        FactCheckBox {
-                            fact:          getFact("SERVO" + (index + 1) + "_REVERSED")
-                            visible:       servoExists(index + 1)
-                            Layout.row:    index + 1
-                            Layout.column: 6
-                            Layout.alignment: Qt.AlignHCenter
-                        }
+            Connections {
+                target: servoMonitor
+                function onServoValueChanged(servo, pwmValue) {
+                    const item = servoRepeater.itemAt(servo)
+                    if (item) {
+                        item.pwmValue = pwmValue
                     }
                 }
             }

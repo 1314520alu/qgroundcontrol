@@ -40,34 +40,10 @@ QStringList PX4FlightBehavior::setupCompleteChangedTriggerList() const
 
 QUrl PX4FlightBehavior::setupSource() const
 {
-    QString qmlFile;
-
-    switch (_vehicle->vehicleType()) {
-        case MAV_TYPE_FIXED_WING:
-            qmlFile = "";
-            break;
-        case MAV_TYPE_QUADROTOR:
-        case MAV_TYPE_COAXIAL:
-        case MAV_TYPE_HELICOPTER:
-        case MAV_TYPE_HEXAROTOR:
-        case MAV_TYPE_OCTOROTOR:
-        case MAV_TYPE_TRICOPTER:
-            qmlFile = "qrc:/qml/QGroundControl/AutoPilotPlugins/PX4/PX4FlightBehaviorCopter.qml";
-            break;
-        case MAV_TYPE_VTOL_TAILSITTER_DUOROTOR:
-        case MAV_TYPE_VTOL_TAILSITTER_QUADROTOR:
-        case MAV_TYPE_VTOL_TILTROTOR:
-        case MAV_TYPE_VTOL_FIXEDROTOR:
-        case MAV_TYPE_VTOL_TAILSITTER:
-        case MAV_TYPE_VTOL_TILTWING:
-        case MAV_TYPE_VTOL_RESERVED5:
-            qmlFile = "";
-            break;
-        default:
-            break;
+    if (_vehicle->multiRotor()) {
+        return QUrl::fromUserInput("qrc:/qml/QGroundControl/AutoPilotPlugins/PX4/PX4FlightBehaviorCopter.qml");
     }
-
-    return QUrl::fromUserInput(qmlFile);
+    return QUrl();
 }
 
 QUrl PX4FlightBehavior::summaryQmlSource() const

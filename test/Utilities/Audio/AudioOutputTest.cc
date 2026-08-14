@@ -2,6 +2,8 @@
 
 #include "AudioOutput.h"
 
+#include <QtCore/QLocale>
+
 void AudioOutputTest::_testSpokenReplacements()
 {
     QString result = AudioOutput::_fixTextMessageForAudio(QStringLiteral("-10.5m, -10.5m. -10.5 m"));
@@ -23,6 +25,12 @@ void AudioOutputTest::_testSpokenReplacements()
     QCOMPARE(result, QStringLiteral("1 second"));
     result = AudioOutput::_fixTextMessageForAudio(QStringLiteral("1001ms"));
     QCOMPARE(result, QStringLiteral("1 second and 1 millisecond"));
+    result = AudioOutput::_fixTextMessageForAudio(QStringLiteral("-10.5m"), QLocale(QStringLiteral("zh_CN")));
+    QCOMPARE(result, QStringLiteral("负 10 点 5 米"));
+    result = AudioOutput::_fixTextMessageForAudio(QStringLiteral("1001ms"), QLocale(QStringLiteral("zh_CN")));
+    QCOMPARE(result, QStringLiteral("1 秒 1 毫秒"));
+    result = AudioOutput::_fixTextMessageForAudio(QStringLiteral("RTL"), QLocale(QStringLiteral("zh_CN")));
+    QCOMPARE(result, QStringLiteral("返航"));
 }
 
 #include "UnitTest.h"

@@ -166,11 +166,6 @@ Item {
         property real leftEdgeCenterInset:  leftEdgeTopInset
     }
 
-    VehicleWarnings {
-        anchors.centerIn:   parent
-        z:                  QGroundControl.zOrderTopMost
-    }
-
     MapScale {
         id:                 mapScale
         anchors.left:       toolStrip.right

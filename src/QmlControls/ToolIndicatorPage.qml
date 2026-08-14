@@ -38,6 +38,9 @@ RowLayout {
     Loader {
         id:                 contentItemLoader
         Layout.alignment:   Qt.AlignTop
+        // Honor page content implicitWidth so wide drawers (e.g. ESC overview) are not collapsed
+        Layout.preferredWidth: item ? item.implicitWidth : -1
+        Layout.minimumWidth:   item ? item.implicitWidth : -1
         sourceComponent:    _showMainComponent ? contentComponent : undefined
 
         property var pageProperties: control.pageProperties

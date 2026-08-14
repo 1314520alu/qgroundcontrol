@@ -5075,15 +5075,21 @@
             <translation type="unfinished" />
         </message>
         <message>
-            <extracomment>.QGC.MetaData.Facts[showRecControl].shortDesc, .QGC.MetaData.Facts[showRecControl].label</extracomment>
+            <extracomment>.QGC.MetaData.Facts[showRecControl].label</extracomment>
             <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/Settings/Video.SettingsGroup.json" />
-            <source>Show Video Record Control</source>
+            <source>Show Photo/Video Controls</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <extracomment>.QGC.MetaData.Facts[showRecControl].shortDesc</extracomment>
+            <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/Settings/Video.SettingsGroup.json" />
+            <source>Show photo and video capture controls on the Fly view. Video display is unaffected.</source>
             <translation type="unfinished" />
         </message>
         <message>
             <extracomment>.QGC.MetaData.Facts[showRecControl].longDesc</extracomment>
             <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/Settings/Video.SettingsGroup.json" />
-            <source>Show recording control in the UI.</source>
+            <source>When disabled, the Fly view photo/video overlay is hidden. The video stream continues to play.</source>
             <translation type="unfinished" />
         </message>
         <message>
@@ -11251,6 +11257,66 @@
             <extracomment>.groups[Vehicle Preferences].keywords[8]</extracomment>
             <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/AppSettings/pages/General.SettingsUI.json" />
             <source>sub</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <extracomment>.groups[Vehicle Setup Menu].sectionName</extracomment>
+            <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/AppSettings/pages/General.SettingsUI.json" />
+            <source>Vehicle Setup Menu</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <extracomment>.groups[Vehicle Setup Menu].keywords[0]</extracomment>
+            <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/AppSettings/pages/General.SettingsUI.json" />
+            <source>vehicle setup</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <extracomment>.groups[Vehicle Setup Menu].keywords[1]</extracomment>
+            <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/AppSettings/pages/General.SettingsUI.json" />
+            <source>menu</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <extracomment>.groups[Vehicle Setup Menu].keywords[2]</extracomment>
+            <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/AppSettings/pages/General.SettingsUI.json" />
+            <source>sidebar</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <extracomment>.groups[Vehicle Setup Menu].keywords[3]</extracomment>
+            <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/AppSettings/pages/General.SettingsUI.json" />
+            <source>summary</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <extracomment>.groups[Vehicle Setup Menu].keywords[4]</extracomment>
+            <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/AppSettings/pages/General.SettingsUI.json" />
+            <source>esc</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <extracomment>.groups[Vehicle Setup Menu].keywords[5]</extracomment>
+            <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/AppSettings/pages/General.SettingsUI.json" />
+            <source>radio</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <extracomment>.groups[Vehicle Setup Menu].keywords[6]</extracomment>
+            <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/AppSettings/pages/General.SettingsUI.json" />
+            <source>joystick</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <extracomment>.groups[Vehicle Setup Menu].keywords[7]</extracomment>
+            <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/AppSettings/pages/General.SettingsUI.json" />
+            <source>sensors</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <extracomment>.groups[Vehicle Setup Menu].keywords[8]</extracomment>
+            <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/AppSettings/pages/General.SettingsUI.json" />
+            <source>frame</source>
             <translation type="unfinished" />
         </message>
         <message>

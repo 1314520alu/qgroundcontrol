@@ -7,6 +7,7 @@
 #include "Fact.h"
 #include "FactValueSliderListModel.h"
 #include "AppMessages.h"
+#include "ParameterEnumStringTranslator.h"
 #include "QGCApplication.h"
 #include "QGCCorePlugin.h"
 #include "QGCLoggingCategory.h"
@@ -249,7 +250,7 @@ QString Fact::enumStringValue()
     if (_metaData) {
         const int enumIndex = this->enumIndex();
         if ((enumIndex >= 0) && (enumIndex < _metaData->enumStrings().count())) {
-            return _metaData->enumStrings()[enumIndex];
+            return ParameterEnumStringTranslator::translate(_metaData->enumStrings()[enumIndex]);
         }
     } else {
         qCWarning(FactLog) << kMissingMetadata << name();
@@ -293,7 +294,7 @@ int Fact::enumIndex()
 QStringList Fact::enumStrings() const
 {
     if (_metaData) {
-        return _metaData->enumStrings();
+        return ParameterEnumStringTranslator::translateList(_metaData->enumStrings());
     } else {
         qCWarning(FactLog) << kMissingMetadata << name();
         return QStringList();

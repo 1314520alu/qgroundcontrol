@@ -36,7 +36,7 @@ Item {
             var centerY = height / 2
             var ctx = getContext("2d")
             ctx.reset()
-            ctx.strokeStyle = qgcPal.window
+            ctx.strokeStyle = qgcPal.windowTransparent
             ctx.lineWidth = attitudeSize
             ctx.beginPath()
             ctx.arc(centerX, centerY, _attitudeRadius, _zeroAttitudeRadians - _maxRadians, _zeroAttitudeRadians + _maxRadians)

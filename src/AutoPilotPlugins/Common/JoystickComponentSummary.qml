@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 
 import QGroundControl
@@ -8,101 +7,60 @@ import QGroundControl.Controls
 Item {
     implicitWidth: mainLayout.implicitWidth
     implicitHeight: mainLayout.implicitHeight
-    width: parent.width  // grows when Loader is wider than implicitWidth
+    width: parent.width
 
-    readonly property var _activeVehicle: QGroundControl.multiVehicleManager.activeVehicle
     readonly property var _activeJoystick: joystickManager.activeJoystick
 
     ColumnLayout {
         id: mainLayout
         width: parent.width
-        spacing: 0
+        spacing: ScreenTools.defaultFontPixelHeight * 0.25
 
-        VehicleSummaryRow {
-            labelText: qsTr("Status")
-            valueText: {
-                if (!_activeJoystick) return qsTr("No joystick detected")
-                if (_activeJoystick.axisCount === 0) return qsTr("Buttons only")
-                if (!_activeJoystick.requiresCalibration) return qsTr("Ready")
-                return _activeJoystick.settings.calibrated.rawValue ? qsTr("Calibrated") : qsTr("Needs calibration")
+        QGCLabel {
+            Layout.fillWidth: true
+            wrapMode: Text.WordWrap
+            visible: !_activeJoystick
+            color: QGroundControl.globalPalette.colorOrange
+            font.pointSize: ScreenTools.defaultFontPointSize * 0.85
+            text: qsTr("No HID joystick enumerated.")
+        }
+
+        QGCLabel {
+            Layout.fillWidth: true
+            wrapMode: Text.WordWrap
+            visible: !_activeJoystick
+            opacity: 0.75
+            font.pointSize: ScreenTools.defaultFontPointSize * 0.78
+            text: qsTr("UniRC sticks usually feed the aircraft over the RC/link path, not Android Joystick.")
+        }
+
+        SummaryChip {
+            visible: !_activeJoystick
+            text: qsTr("Use Radio mapping")
+        }
+
+        Flow {
+            Layout.fillWidth: true
+            visible: !!_activeJoystick
+            spacing: ScreenTools.defaultFontPixelWidth * 0.5
+
+            SummaryChip {
+                text: _activeJoystick && _activeJoystick.isGamepad
+                          ? (_activeJoystick.gamepadType || qsTr("Gamepad"))
+                          : qsTr("Joystick")
             }
-        }
-
-        VehicleSummaryRow {
-            visible: _activeJoystick
-            labelText: qsTr("Type")
-            valueText: {
-                if (!_activeJoystick) return ""
-                if (_activeJoystick.isGamepad) {
-                    return _activeJoystick.gamepadType || qsTr("Gamepad")
-                }
-                return qsTr("Joystick")
+            SummaryChip {
+                visible: _activeJoystick && _activeJoystick.axisCount > 0
+                text: qsTr("%1 axes").arg(_activeJoystick ? _activeJoystick.axisCount : 0)
             }
-        }
-
-        VehicleSummaryRow {
-            visible: _activeJoystick && _activeJoystick.connectionType
-            labelText: qsTr("Connection")
-            valueText: _activeJoystick ? _activeJoystick.connectionType : ""
-        }
-
-        VehicleSummaryRow {
-            visible: _activeJoystick
-            labelText: qsTr("Inputs")
-            valueText: {
-                if (!_activeJoystick) return ""
-                var parts = []
-                if (_activeJoystick.axisCount > 0) parts.push(qsTr("%1 axes").arg(_activeJoystick.axisCount))
-                if (_activeJoystick.buttonCount > 0) parts.push(qsTr("%1 buttons").arg(_activeJoystick.buttonCount))
-                if (_activeJoystick.ballCount > 0) parts.push(qsTr("%1 balls").arg(_activeJoystick.ballCount))
-                if (_activeJoystick.touchpadCount() > 0) parts.push(qsTr("%1 touchpads").arg(_activeJoystick.touchpadCount()))
-                return parts.join(", ")
+            SummaryChip {
+                visible: _activeJoystick && _activeJoystick.buttonCount > 0
+                text: qsTr("%1 buttons").arg(_activeJoystick ? _activeJoystick.buttonCount : 0)
             }
-        }
-
-        VehicleSummaryRow {
-            visible: _activeJoystick && _activeJoystick.batteryPercent >= 0
-            labelText: qsTr("Battery")
-            valueText: {
-                if (!_activeJoystick || _activeJoystick.batteryPercent < 0) return ""
-                var text = qsTr("%1%").arg(_activeJoystick.batteryPercent)
-                if (_activeJoystick.powerState) text += " (" + _activeJoystick.powerState + ")"
-                return text
+            SummaryChip {
+                visible: _activeJoystick && _activeJoystick.batteryPercent >= 0
+                text: qsTr("Batt %1%").arg(_activeJoystick ? _activeJoystick.batteryPercent : 0)
             }
-            valueColor: _activeJoystick && _activeJoystick.batteryPercent < 20 ? "red" : ""
-        }
-
-        VehicleSummaryRow {
-            visible: _activeJoystick && (_activeJoystick.hasRumble || _activeJoystick.hasLED || _activeJoystick.hasGyroscope() || _activeJoystick.hasAccelerometer())
-            labelText: qsTr("Features")
-            valueText: {
-                if (!_activeJoystick) return ""
-                var features = []
-                if (_activeJoystick.hasRumble) features.push(qsTr("Rumble"))
-                if (_activeJoystick.hasRumbleTriggers) features.push(qsTr("Triggers"))
-                if (_activeJoystick.hasLED) features.push(qsTr("LED"))
-                if (_activeJoystick.hasGyroscope()) features.push(qsTr("Gyro"))
-                if (_activeJoystick.hasAccelerometer()) features.push(qsTr("Accel"))
-                return features.join(", ")
-            }
-        }
-
-        VehicleSummaryRow {
-            visible: _activeJoystick && _activeJoystick.vendorId > 0
-            labelText: qsTr("Device ID")
-            valueText: _activeJoystick ? "0x%1:0x%2".arg(_activeJoystick.vendorId.toString(16).toUpperCase().padStart(4, '0')).arg(_activeJoystick.productId.toString(16).toUpperCase().padStart(4, '0')) : ""
-        }
-
-        VehicleSummaryRow {
-            visible: _activeJoystick && _activeJoystick.playerIndex >= 0
-            labelText: qsTr("Player")
-            valueText: _activeJoystick ? (_activeJoystick.playerIndex + 1).toString() : ""
-        }
-
-        VehicleSummaryRow {
-            visible: _activeJoystick && _activeJoystick.isVirtual
-            labelText: qsTr("Virtual")
-            valueText: qsTr("Yes")
         }
     }
 }

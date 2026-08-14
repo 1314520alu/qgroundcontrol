@@ -301,7 +301,8 @@ void QGCApplication::_initForNormalAppBoot()
     (void) _initQmlRootWindow();
 
     AudioOutput::instance()->init(SettingsManager::instance()->appSettings()->audioVolume(),
-                                  SettingsManager::instance()->appSettings()->audioMuted());
+                                  SettingsManager::instance()->appSettings()->audioMuted(),
+                                  SettingsManager::instance()->appSettings()->audioLocale());
     FollowMe::instance()->init();
     QGCPositionManager::instance()->init();
     NTRIPManager::instance()->init();

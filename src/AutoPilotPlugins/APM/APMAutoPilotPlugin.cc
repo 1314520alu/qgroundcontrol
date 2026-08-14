@@ -8,6 +8,7 @@
 #include "APMMotorComponent.h"
 #include "APMServoComponent.h"
 #include "APMESCComponent.h"
+#include "APMESCTelemetryComponent.h"
 #include "APMPowerComponent.h"
 #include "APMRadioComponent.h"
 #include "APMLoggingComponent.h"
@@ -96,6 +97,10 @@ const QVariantList &APMAutoPilotPlugin::vehicleComponents()
             _escComponent = new APMESCComponent(_vehicle, this);
             _escComponent->setupTriggerSignals();
             _components.append(QVariant::fromValue(qobject_cast<VehicleComponent*>(_escComponent)));
+
+            _escTelemetryComponent = new APMESCTelemetryComponent(_vehicle, this);
+            _escTelemetryComponent->setupTriggerSignals();
+            _components.append(QVariant::fromValue(qobject_cast<VehicleComponent*>(_escTelemetryComponent)));
 
             if (!_vehicle->sub() || (_vehicle->versionCompare(3, 5, 3) >= 0)) {
                 _motorComponent = new APMMotorComponent(_vehicle, this);

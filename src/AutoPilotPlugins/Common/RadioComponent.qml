@@ -11,127 +11,60 @@ import QGroundControl.VehicleSetup
 SetupPage {
     id: radioPage
     pageComponent: pageComponent
+    showPageDescription: false
 
     Component {
         id: pageComponent
 
-        RemoteControlCalibration {
-            id: remoteControlCalibration
+        // Fit the whole Radio UI in the visible viewport (no page scroll on short landscape remotes).
+        Item {
+            width: availableWidth
+            height: availableHeight
 
-            useDeadband: false
+            RemoteControlCalibration {
+                id: remoteControlCalibration
+                anchors.fill: parent
+                compactSinglePage: true
 
-            controller: RadioComponentController {
-                statusText: remoteControlCalibration.statusText
-                cancelButton: remoteControlCalibration.cancelButton
-                nextButton: remoteControlCalibration.nextButton
-                joystickMode: false
+                useDeadband: false
 
-                onThrottleReversedCalFailure: QGroundControl.showMessageDialog(radioPage, qsTr("Throttle channel reversed"), qsTr("Calibration failed. The throttle channel on your transmitter is reversed. You must correct this on your transmitter in order to complete calibration."))
-            }
+                controller: RadioComponentController {
+                    statusText: remoteControlCalibration.statusText
+                    cancelButton: remoteControlCalibration.cancelButton
+                    nextButton: remoteControlCalibration.nextButton
+                    joystickMode: false
 
-            Component.onCompleted: controller.start()
-
-            additionalSetupComponent: ColumnLayout {
-                spacing: ScreenTools.defaultFontPixelHeight / 2
-
-                ColumnLayout {
-                    id: switchSettings
-                    Layout.fillWidth: true
-
-                    Repeater {
-                        model: QGroundControl.multiVehicleManager.activeVehicle.px4Firmware ?
-                                    (QGroundControl.multiVehicleManager.activeVehicle.multiRotor ?
-                                        [ "RC_MAP_AUX1", "RC_MAP_AUX2", "RC_MAP_PARAM1", "RC_MAP_PARAM2", "RC_MAP_PARAM3", "RC_MAP_PAY_SW"] :
-                                        [ "RC_MAP_FLAPS", "RC_MAP_AUX1", "RC_MAP_AUX2", "RC_MAP_PARAM1", "RC_MAP_PARAM2", "RC_MAP_PARAM3", "RC_MAP_PAY_SW"]) :
-                                    0
-
-                        LabelledFactComboBox {
-                            label: fact.shortDescription
-                            fact: controller.getParameterFact(-1, modelData)
-                            indexModel: false
-                        }
-                    }
+                    onThrottleReversedCalFailure: QGroundControl.showMessageDialog(radioPage, qsTr("Throttle channel reversed"), qsTr("Calibration failed. The throttle channel on your transmitter is reversed. You must correct this on your transmitter in order to complete calibration."))
                 }
 
-                Rectangle {
-                    Layout.fillWidth: true
-                    implicitHeight: 1
-                    color: qgcPal.text
-                }
+                Component.onCompleted: controller.start()
 
-                RowLayout {
-                    spacing: ScreenTools.defaultFontPixelWidth
-
-                    QGCButton {
-                        id: bindButton
-                        text: qsTr("Spektrum Bind")
-                        onClicked: spektrumBindDialogFactory.open()
-                    }
-
-                    QGCButton {
-                        text: qsTr("CRSF Bind")
-                        onClicked: QGroundControl.showMessageDialog(radioPage, qsTr("CRSF Bind"),
-                                                                qsTr("Click Ok to place your CRSF receiver in the bind mode."),
-                                                                Dialog.Ok | Dialog.Cancel,
-                                                                function() { controller.crsfBindMode() })
-                    }
-
-                    QGCButton {
-                        text: qsTr("Copy Trims")
-                        onClicked: QGroundControl.showMessageDialog(radioPage, qsTr("Copy Trims"),
-                                                                qsTr("Center your sticks and move throttle all the way down, then press Ok to copy trims. After pressing Ok, reset the trims on your radio back to zero."),
-                                                                Dialog.Ok | Dialog.Cancel,
-                                                                function() { controller.copyTrims() })
-                    }
-                }
-
-                QGCPopupDialogFactory {
-                    id: spektrumBindDialogFactory
-
-                    dialogComponent: spektrumBindDialogComponent
-                }
+                // Spektrum / CRSF bind and Copy Trims removed (not used on SIYI / Skydroid handheld GCS).
+                // PX4 keeps AUX / switch mapping below the main cards.
+                additionalSetupComponent: (QGroundControl.multiVehicleManager.activeVehicle && QGroundControl.multiVehicleManager.activeVehicle.px4Firmware)
+                                          ? px4AuxSetupComponent
+                                          : null
 
                 Component {
-                    id: spektrumBindDialogComponent
+                    id: px4AuxSetupComponent
 
-                    QGCPopupDialog {
-                        title: qsTr("Spektrum Bind")
-                        buttons: Dialog.Ok | Dialog.Cancel
+                    ColumnLayout {
+                        spacing: ScreenTools.defaultFontPixelHeight / 2
 
-                        onAccepted: { controller.spektrumBindMode(radioGroup.checkedButton.bindMode) }
+                        QGCLabel {
+                            text: qsTr("Switch / Aux Mapping")
+                            font.bold: true
+                        }
 
-                        ButtonGroup { id: radioGroup }
+                        Repeater {
+                            model: QGroundControl.multiVehicleManager.activeVehicle.multiRotor ?
+                                        [ "RC_MAP_AUX1", "RC_MAP_AUX2", "RC_MAP_PARAM1", "RC_MAP_PARAM2", "RC_MAP_PARAM3", "RC_MAP_PAY_SW"] :
+                                        [ "RC_MAP_FLAPS", "RC_MAP_AUX1", "RC_MAP_AUX2", "RC_MAP_PARAM1", "RC_MAP_PARAM2", "RC_MAP_PARAM3", "RC_MAP_PAY_SW"]
 
-                        ColumnLayout {
-                            spacing: ScreenTools.defaultFontPixelHeight / 2
-
-                            QGCLabel {
-                                wrapMode: Text.WordWrap
-                                text: qsTr("Click Ok to place your Spektrum receiver in the bind mode.")
-                            }
-
-                            QGCLabel {
-                                wrapMode: Text.WordWrap
-                                text: qsTr("Select the specific receiver type below:")
-                            }
-
-                            QGCRadioButton {
-                                text: qsTr("DSM2 Mode")
-                                ButtonGroup.group: radioGroup
-                                property int bindMode: RadioComponentController.DSM2
-                            }
-
-                            QGCRadioButton {
-                                text: qsTr("DSMX (7 channels or less)")
-                                ButtonGroup.group: radioGroup
-                                property int bindMode: RadioComponentController.DSMX7
-                            }
-
-                            QGCRadioButton {
-                                checked: true
-                                text: qsTr("DSMX (8 channels or more)")
-                                ButtonGroup.group: radioGroup
-                                property int bindMode: RadioComponentController.DSMX8
+                            LabelledFactComboBox {
+                                label: fact.shortDescription
+                                fact: remoteControlCalibration.controller.getParameterFact(-1, modelData)
+                                indexModel: false
                             }
                         }
                     }

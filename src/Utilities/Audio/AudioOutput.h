@@ -1,8 +1,11 @@
 #pragma once
 
-#include <QtCore/QObject>
-
 #include <chrono>
+#include <optional>
+
+#include <QtCore/QHash>
+#include <QtCore/QLocale>
+#include <QtCore/QObject>
 
 class QTextToSpeech;
 class Fact;
@@ -37,7 +40,8 @@ public:
     static AudioOutput *instance();
 
     /// Initialize the Singleton
-    void init(Fact *volumeFact, Fact *mutedFact);
+    ///     @param localeFact Optional TTS language Fact (`system` or a locale tag such as `zh_CN`).
+    void init(Fact *volumeFact, Fact *mutedFact, Fact *localeFact = nullptr);
 
     /// Reads the specified text with optional text modifications.
     ///     @param text The text to be read.
@@ -54,7 +58,9 @@ private:
     bool _speakCapable = false;
     Fact *_volumeFact = nullptr;
     Fact *_mutedFact = nullptr;
+    Fact *_localeFact = nullptr;
     double _lastVolume = -1.0;
+    QLocale _spokenLocale{QLocale::English, QLocale::UnitedStates};
 
     /// Returns the current volume (0.0 - 100.0) from the settings Fact.
     double _volumeSetting() const;
@@ -65,8 +71,20 @@ private:
     /// Sets the TTS engine volume from the current Fact value.
     void _setVolume();
 
-    /// Applies engine-dependent settings (locale, cached capabilities) for the current engine.
+    /// Applies engine-dependent settings (locale, voice, cached capabilities) for the current engine.
     void _applyEngineSettings();
+
+    /// Locale requested by the audio language setting (`system` uses the application locale).
+    QLocale _requestedLocale() const;
+
+    /// Best matching locale from the TTS engine.
+    std::optional<QLocale> _bestAvailableLocale(const QLocale &wanted) const;
+
+    /// Prefer a neural/natural voice when the engine exposes one for the current locale.
+    void _selectNaturalVoice();
+
+    /// Slightly slower rate for CJK voices; default otherwise.
+    void _applySpeechRate();
 
     /// Finalizes initialization once the engine is Ready: applies settings, wires Facts, sets volume.
     void _finishInit();
@@ -80,25 +98,25 @@ private:
 
     /// Fixes text messages for audio output.
     ///     @param string The text message to fix.
+    ///     @param locale Locale used for spoken number/unit words.
     ///     @return The fixed text message.
-    static QString _fixTextMessageForAudio(const QString &string);
+    static QString _fixTextMessageForAudio(const QString &string,
+                                           const QLocale &locale = QLocale(QLocale::English, QLocale::UnitedStates));
 
     /// Replaces predefined abbreviations with their corresponding full forms.
-    ///     @param input The input string containing abbreviations.
-    ///     @return A string with abbreviations replaced by their full forms.
-    static QString _replaceAbbreviations(const QString &input);
+    static QString _replaceAbbreviations(const QString &input, const QLocale &locale);
 
-    /// Replaces negative signs with the word "negative".
-    static QString _replaceNegativeSigns(const QString &input);
+    /// Replaces negative signs with the spoken negative word.
+    static QString _replaceNegativeSigns(const QString &input, const QString &negativeWord);
 
-    /// Replaces decimal points with the word "point".
-    static QString _replaceDecimalPoints(const QString &input);
+    /// Replaces decimal points with the spoken decimal word.
+    static QString _replaceDecimalPoints(const QString &input, const QString &pointWord);
 
-    /// Replaces "m" (meters) with the word "meters" following numbers.
-    static QString _replaceMeters(const QString &input);
+    /// Replaces "m" (meters) with the spoken meters word following numbers.
+    static QString _replaceMeters(const QString &input, const QString &metersWord);
 
     /// Converts millisecond values to a more readable format (seconds and minutes).
-    static QString _convertMilliseconds(const QString &input);
+    static QString _convertMilliseconds(const QString &input, const QLocale &locale);
 
     /// Extracts a millisecond value from the given string.
     ///     @param string The string to extract from.

@@ -3,15 +3,51 @@
 #include "JsonParsing.h"
 #include "JsonSchemaValidator.h"
 #include "QGCCompression.h"
+#include "QGCApplication.h"
 #include "QGCLoggingCategory.h"
 
 #include <QtCore/QStandardPaths>
 #include <QtCore/QDir>
 #include <QtCore/QJsonArray>
 #include <QtCore/QJsonDocument>
+#include <QtCore/QJsonObject>
+#include <QtCore/QJsonValue>
+#include <QtCore/QLocale>
+#include <QtCore/QStringList>
 #include <QtCore/QXmlStreamReader>
 
 QGC_LOGGING_CATEGORY(ComponentInformationTranslationLog, "ComponentInformation.ComponentInformationTranslation")
+
+namespace {
+
+QLocale uiLocale()
+{
+    return qgcApp() ? qgcApp()->getCurrentLanguage() : QLocale();
+}
+
+QStringList localeCandidates(const QLocale &locale)
+{
+    QStringList names;
+    const auto add = [&names](const QString &name) {
+        if (!name.isEmpty() && !names.contains(name)) {
+            names.append(name);
+        }
+    };
+    add(locale.name());
+    add(locale.bcp47Name());
+    add(locale.name().replace(QLatin1Char('_'), QLatin1Char('-')));
+    add(QLocale::languageToCode(locale.language()));
+    if (locale.language() == QLocale::Chinese) {
+        add(QStringLiteral("zh_CN"));
+        add(QStringLiteral("zh-CN"));
+        add(QStringLiteral("zh_Hans"));
+        add(QStringLiteral("zh-Hans"));
+        add(QStringLiteral("zh"));
+    }
+    return names;
+}
+
+} // namespace
 
 ComponentInformationTranslation::ComponentInformationTranslation(QObject* parent,
                                                                  QGCCachedFileDownload* cachedFileDownload)
@@ -22,16 +58,14 @@ ComponentInformationTranslation::ComponentInformationTranslation(QObject* parent
 bool ComponentInformationTranslation::downloadAndTranslate(const QString& summaryJsonFile,
                                                            const QString& toTranslateJsonFile, int maxCacheAgeSec, const QString& componentName)
 {
-    // Metadata is authored in English, no translation needed
-    const QString locale = QLocale::system().name();
-    if (locale.startsWith(QLatin1String("en"))) {
-        qCDebug(ComponentInformationTranslationLog) << "Skipping translation for English locale" << locale << "for" << componentName;
+    const QLocale locale = uiLocale();
+    if (locale.language() == QLocale::English) {
+        qCDebug(ComponentInformationTranslationLog) << "Skipping translation for English locale" << locale.name() << "for" << componentName;
         return false;
     }
 
-    // Parse summary: find url for current locale
     _toTranslateJsonFile = toTranslateJsonFile;
-    QString url = getUrlFromSummaryJson(summaryJsonFile, locale, componentName);
+    QString url = getUrlFromSummaryJson(summaryJsonFile, locale.name(), componentName);
     if (url.isEmpty()) {
         return false;
     }
@@ -55,19 +89,28 @@ QString ComponentInformationTranslation::getUrlFromSummaryJson(const QString &su
         qCWarning(ComponentInformationTranslationLog) << "Metadata translation summary json file open failed for" << componentName << ":" << errorString;
         return "";
     }
-    QJsonObject jsonObj = jsonDoc.object();
+    const QJsonObject jsonObj = jsonDoc.object();
 
-    QJsonObject localeObj = jsonObj[locale].toObject();
-    if (localeObj.isEmpty()) {
-        qCWarning(ComponentInformationTranslationLog) << "Locale" << locale << "not found in translation json for" << componentName;
-        return "";
+    QStringList candidates;
+    candidates.append(locale);
+    candidates.append(localeCandidates(QLocale(locale)));
+    candidates.removeDuplicates();
+
+    for (const QString &candidate : candidates) {
+        const QJsonValue localeValue = jsonObj.value(candidate);
+        if (!localeValue.isObject()) {
+            continue;
+        }
+        const QString url = localeValue.toObject().value(QLatin1String("url")).toString();
+        if (url.isEmpty()) {
+            qCWarning(ComponentInformationTranslationLog) << "Locale" << candidate << "has no url in translation json for" << componentName;
+            return "";
+        }
+        return url;
     }
 
-    QString url = localeObj["url"].toString();
-    if (url.isEmpty()) {
-        qCWarning(ComponentInformationTranslationLog) << "Locale" << locale << "has no url in translation json for" << componentName;
-    }
-    return url;
+    qCWarning(ComponentInformationTranslationLog) << "Locale" << locale << "not found in translation json for" << componentName;
+    return "";
 }
 
 void ComponentInformationTranslation::onDownloadCompleted(bool success, const QString &localFile, QString errorMsg, [[maybe_unused]] bool fromCache)

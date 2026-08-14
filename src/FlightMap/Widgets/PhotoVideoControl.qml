@@ -14,13 +14,15 @@ Rectangle {
     height: mainLayout.height + (_smallMargins * 2)
     color: Qt.rgba(qgcPal.window.r, qgcPal.window.g, qgcPal.window.b, 0.5)
     radius: _margins
-    visible: _camera.capturesVideo || _camera.capturesPhotos || _camera.hasTracking || _camera.hasVideoStream
+    visible: _showPhotoVideoControls && _camera && (_camera.capturesVideo || _camera.capturesPhotos || _camera.hasTracking || _camera.hasVideoStream)
 
     property real _margins: ScreenTools.defaultFontPixelHeight / 2
     property real _smallMargins: ScreenTools.defaultFontPixelWidth / 2
     property var _activeVehicle: globals.activeVehicle
     property var _cameraManager: _activeVehicle.cameraManager
     property var _camera: _cameraManager.currentCameraInstance
+    property var _videoSettings: QGroundControl.settingsManager.videoSettings
+    property bool _showPhotoVideoControls: _videoSettings ? _videoSettings.showRecControl.rawValue : true
     property bool _cameraInPhotoMode: _camera.cameraMode === MavlinkCameraControlInterface.CAM_MODE_PHOTO || _camera.cameraMode === MavlinkCameraControlInterface.CAM_MODE_SURVEY
     property bool _cameraInVideoMode: !_cameraInPhotoMode
     property bool _videoCaptureIdle: _camera.captureVideoState === MavlinkCameraControlInterface.CaptureVideoStateIdle

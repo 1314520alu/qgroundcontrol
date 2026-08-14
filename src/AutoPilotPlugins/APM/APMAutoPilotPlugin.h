@@ -12,6 +12,7 @@ class APMFailsafesComponent;
 class APMFlightSafetyComponent;
 class APMSensorsComponent;
 class APMESCComponent;
+class APMESCTelemetryComponent;
 class APMPowerComponent;
 class APMMotorComponent;
 class APMGimbalComponent;
@@ -51,6 +52,7 @@ protected:
     APMServoComponent *_servoComponent = nullptr;
     APMPowerComponent *_powerComponent = nullptr;
     APMESCComponent *_escComponent = nullptr;
+    APMESCTelemetryComponent *_escTelemetryComponent = nullptr;
     APMMotorComponent *_motorComponent = nullptr;
     APMRadioComponent *_radioComponent = nullptr;
     APMFailsafesComponent *_failsafesComponent = nullptr;

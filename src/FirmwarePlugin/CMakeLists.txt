@@ -11,6 +11,10 @@ target_sources(${CMAKE_PROJECT_NAME}
         FirmwarePluginFactory.h
         FirmwarePluginManager.cc
         FirmwarePluginManager.h
+        FlightModeNameTranslator.cc
+        FlightModeNameTranslator.h
+        ParameterEnumStringTranslator.cc
+        ParameterEnumStringTranslator.h
         ParameterMetaData.cc
         ParameterMetaData.h
 )

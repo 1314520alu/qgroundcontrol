@@ -50,6 +50,7 @@ public:
 private:
     void _handleEscInfo(Vehicle *vehicle, const mavlink_message_t &message);
     void _handleEscStatus(Vehicle *vehicle, const mavlink_message_t &message);
+    void _handleEscTelemetry(Vehicle *vehicle, const mavlink_message_t &message);
 
     Fact _rpmFact =             Fact(0, QStringLiteral("rpm"),              FactMetaData::valueTypeInt32);
     Fact _currentFact =         Fact(0, QStringLiteral("current"),          FactMetaData::valueTypeFloat);

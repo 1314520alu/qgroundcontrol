@@ -62,6 +62,15 @@ SetupPage {
             function sectionMatchesFilter(sectionTitle) {
                 if (sectionNameFilter === "") return true
                 if (sectionNameFilter === sectionTitle) return true
+                // Sidebar filter is English ("Battery 1"); headings may be localized ("电池 1").
+                var translatedFilter = qsTranslate("{{ tr_ctx }}", sectionNameFilter)
+                if (translatedFilter === sectionTitle) return true
+                var space = sectionNameFilter.lastIndexOf(" ")
+                if (space > 0) {
+                    var base = sectionNameFilter.substring(0, space)
+                    var suffix = sectionNameFilter.substring(space)
+                    if (qsTranslate("{{ tr_ctx }}", base) + suffix === sectionTitle) return true
+                }
                 var filter = sectionNameFilter.toLowerCase()
                 var terms = _searchTerms[sectionTitle]
                 if (terms) {

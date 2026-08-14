@@ -28,6 +28,7 @@ public:
     DEFINE_SETTINGFACT(defaultMissionItemAltitude)
     DEFINE_SETTINGFACT(audioMuted)
     DEFINE_SETTINGFACT(audioVolume)
+    DEFINE_SETTINGFACT(audioLocale)
     DEFINE_SETTINGFACT(virtualJoystick)
     DEFINE_SETTINGFACT(virtualJoystickAutoCenterThrottle)
     DEFINE_SETTINGFACT(virtualJoystickLeftHandedMode)
@@ -54,6 +55,7 @@ public:
     DEFINE_SETTINGFACT(disableAllPersistence)
     DEFINE_SETTINGFACT(firstRunPromptIdsShown)
     DEFINE_SETTINGFACT(favoriteParameters)
+    DEFINE_SETTINGFACT(vehicleSetupVisibleComponents)
     DEFINE_SETTINGFACT(showAppLogTimestampAsElapsedTime)
 
     // QSettings key for clearSettingsNextBoot. Accessed directly by QGCApplication
@@ -95,6 +97,21 @@ public:
     static QList<int> firstRunPromptsIdsVariantToList   (const QVariant& firstRunPromptIds);
     static QVariant   firstRunPromptsIdsListToVariant   (const QList<int>& rgIds);
     Q_INVOKABLE void  firstRunPromptIdsMarkIdAsShown    (int id);
+
+    /// Default remote-friendly Vehicle Setup sidebar visibility list.
+    static constexpr const char *vehicleSetupVisibleComponentsDefault =
+        "frame,sensors,radio,flightModes,power,esc,escTelemetry,motors,flightSafety,failsafes";
+
+    /// Catalog entries: [{ "id": "...", "label": "..." }, ...] in checkbox display order.
+    Q_INVOKABLE QVariantList vehicleSetupMenuCatalog() const;
+    Q_INVOKABLE QStringList vehicleSetupVisibleIdList() const;
+    Q_INVOKABLE bool isVehicleSetupComponentVisible(const QString &id) const;
+    Q_INVOKABLE void setVehicleSetupComponentVisible(const QString &id, bool visible);
+    Q_INVOKABLE void resetVehicleSetupVisibleComponents();
+    /// Resolve a stable menu id from setup/summary QML URLs. Empty = unmapped/hidden.
+    Q_INVOKABLE QString resolveVehicleSetupComponentId(const QString &setupSource, const QString &summarySource) const;
+    /// Lower sort key = earlier in sidebar after Summary. Unknown ids sort last.
+    Q_INVOKABLE int vehicleSetupComponentSortKey(const QString &id) const;
 
     // Application wide file extensions
     static constexpr const char* parameterFileExtension =   "params";

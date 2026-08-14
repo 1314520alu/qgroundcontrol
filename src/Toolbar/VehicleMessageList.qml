@@ -18,18 +18,46 @@ TextArea {
     wrapMode:               TextEdit.Wrap
 
     property bool noMessages: messageText.length === 0
+    property var  qgcPal:     QGroundControl.globalPalette
+    property var  _fact:      null
 
-    property var _fact: null
+    function _severityFontCss(colorValue) {
+        return "color: " + colorValue + "; font: " + (ScreenTools.defaultFontPointSize.toFixed(0) - 1) + "pt monospace;"
+    }
+
+    function _colorizeSeverities(message) {
+        message = message.replace(new RegExp("<#E>", "g"), _severityFontCss(qgcPal.colorRed))
+        message = message.replace(new RegExp("<#I>", "g"), _severityFontCss(qgcPal.colorOrange))
+        message = message.replace(new RegExp("<#N>", "g"), _severityFontCss(qgcPal.text))
+        return message
+    }
+
+    /// Light zebra: odd rows get a soft windowShade background (even rows stay transparent).
+    function _applyZebra(html) {
+        const parts = html.split(/<br\s*\/?>/i).filter(part => part.trim().length > 0)
+        let result = ""
+        for (let i = 0; i < parts.length; i++) {
+            const bg = (i % 2 === 1) ? qgcPal.windowShade : "transparent"
+            result += "<table width=\"100%\" cellspacing=\"0\" cellpadding=\"4\"><tr bgcolor=\""
+                    + bg + "\"><td style=\"padding: 2px 4px;\">" + parts[i] + "</td></tr></table>"
+        }
+        return result
+    }
 
     function formatMessage(message) {
-        message = message.replace(new RegExp("<#E>", "g"), "color: " + qgcPal.warningText + "; font: " + (ScreenTools.defaultFontPointSize.toFixed(0) - 1) + "pt monospace;");
-        message = message.replace(new RegExp("<#I>", "g"), "color: " + qgcPal.warningText + "; font: " + (ScreenTools.defaultFontPointSize.toFixed(0) - 1) + "pt monospace;");
-        message = message.replace(new RegExp("<#N>", "g"), "color: " + qgcPal.text + "; font: " + (ScreenTools.defaultFontPointSize.toFixed(0) - 1) + "pt monospace;");
-        return message;
+        return _applyZebra(_colorizeSeverities(message))
+    }
+
+    function _reloadAllMessages() {
+        if (!_activeVehicle) {
+            messageText.text = ""
+            return
+        }
+        messageText.text = formatMessage(_activeVehicle.formattedMessages)
     }
 
     Component.onCompleted: {
-        messageText.text = formatMessage(_activeVehicle.formattedMessages)
+        _reloadAllMessages()
         if (_activeVehicle) {
             _activeVehicle.resetAllMessages()
         }
@@ -37,7 +65,8 @@ TextArea {
 
     Connections {
         target: _activeVehicle
-        function onNewFormattedMessage(formattedMessage) { messageText.insert(0, formatMessage(formattedMessage)) }
+        // Rebuild so zebra odd/even stays correct after prepend
+        function onNewFormattedMessage(formattedMessage) { messageText._reloadAllMessages() }
     }
 
     FactPanelController {
@@ -98,6 +127,7 @@ TextArea {
             fillItem: parent
             onClicked: {
                 _activeVehicle.clearMessages()
+                messageText.text = ""
                 mainWindow.closeIndicatorDrawer()
             }
         }

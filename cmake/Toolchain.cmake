@@ -24,9 +24,16 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
+# Cap AUTOGEN parallelism. Each slot is typically a moccache Python wrapper plus
+# the real moc; matching logical-core count under `cmake --build --parallel`
+# can spawn dozens of processes and thrash the host (load averages >> core count).
 if(NOT DEFINED CMAKE_AUTOGEN_PARALLEL)
     cmake_host_system_information(RESULT _nproc QUERY NUMBER_OF_LOGICAL_CORES)
-    set(CMAKE_AUTOGEN_PARALLEL ${_nproc})
+    if(_nproc GREATER 4)
+        set(CMAKE_AUTOGEN_PARALLEL 4)
+    else()
+        set(CMAKE_AUTOGEN_PARALLEL ${_nproc})
+    endif()
 endif()
 
 # ----------------------------------------------------------------------------

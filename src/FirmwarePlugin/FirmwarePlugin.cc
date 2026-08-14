@@ -1,6 +1,7 @@
 #include "FirmwarePlugin.h"
 #include "AutoPilotPlugin.h"
 #include "Autotune.h"
+#include "FlightModeNameTranslator.h"
 #include "GenericAutoPilotPlugin.h"
 #include "MAVLinkLib.h"
 #include "MAVLinkProtocol.h"
@@ -440,6 +441,7 @@ void FirmwarePlugin::_updateFlightModeList(FlightModeList &flightModeList)
     _modeEnumToString.clear();
 
     for (FirmwareFlightMode &flightMode : flightModeList) {
+        flightMode.mode_name = FlightModeNameTranslator::translate(flightMode.mode_name, flightMode.fixedWing);
         _modeEnumToString[flightMode.custom_mode] = flightMode.mode_name;
         _addNewFlightMode(flightMode);
     }

@@ -10,6 +10,11 @@ Instructions for AI coding agents (Codex, Claude Code, etc.) working on QGroundC
 - [test/README.md](test/README.md) — Test framework, base classes, CTest labels, MultiSignalSpy, coverage
 - [.github/ci-overview.md](.github/ci-overview.md) — CI workflow/action/script layout and conventions
 - [.pre-commit-config.yaml](.pre-commit-config.yaml) — All enforced linters (clang-format, clang-tidy, ruff, pyright, shellcheck, actionlint, zizmor, qmllint, clazy, vehicle-null-check, check-no-qassert, check-no-qtest-ignore-message)
+- [.cursor/rules/qgc-landscape-remotes.mdc](.cursor/rules/qgc-landscape-remotes.mdc) — UI targets: landscape Skydroid / SIYI remotes first
+
+## UI target devices (this fork)
+
+QML/UI work is **landscape-first** for industrial remotes — primarily **云卓 Skydroid** (e.g. G20 7″ 1920×1200) and **思翼 SIYI** (e.g. MK32/MK15). Prefer split layouts and compact controls; short height is the usual constraint. See the Cursor rule above.
 
 ## Golden Rules (enforced — violations fail CI)
 

@@ -121,3 +121,21 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${_qtat_dir})
 file(COPY "${_qtat_dir}/src/com/falsinsoft/qtandroidtools/AndroidScreen.java"
     DESTINATION "${QGC_ANDROID_EXTRA_JAVA_SOURCES_DIR}/com/falsinsoft/qtandroidtools"
 )
+
+# ----------------------------------------------------------------------------
+# QtQuick.Window import metadata (Qt 6.11 Android)
+# ----------------------------------------------------------------------------
+# androiddeployqt uses NO_QT_IMPORTS and expects modules under
+# :/qt-project.org/imports/…. QtQuick / Controls embed those resources in their
+# shared libs, but QtQuick.Window's Android plugin does not — so
+# `import QtQuick.Window` fails with "module is not installed" and MainWindow
+# never loads (startup abort). Ship the missing qmldir/typeinfo ourselves.
+set(_qgc_qtquick_window_imports_dir
+    "${CMAKE_SOURCE_DIR}/android/qt_qml_imports/qt-project.org/imports/QtQuick/Window")
+qt_add_resources(${CMAKE_PROJECT_NAME} "qgc_qtquick_window_imports"
+    PREFIX "/qt-project.org/imports/QtQuick/Window"
+    BASE "${_qgc_qtquick_window_imports_dir}"
+    FILES
+        "${_qgc_qtquick_window_imports_dir}/qmldir"
+        "${_qgc_qtquick_window_imports_dir}/quickwindow.qmltypes"
+)

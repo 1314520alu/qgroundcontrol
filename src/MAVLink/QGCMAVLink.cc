@@ -195,6 +195,7 @@ QGCMAVLink::VehicleClass_t QGCMAVLink::vehicleClass(MAV_TYPE mavType)
     switch (mavType) {
     case MAV_TYPE_GROUND_ROVER:
     case MAV_TYPE_SURFACE_BOAT:
+    case MAV_TYPE_GROUND_QUADRUPED:
         return VehicleClassRoverBoat;
     case MAV_TYPE_SUBMARINE:
         return VehicleClassSub;
@@ -206,6 +207,9 @@ QGCMAVLink::VehicleClass_t QGCMAVLink::vehicleClass(MAV_TYPE mavType)
     case MAV_TYPE_HEXAROTOR:
     case MAV_TYPE_OCTOROTOR:
     case MAV_TYPE_TRICOPTER:
+    case MAV_TYPE_DODECAROTOR:
+    case MAV_TYPE_DECAROTOR:
+    case MAV_TYPE_GENERIC_MULTIROTOR:
         return VehicleClassMultiRotor;
     case MAV_TYPE_VTOL_TAILSITTER_DUOROTOR:
     case MAV_TYPE_VTOL_TAILSITTER_QUADROTOR:
@@ -214,6 +218,7 @@ QGCMAVLink::VehicleClass_t QGCMAVLink::vehicleClass(MAV_TYPE mavType)
     case MAV_TYPE_VTOL_TAILSITTER:
     case MAV_TYPE_VTOL_TILTWING:
     case MAV_TYPE_VTOL_RESERVED5:
+    case MAV_TYPE_VTOL_GYRODYNE:
         return VehicleClassVTOL;
     case MAV_TYPE_FIXED_WING:
         return VehicleClassFixedWing;
@@ -409,6 +414,27 @@ QString QGCMAVLink::mavTypeToString(MAV_TYPE mavType) {
     case MAV_TYPE_VTOL_RESERVED5:               return QCoreApplication::translate("MAV_TYPE", "VTOL reserved 5");
     case MAV_TYPE_GIMBAL:                       return QCoreApplication::translate("MAV_TYPE", "Onboard gimbal");
     case MAV_TYPE_ADSB:                         return QCoreApplication::translate("MAV_TYPE", "Onboard ADSB peripheral");
+    case MAV_TYPE_PARAFOIL:                     return QCoreApplication::translate("MAV_TYPE", "Parafoil");
+    case MAV_TYPE_DODECAROTOR:                  return QCoreApplication::translate("MAV_TYPE", "Dodecarotor");
+    case MAV_TYPE_CAMERA:                       return QCoreApplication::translate("MAV_TYPE", "Camera");
+    case MAV_TYPE_CHARGING_STATION:             return QCoreApplication::translate("MAV_TYPE", "Charging station");
+    case MAV_TYPE_FLARM:                        return QCoreApplication::translate("MAV_TYPE", "FLARM");
+    case MAV_TYPE_SERVO:                        return QCoreApplication::translate("MAV_TYPE", "Servo");
+    case MAV_TYPE_ODID:                         return QCoreApplication::translate("MAV_TYPE", "Open Drone ID");
+    case MAV_TYPE_DECAROTOR:                    return QCoreApplication::translate("MAV_TYPE", "Decarotor");
+    case MAV_TYPE_BATTERY:                      return QCoreApplication::translate("MAV_TYPE", "Battery");
+    case MAV_TYPE_PARACHUTE:                    return QCoreApplication::translate("MAV_TYPE", "Parachute");
+    case MAV_TYPE_LOG:                          return QCoreApplication::translate("MAV_TYPE", "Log");
+    case MAV_TYPE_OSD:                          return QCoreApplication::translate("MAV_TYPE", "OSD");
+    case MAV_TYPE_IMU:                          return QCoreApplication::translate("MAV_TYPE", "IMU");
+    case MAV_TYPE_GPS:                          return QCoreApplication::translate("MAV_TYPE", "GPS");
+    case MAV_TYPE_WINCH:                        return QCoreApplication::translate("MAV_TYPE", "Winch");
+    case MAV_TYPE_GENERIC_MULTIROTOR:           return QCoreApplication::translate("MAV_TYPE", "Generic multirotor");
+    case MAV_TYPE_ILLUMINATOR:                  return QCoreApplication::translate("MAV_TYPE", "Illuminator");
+    case MAV_TYPE_GROUND_QUADRUPED:             return QCoreApplication::translate("MAV_TYPE", "Ground quadruped");
+    case MAV_TYPE_VTOL_GYRODYNE:                return QCoreApplication::translate("MAV_TYPE", "VTOL gyrodyne");
+    case MAV_TYPE_GRIPPER:                      return QCoreApplication::translate("MAV_TYPE", "Gripper");
+    case MAV_TYPE_RADIO:                        return QCoreApplication::translate("MAV_TYPE", "Radio");
     default:                                    return QStringLiteral("MAV_TYPE_UNKNOWN");
     }
 }
@@ -464,6 +490,10 @@ int QGCMAVLink::motorCount(MAV_TYPE mavType, uint8_t frameType)
         return 6;
     case MAV_TYPE_OCTOROTOR:
         return 8;
+    case MAV_TYPE_DECAROTOR:
+        return 10;
+    case MAV_TYPE_DODECAROTOR:
+        return 12;
     case MAV_TYPE_SUBMARINE:
     {
         // Supported frame types

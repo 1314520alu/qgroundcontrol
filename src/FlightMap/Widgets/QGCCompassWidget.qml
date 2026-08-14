@@ -8,7 +8,7 @@ Rectangle {
     width:  size
     height: size
     radius: width / 2
-    color:  qgcPal.window
+    color:  usedByMultipleVehicleList ? qgcPal.window : "transparent"
     border.color:   qgcPal.text
     border.width:   usedByMultipleVehicleList ? 1 : 0
     opacity:        vehicle && usedByMultipleVehicleList && !vehicle.armed ? 0.5 : 1
@@ -123,7 +123,8 @@ Rectangle {
 
     QGCLabel {
         anchors.horizontalCenter:   parent.horizontalCenter
-        y:                          size * 0.74
+        // Keep the heading above the south cardinal on compact compasses
+        y:                          Math.min(size * 0.74, size - ScreenTools.defaultFontPixelHeight * 1.25 - implicitHeight)
         text:                       vehicle && !usedByMultipleVehicleList ? _heading.toFixed(0) + "°" : ""
         horizontalAlignment:        Text.AlignHCenter
     }

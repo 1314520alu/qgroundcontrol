@@ -15,6 +15,9 @@
 #include <QtCore/QStandardPaths>
 #include <QtCore/QDir>
 #include <QtCore/QSettings>
+#include <QtCore/QVariantMap>
+
+#include <iterator>
 
 QGC_LOGGING_CATEGORY(AppSettingsLog, "Settings.AppSettings")
 
@@ -190,6 +193,7 @@ DECLARE_SETTINGSFACT(AppSettings, batteryPercentRemainingAnnounce)
 DECLARE_SETTINGSFACT(AppSettings, defaultMissionItemAltitude)
 DECLARE_SETTINGSFACT(AppSettings, audioMuted)
 DECLARE_SETTINGSFACT(AppSettings, audioVolume)
+DECLARE_SETTINGSFACT(AppSettings, audioLocale)
 DECLARE_SETTINGSFACT(AppSettings, virtualJoystick)
 DECLARE_SETTINGSFACT(AppSettings, virtualJoystickAutoCenterThrottle)
 DECLARE_SETTINGSFACT(AppSettings, virtualJoystickLeftHandedMode)
@@ -214,6 +218,7 @@ DECLARE_SETTINGSFACT(AppSettings, clearSettingsNextBoot)
 DECLARE_SETTINGSFACT(AppSettings, disableAllPersistence)
 DECLARE_SETTINGSFACT(AppSettings, firstRunPromptIdsShown)
 DECLARE_SETTINGSFACT(AppSettings, favoriteParameters)
+DECLARE_SETTINGSFACT(AppSettings, vehicleSetupVisibleComponents)
 DECLARE_SETTINGSFACT(AppSettings, showAppLogTimestampAsElapsedTime)
 
 DECLARE_SETTINGSFACT_NO_FUNC(AppSettings, indoorPalette)
@@ -389,6 +394,180 @@ void AppSettings::firstRunPromptIdsMarkIdAsShown(int id)
         rgIds.append(id);
         firstRunPromptIdsShown()->setRawValue(firstRunPromptsIdsListToVariant(rgIds));
     }
+}
+
+namespace {
+struct VehicleSetupMenuEntry {
+    const char *id;
+    const char *label;
+};
+
+// Checkbox catalog order (not sidebar sort order).
+constexpr VehicleSetupMenuEntry kVehicleSetupMenuCatalog[] = {
+    { "frame", QT_TRANSLATE_NOOP("AppSettings", "Frame") },
+    { "sensors", QT_TRANSLATE_NOOP("AppSettings", "Sensors") },
+    { "radio", QT_TRANSLATE_NOOP("AppSettings", "Radio") },
+    { "flightModes", QT_TRANSLATE_NOOP("AppSettings", "Flight Modes") },
+    { "power", QT_TRANSLATE_NOOP("AppSettings", "Power") },
+    { "esc", QT_TRANSLATE_NOOP("AppSettings", "ESC") },
+    { "escTelemetry", QT_TRANSLATE_NOOP("AppSettings", "电调遥测") },
+    { "motors", QT_TRANSLATE_NOOP("AppSettings", "Motors") },
+    { "flightSafety", QT_TRANSLATE_NOOP("AppSettings", "Flight Safety") },
+    { "failsafes", QT_TRANSLATE_NOOP("AppSettings", "Failsafes") },
+    { "joystick", QT_TRANSLATE_NOOP("AppSettings", "Joystick") },
+    { "tuning", QT_TRANSLATE_NOOP("AppSettings", "Tuning") },
+    { "tuningAdvanced", QT_TRANSLATE_NOOP("AppSettings", "Tuning - Advanced") },
+    { "servo", QT_TRANSLATE_NOOP("AppSettings", "Servo Outputs") },
+    { "gimbal", QT_TRANSLATE_NOOP("AppSettings", "Gimbal") },
+    { "airspeed", QT_TRANSLATE_NOOP("AppSettings", "Airspeed") },
+    { "logging", QT_TRANSLATE_NOOP("AppSettings", "Logging") },
+    { "scripting", QT_TRANSLATE_NOOP("AppSettings", "Scripting") },
+    { "remoteSupport", QT_TRANSLATE_NOOP("AppSettings", "Remote Support") },
+    { "wifiBridge", QT_TRANSLATE_NOOP("AppSettings", "WiFi Bridge") },
+    { "heli", QT_TRANSLATE_NOOP("AppSettings", "Heli") },
+    { "lights", QT_TRANSLATE_NOOP("AppSettings", "Lights") },
+    { "followMe", QT_TRANSLATE_NOOP("AppSettings", "Follow Me") },
+};
+
+struct VehicleSetupIdNeedle {
+    const char *needle;
+    const char *id;
+};
+
+// First match wins — more specific needles before broader ones.
+constexpr VehicleSetupIdNeedle kVehicleSetupIdNeedles[] = {
+    { "AdvancedTuning", "tuningAdvanced" },
+    { "FlightBehavior", "tuningAdvanced" },
+    { "FlightSafety", "flightSafety" },
+    { "Failsafes", "failsafes" },
+    { "SubFrame", "frame" },
+    { "Airframe", "frame" },
+    { "Sensors", "sensors" },
+    { "Radio", "radio" },
+    { "FlightModes", "flightModes" },
+    { "Power", "power" },
+    { "ESCTelemetry", "escTelemetry" },
+    { "ESC", "esc" },
+    { "Actuator", "motors" },
+    { "Motor", "motors" },
+    { "Safety", "flightSafety" },
+    { "Joystick", "joystick" },
+    { "Tuning", "tuning" },
+    { "Servo", "servo" },
+    { "Gimbal", "gimbal" },
+    { "Airspeed", "airspeed" },
+    { "Logging", "logging" },
+    { "Scripting", "scripting" },
+    { "RemoteSupport", "remoteSupport" },
+    { "ESP8266", "wifiBridge" },
+    { "Heli", "heli" },
+    { "Lights", "lights" },
+    { "Follow", "followMe" },
+};
+
+constexpr const char *kVehicleSetupSortOrder[] = {
+    "frame",
+    "sensors",
+    "radio",
+    "flightModes",
+    "power",
+    "esc",
+    "escTelemetry",
+    "motors",
+    "flightSafety",
+    "failsafes",
+};
+
+bool _isKnownVehicleSetupId(const QString &id)
+{
+    for (const VehicleSetupMenuEntry &entry : kVehicleSetupMenuCatalog) {
+        if (id == QLatin1String(entry.id)) {
+            return true;
+        }
+    }
+    return false;
+}
+} // namespace
+
+QVariantList AppSettings::vehicleSetupMenuCatalog() const
+{
+    QVariantList catalog;
+    catalog.reserve(static_cast<int>(std::size(kVehicleSetupMenuCatalog)));
+    for (const VehicleSetupMenuEntry &entry : kVehicleSetupMenuCatalog) {
+        QVariantMap item;
+        item.insert(QStringLiteral("id"), QString::fromLatin1(entry.id));
+        item.insert(QStringLiteral("label"), tr(entry.label));
+        catalog.append(item);
+    }
+    return catalog;
+}
+
+QStringList AppSettings::vehicleSetupVisibleIdList() const
+{
+    const QStringList raw = const_cast<AppSettings *>(this)->vehicleSetupVisibleComponents()->rawValue().toString().split(QLatin1Char(','), Qt::SkipEmptyParts);
+    QStringList ids;
+    ids.reserve(raw.size());
+    for (QString id : raw) {
+        id = id.trimmed();
+        if (!id.isEmpty() && !ids.contains(id)) {
+            ids.append(id);
+        }
+    }
+    return ids;
+}
+
+bool AppSettings::isVehicleSetupComponentVisible(const QString &id) const
+{
+    if (id.isEmpty() || !_isKnownVehicleSetupId(id)) {
+        return false;
+    }
+    return vehicleSetupVisibleIdList().contains(id);
+}
+
+void AppSettings::setVehicleSetupComponentVisible(const QString &id, bool visible)
+{
+    if (id.isEmpty() || !_isKnownVehicleSetupId(id)) {
+        return;
+    }
+
+    QStringList ids = vehicleSetupVisibleIdList();
+    const bool currentlyVisible = ids.contains(id);
+    if (visible == currentlyVisible) {
+        return;
+    }
+
+    if (visible) {
+        ids.append(id);
+    } else {
+        ids.removeAll(id);
+    }
+    vehicleSetupVisibleComponents()->setRawValue(ids.join(QLatin1Char(',')));
+}
+
+void AppSettings::resetVehicleSetupVisibleComponents()
+{
+    vehicleSetupVisibleComponents()->setRawValue(QString::fromLatin1(vehicleSetupVisibleComponentsDefault));
+}
+
+QString AppSettings::resolveVehicleSetupComponentId(const QString &setupSource, const QString &summarySource) const
+{
+    const QString haystack = setupSource + QLatin1Char('\n') + summarySource;
+    for (const VehicleSetupIdNeedle &entry : kVehicleSetupIdNeedles) {
+        if (haystack.contains(QLatin1String(entry.needle))) {
+            return QString::fromLatin1(entry.id);
+        }
+    }
+    return QString();
+}
+
+int AppSettings::vehicleSetupComponentSortKey(const QString &id) const
+{
+    for (int i = 0; i < static_cast<int>(std::size(kVehicleSetupSortOrder)); ++i) {
+        if (id == QLatin1String(kVehicleSetupSortOrder[i])) {
+            return i;
+        }
+    }
+    return 1000;
 }
 
 /// Returns the current qLocaleLanguage setting bypassing the standard SettingsGroup path. It also validates

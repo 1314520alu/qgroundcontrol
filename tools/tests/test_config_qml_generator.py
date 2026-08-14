@@ -120,3 +120,18 @@ class TestRealPageDefinitions:
     def test_real_page_loads(self, json_path: Path):
         page = load_page_def(json_path)
         assert page.sections
+
+
+class TestRepeatSectionFilterNames:
+    """Repeat section visibility must key off English sidebar names, not localized headings."""
+
+    def test_apm_power_filters_on_untranslated_battery_name(self, tmp_path: Path):
+        from generators.config_qml.emit import generate_config_page_qml
+
+        page = load_page_def(
+            REPO_ROOT / "src/AutoPilotPlugins/APM/VehicleConfig/APMPower.VehicleConfig.json"
+        )
+        qml = generate_config_page_qml(page)
+        assert 'sectionMatchesFilter(_batteryCount > 1 ? "Battery " + _displayIndex : "Battery")' in qml
+        assert "sectionMatchesFilter(heading)" not in qml
+        assert 'qsTranslate("APMPower.VehicleConfig.json", sectionNameFilter)' in qml

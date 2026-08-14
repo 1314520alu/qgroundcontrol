@@ -96,6 +96,7 @@ SetupPage {
 
                 RemoteControlCalibration {
                     id: remoteControlCalibration
+                    width: availableWidth
 
                     controller: JoystickConfigController {
                         joystick: joystickManager.activeJoystick

@@ -143,6 +143,17 @@
             "keywords": "audio,volume,sound"
         },
         {
+            "name": "audioLocale",
+            "shortDesc": "Language used for spoken audio alerts.",
+            "longDesc": "Selects the text-to-speech voice language. System follows the application language. The device must have a matching TTS voice installed.",
+            "type": "string",
+            "enumStrings": "System,English,简体中文,繁體中文,日本語,한국어,Español,Français,Deutsch,Русский,Português,Italiano,العربية",
+            "enumValues": "system,en_US,zh_CN,zh_TW,ja_JP,ko_KR,es_ES,fr_FR,de_DE,ru_RU,pt_BR,it_IT,ar_SA",
+            "default": "system",
+            "label": "Speech Language",
+            "keywords": "audio,voice,speech,tts,language"
+        },
+        {
             "name": "virtualJoystick",
             "shortDesc": "Displays an on-screen virtual joystick in the Fly view for manual vehicle control.",
             "longDesc": "If this option is enabled the virtual joystick will be shown on the Fly view.",
@@ -381,6 +392,16 @@
             "default": "",
             "label": "Comma separated list of favorite parameter names."
         },
+        {
+            "name": "vehicleSetupVisibleComponents",
+            "shortDesc": "Comma separated list of Vehicle Setup sidebar component IDs to show.",
+            "longDesc": "Controls which Vehicle Setup menu entries appear in the sidebar. Summary, Parameters, Firmware, and Optical Flow are not included. Default is a remote-friendly essential set.",
+            "type": "string",
+            "default": "frame,sensors,radio,flightModes,power,esc,escTelemetry,motors,flightSafety,failsafes",
+            "label": "Vehicle Setup visible components",
+            "keywords": "vehicle setup,menu,sidebar,esc,esc telemetry,radio,joystick"
+        },
+
         {
             "name": "showAppLogTimestampAsElapsedTime",
             "shortDesc": "Show log timestamps as elapsed time since app start",

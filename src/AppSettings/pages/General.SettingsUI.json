@@ -7,7 +7,7 @@
     "groups": [
         {
             "heading": "General",
-            "keywords": ["language", "locale", "color scheme", "dark mode", "theme", "palette", "follow me", "audio", "volume", "sound", "gstreamer", "debug level", "ui scale", "font size", "zoom", "save path", "storage", "reset", "clear settings", "factory reset"],
+            "keywords": ["language", "locale", "color scheme", "dark mode", "theme", "palette", "follow me", "audio", "volume", "sound", "voice", "speech", "tts", "gstreamer", "debug level", "ui scale", "font size", "zoom", "save path", "storage", "reset", "clear settings", "factory reset"],
             "controls": [
                 {
                     "setting": "appSettings.qLocaleLanguage",
@@ -31,6 +31,10 @@
                         "onClicked": "QGroundControl.testAudioOutput()",
                         "enabled": "!_appSettings.audioMuted.rawValue && _appSettings.audioVolume.rawValue > 0"
                     }
+                },
+                {
+                    "setting": "appSettings.audioLocale",
+                    "control": "combobox"
                 },
                 {
                     "setting": "appSettings.androidDontSaveToSDCard",
@@ -62,6 +66,21 @@
                     "setting": "appSettings.preferredVehicleClass",
                     "control": "combobox"
                 }
+            ]
+        },
+        {
+            "component": "VehicleSetupMenuVisibilitySettings",
+            "sectionName": "Vehicle Setup Menu",
+            "keywords": [
+                "vehicle setup",
+                "menu",
+                "sidebar",
+                "summary",
+                "esc",
+                "radio",
+                "joystick",
+                "sensors",
+                "frame"
             ]
         },
         {

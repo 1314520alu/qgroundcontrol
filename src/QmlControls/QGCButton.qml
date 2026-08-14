@@ -56,30 +56,35 @@ Button {
         }
     }
 
-    contentItem: RowLayout {
-        spacing: ScreenTools.defaultFontPixelWidth
+    contentItem: Item {
+        implicitWidth: contentRow.implicitWidth
+        implicitHeight: contentRow.implicitHeight
 
-        QGCColoredImage {
-            id: icon
-            Layout.alignment: Qt.AlignHCenter
-            source: control.iconSource
-            height: _iconHeight
-            width: height
-            color: text.color
-            fillMode: Image.PreserveAspectFit
-            sourceSize.height: height
-            visible: control.iconSource !== ""
-        }
+        RowLayout {
+            id: contentRow
+            anchors.centerIn: parent
+            spacing: ScreenTools.defaultFontPixelWidth
 
-        QGCLabel {
-            id: text
-            Layout.alignment: Qt.AlignHCenter
-            text: control.text
-            font.pointSize: control.pointSize
-            font.family: control.font.family
-            font.weight: fontWeight
-            color: _showHighlight ? qgcPal.buttonHighlightText : (primary ? qgcPal.primaryButtonText : qgcPal.buttonText)
-            visible: control.text !== ""
+            QGCColoredImage {
+                id: icon
+                source: control.iconSource
+                height: _iconHeight
+                width: height
+                color: text.color
+                fillMode: Image.PreserveAspectFit
+                sourceSize.height: height
+                visible: control.iconSource !== ""
+            }
+
+            QGCLabel {
+                id: text
+                text: control.text
+                font.pointSize: control.pointSize
+                font.family: control.font.family
+                font.weight: fontWeight
+                color: _showHighlight ? qgcPal.buttonHighlightText : (primary ? qgcPal.primaryButtonText : qgcPal.buttonText)
+                visible: control.text !== ""
+            }
         }
     }
 }

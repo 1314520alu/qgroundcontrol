@@ -74,6 +74,7 @@
 #include "VideoSettings.h"
 #include "QGCSensors.h"
 #include "StatusTextHandler.h"
+#include "VehicleStatusTextTranslator.h"
 #include "VehicleSigningController.h"
 #include "GimbalController.h"
 #include "MavlinkSettings.h"
@@ -3422,8 +3423,9 @@ void Vehicle::_createStatusTextHandler()
 
 void Vehicle::_onStatusTextFromEvent(uint8_t compid, int severity, const QString &text, const QString &description)
 {
+    const QString displayText = VehicleStatusTextTranslator::translate(text);
     m_statusTextHandler->handleHTMLEscapedTextMessage(static_cast<MAV_COMPONENT>(compid),
-                                                      static_cast<MAV_SEVERITY>(severity), text, description);
+                                                      static_cast<MAV_SEVERITY>(severity), displayText, description);
 }
 
 void Vehicle::_textMessageReceived(MAV_COMPONENT componentid, MAV_SEVERITY severity, QString text, QString description)
@@ -3448,7 +3450,7 @@ void Vehicle::_textMessageReceived(MAV_COMPONENT componentid, MAV_SEVERITY sever
             skipSpoken = true;
         } else {
             (void) _noisySpokenPrearmMap.insert(text, QTime::currentTime());
-            setPrearmError(text);
+            setPrearmError(VehicleStatusTextTranslator::translate(text));
         }
     }
 
@@ -3461,12 +3463,14 @@ void Vehicle::_textMessageReceived(MAV_COMPONENT componentid, MAV_SEVERITY sever
         readAloud = true;
     }
 
+    const QString displayText = VehicleStatusTextTranslator::translate(text);
+
     if (readAloud && !skipSpoken) {
-        _say(text);
+        _say(displayText);
     }
 
     emit textMessageReceived(id(), componentid, severity, text, description);
-    m_statusTextHandler->handleHTMLEscapedTextMessage(componentid, severity, text.toHtmlEscaped(), description);
+    m_statusTextHandler->handleHTMLEscapedTextMessage(componentid, severity, displayText.toHtmlEscaped(), description);
 }
 
 void Vehicle::_errorMessageReceived(QString message)

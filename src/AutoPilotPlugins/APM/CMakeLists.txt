@@ -14,6 +14,8 @@ target_sources(${CMAKE_PROJECT_NAME}
         APMAutoPilotPlugin.cc
         APMESCComponent.cc
         APMESCComponent.h
+        APMESCTelemetryComponent.cc
+        APMESCTelemetryComponent.h
         APMAutoPilotPlugin.h
         APMFailsafesComponent.cc
         APMFailsafesComponent.h
@@ -123,6 +125,8 @@ qt_add_qml_module(AutoPilotPluginsAPMModule
         APMCalcVoltageDividerDialog.qml
         APMESCComponent.qml
         APMESCComponentSummary.qml
+        APMESCTelemetryComponent.qml
+        APMESCTelemetryComponentSummary.qml
         APMFailsafesComponentSummary.qml
         APMFailsafesComponentSummarySub.qml
         APMFlightModesComponent.qml

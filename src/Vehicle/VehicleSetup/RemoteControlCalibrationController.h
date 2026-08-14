@@ -394,7 +394,7 @@ private:
     QQuickItem *_nextButton = nullptr;
 
     QList<int> _stickDisplayPositions;
-    bool _centeredThrottle = false;
+    bool _centeredThrottle = true;
     bool _joystickMode = false;
     bool _calibrating = false;
     bool _singleStickDisplay = false;

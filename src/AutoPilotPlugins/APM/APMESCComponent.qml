@@ -61,15 +61,16 @@ SetupPage {
             // Match MotorComponent (~×50); UniRC 10 Pro / G20 content viewport (~690–780px after sidebar) needs side-by-side Layout A.
             readonly property bool _split: width >= ScreenTools.defaultFontPixelWidth * 48
 
+            // Numbered steps — keep short for landscape remotes; zh_CN in qgc_source_zh_CN.ts
             readonly property var _calSteps: [
-                qsTr("Disconnect USB and battery so the flight controller powers down"),
-                qsTr("Connect the battery"),
-                qsTr("The arming tone will play (if a buzzer is attached)"),
-                qsTr("If there is a safety button, press until solid red"),
-                qsTr("You will hear a musical tone then two beeps"),
-                qsTr("A few seconds later, beeps for each battery cell"),
-                qsTr("A single long beep means end points are set"),
-                qsTr("Disconnect the battery and power up normally")
+                qsTr("Disconnect USB and battery so the flight controller powers down."),
+                qsTr("Connect the battery."),
+                qsTr("The arming tone will play (if a buzzer is attached)."),
+                qsTr("If there is a safety button, press until solid red."),
+                qsTr("You will hear a musical tone then two beeps."),
+                qsTr("A few seconds later, beeps for each battery cell."),
+                qsTr("A single long beep means end points are set."),
+                qsTr("Disconnect the battery and power up normally.")
             ]
 
             Component {
@@ -85,7 +86,7 @@ SetupPage {
                         font.bold: true
                     }
                     QGCLabel {
-                        text: qsTr("Configure and calibrate electronic speed controllers.")
+                        text: qsTr("Configure and calibrate Electronic Speed Controllers.")
                         font.pointSize: ScreenTools.smallFontPointSize
                         opacity: 0.55
                         wrapMode: Text.WordWrap
@@ -108,22 +109,11 @@ SetupPage {
                             }
                         }
 
-                        Rectangle {
+                        SummaryChip {
                             Layout.alignment: Qt.AlignBottom
-                            radius: height / 2
-                            color: qgcPal.button
-                            border.color: qgcPal.buttonBorder
-                            border.width: 1
-                            implicitHeight: ScreenTools.implicitButtonHeight * 0.85
-                            implicitWidth: rebootLabel.implicitWidth + ScreenTools.defaultFontPixelWidth * 2
-                            QGCLabel {
-                                id: rebootLabel
-                                anchors.centerIn: parent
-                                text: pageRoot._restartRequired
-                                font.pointSize: ScreenTools.smallFontPointSize
-                                color: qgcPal.text
-                                opacity: 0.7
-                            }
+                            text: pageRoot._restartRequired
+                            textColor: Qt.rgba(qgcPal.text.r, qgcPal.text.g, qgcPal.text.b, 0.7)
+                            fillColor: qgcPal.button
                         }
                     }
 
@@ -224,6 +214,11 @@ SetupPage {
                             spacing: ScreenTools.defaultFontPixelWidth * 0.6
 
                             QGCLabel {
+                                text: "⚠"
+                                color: qgcPal.warningText
+                                font.pointSize: ScreenTools.defaultFontPointSize * 1.15
+                            }
+                            QGCLabel {
                                 Layout.fillWidth: true
                                 text: qsTr("WARNING: Remove props prior to calibration!")
                                 color: qgcPal.warningText
@@ -235,7 +230,7 @@ SetupPage {
 
                     QGCButton {
                         Layout.fillWidth: true
-                        text: qsTr("Calibrate")
+                        text: qsTr("Start Calibration")
                         backgroundColor: qgcPal.buttonHighlight
                         textColor: qgcPal.buttonHighlightText
                         enabled: _escCalibration && _escCalibration.rawValue === 0
@@ -264,7 +259,7 @@ SetupPage {
                                     required property string modelData
                                     Layout.fillWidth: true
                                     radius: ScreenTools.defaultBorderRadius
-                                    color: qgcPal.windowShade
+                                    color: qgcPal.window
                                     border.width: 1
                                     border.color: qgcPal.groupBorder
                                     implicitHeight: stepRow.implicitHeight + ScreenTools.defaultFontPixelHeight * 0.35
@@ -291,6 +286,7 @@ SetupPage {
                                             Layout.fillWidth: true
                                             text: modelData
                                             wrapMode: Text.WordWrap
+                                            font.pointSize: ScreenTools.smallFontPointSize
                                         }
                                     }
                                 }

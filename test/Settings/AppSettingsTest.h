@@ -11,6 +11,9 @@ class AppSettingsTest : public UnitTest
 private slots:
     void _preferredFirmwareClassEnumFiltered();
     void _offlineEditingFirmwareClassEnumFiltered();
+    void _vehicleSetupVisibleComponentsDefault();
+    void _vehicleSetupVisibleComponentsToggleAndReset();
+    void _vehicleSetupResolveComponentId();
 
 private:
     void _verifyFirmwareClassEnumFiltered(Fact *fact);

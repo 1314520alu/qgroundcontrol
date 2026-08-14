@@ -29,38 +29,20 @@ QString APMFailsafesComponent::description() const
 
 QUrl APMFailsafesComponent::setupSource() const
 {
-    switch (_vehicle->vehicleType()) {
-    case MAV_TYPE_SUBMARINE:
-    case MAV_TYPE_FIXED_WING:
-    case MAV_TYPE_QUADROTOR:
-    case MAV_TYPE_COAXIAL:
-    case MAV_TYPE_HELICOPTER:
-    case MAV_TYPE_HEXAROTOR:
-    case MAV_TYPE_OCTOROTOR:
-    case MAV_TYPE_TRICOPTER:
-    case MAV_TYPE_GROUND_ROVER:
+    if (_vehicle->sub() || _vehicle->fixedWing() || _vehicle->multiRotor() || _vehicle->rover()) {
         // Generated from APMFailsafes.VehicleConfig.json
         return QUrl::fromUserInput(QStringLiteral("qrc:/qml/QGroundControl/AutoPilotPlugins/APM/APMFailsafesComponent.qml"));
-    default:
-        return QUrl::fromUserInput(QStringLiteral("qrc:/qml/QGroundControl/AutoPilotPlugins/APM/APMNotSupported.qml"));
     }
+    return QUrl::fromUserInput(QStringLiteral("qrc:/qml/QGroundControl/AutoPilotPlugins/APM/APMNotSupported.qml"));
 }
 
 QUrl APMFailsafesComponent::summaryQmlSource() const
 {
-    switch (_vehicle->vehicleType()) {
-    case MAV_TYPE_SUBMARINE:
+    if (_vehicle->sub()) {
         return QUrl::fromUserInput(QStringLiteral("qrc:/qml/QGroundControl/AutoPilotPlugins/APM/APMFailsafesComponentSummarySub.qml"));
-    case MAV_TYPE_FIXED_WING:
-    case MAV_TYPE_QUADROTOR:
-    case MAV_TYPE_COAXIAL:
-    case MAV_TYPE_HELICOPTER:
-    case MAV_TYPE_HEXAROTOR:
-    case MAV_TYPE_OCTOROTOR:
-    case MAV_TYPE_TRICOPTER:
-    case MAV_TYPE_GROUND_ROVER:
-        return QUrl::fromUserInput(QStringLiteral("qrc:/qml/QGroundControl/AutoPilotPlugins/APM/APMFailsafesComponentSummary.qml"));
-    default:
-        return QUrl();
     }
+    if (_vehicle->fixedWing() || _vehicle->multiRotor() || _vehicle->rover()) {
+        return QUrl::fromUserInput(QStringLiteral("qrc:/qml/QGroundControl/AutoPilotPlugins/APM/APMFailsafesComponentSummary.qml"));
+    }
+    return QUrl();
 }

@@ -21,6 +21,13 @@ Item {
     property var    _controller:        controller
     property var    _favorites:         controller.favoriteParameterNames
     property real   _margins:           ScreenTools.defaultFontPixelHeight / 2
+    // Group list (Full List left column) — half the previous * 25 width
+    property real   _groupColumnWidth:  ScreenTools.defaultFontPixelWidth * 12
+    // Table columns: Fav must fit translated "收藏"; Description takes remaining space
+    property real   _favColumnWidth:    Math.max(ScreenTools.implicitCheckBoxHeight + ScreenTools.defaultFontPixelWidth * 2,
+                                                 ScreenTools.defaultFontPixelWidth * 6)
+    property real   _nameColumnWidth:   ScreenTools.defaultFontPixelWidth * 18
+    property real   _valueColumnWidth:  ScreenTools.defaultFontPixelWidth * 14
 
     ParameterEditorController {
         id: controller
@@ -203,7 +210,7 @@ Item {
     /// Group buttons
     QGCFlickable {
         id :                groupScroll
-        width:              ScreenTools.defaultFontPixelWidth * 25
+        width:              _groupColumnWidth
         anchors.top:        tabBar.bottom
         anchors.topMargin:  _margins
         anchors.bottom:     parent.bottom
@@ -245,7 +252,7 @@ Item {
                         model: categoryHeader.checked ? object.groups : 0
 
                         QGCButton {
-                            width:          ScreenTools.defaultFontPixelWidth * 25
+                            width:          _groupColumnWidth
                             text:           object.name
                             height:         _rowHeight
                             checked:        object == controller.currentGroup
@@ -273,18 +280,20 @@ Item {
         clip:               true
 
         delegate: Rectangle {
-            implicitWidth:  column === 0 ? ScreenTools.implicitCheckBoxHeight + ScreenTools.defaultFontPixelWidth
-                                         : headerLabel.contentWidth + ScreenTools.defaultFontPixelWidth
-            implicitHeight: headerLabel.contentHeight + ScreenTools.defaultFontPixelHeight * 0.5
+            implicitHeight: ScreenTools.defaultFontPixelHeight * 1.75
             color:          qgcPal.windowShade
+            clip:           true
 
             QGCLabel {
                 id:                     headerLabel
                 anchors.left:           parent.left
+                anchors.right:          parent.right
                 anchors.leftMargin:     ScreenTools.defaultFontPixelWidth / 2
+                anchors.rightMargin:    ScreenTools.defaultFontPixelWidth / 2
                 anchors.verticalCenter: parent.verticalCenter
                 text:                   display
                 font.bold:              true
+                elide:                  Text.ElideRight
             }
 
             // Top border
@@ -332,8 +341,22 @@ Item {
         columnSpacing:      0
         rowSpacing:         0
         model:              controller.parameters
-        contentWidth:       width
         clip:               true
+        boundsBehavior:     Flickable.StopAtBounds
+
+        columnWidthProvider: function (column) {
+            const fav = _root._favColumnWidth
+            const name = _root._nameColumnWidth
+            const value = _root._valueColumnWidth
+            switch (column) {
+            case 0: return fav
+            case 1: return name
+            case 2: return value
+            case 3: return Math.max(ScreenTools.defaultFontPixelWidth * 16,
+                                    width - fav - name - value)
+            default: return ScreenTools.defaultFontPixelWidth * 10
+            }
+        }
 
         // Qt is supposed to adjust column widths automatically when larger widths come into view.
         // But it doesn't work. So we have to do it force a layout manually when we scroll.
@@ -344,6 +367,7 @@ Item {
             onTriggered:    tableView.forceLayout()
         }
 
+        onWidthChanged: forceLayout()
         onTopRowChanged: forceLayoutTimer.start()
         onModelChanged: {
             positionViewAtRow(0, TableView.AlignLeft | TableView.AlignTop)
@@ -351,11 +375,8 @@ Item {
         }
 
         delegate: Rectangle {
-            implicitWidth:  column === 0 ? ScreenTools.implicitCheckBoxHeight + ScreenTools.defaultFontPixelWidth
-                                         : column === 1 ? nameRow.implicitWidth + ScreenTools.defaultFontPixelWidth
-                                         : column === 2 ? ScreenTools.defaultFontPixelWidth * 16
-                                                        : label.contentWidth + ScreenTools.defaultFontPixelWidth
-            implicitHeight: label.contentHeight + ScreenTools.defaultFontPixelHeight * 0.5
+            implicitWidth:  1
+            implicitHeight: ScreenTools.defaultFontPixelHeight * 1.75
             color:          row % 2 === 0 ? "transparent" : qgcPal.windowShade
             clip:           true
 
@@ -396,12 +417,17 @@ Item {
                 id:                     nameRow
                 visible:                column === 1
                 anchors.left:           parent.left
+                anchors.right:          parent.right
                 anchors.leftMargin:     ScreenTools.defaultFontPixelWidth / 2
+                anchors.rightMargin:    ScreenTools.defaultFontPixelWidth / 2
                 anchors.verticalCenter: parent.verticalCenter
                 spacing:               lockIcon.visible ? ScreenTools.defaultFontPixelWidth / 3 : 0
+                clip:                  true
 
                 QGCLabel {
+                    width:              Math.min(implicitWidth, nameRow.width - (lockIcon.visible ? lockIcon.width + nameRow.spacing : 0))
                     text:               column === 1 ? display : ""
+                    elide:              Text.ElideRight
                     anchors.verticalCenter: parent.verticalCenter
                 }
 
@@ -421,14 +447,15 @@ Item {
                 id:                 label
                 visible:            column !== 0 && column !== 1
                 anchors.left:       parent.left
+                anchors.right:      parent.right
                 anchors.leftMargin: ScreenTools.defaultFontPixelWidth / 2
+                anchors.rightMargin: ScreenTools.defaultFontPixelWidth / 2
                 anchors.verticalCenter: parent.verticalCenter
-                width:              column == 2 ? ScreenTools.defaultFontPixelWidth * 15 : implicitWidth
                 text:               column == 2 ? col1String() : display
                 color:              column == 2 && fact.defaultValueAvailable && !fact.valueEqualsDefault ? qgcPal.modifiedParamValue : qgcPal.text
                 font.bold:          column == 2 && fact.defaultValueAvailable && !fact.valueEqualsDefault
                 maximumLineCount:   1
-                elide:              column == 2 ? Text.ElideRight : Text.ElideNone
+                elide:              Text.ElideRight
 
                 function col1String() {
                     if (fact.enumStrings.length === 0) {

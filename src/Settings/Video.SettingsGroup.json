@@ -76,11 +76,12 @@
         },
         {
             "name": "showRecControl",
-            "shortDesc": "Show Video Record Control",
-            "longDesc": "Show recording control in the UI.",
+            "shortDesc": "Show photo and video capture controls on the Fly view. Video display is unaffected.",
+            "longDesc": "When disabled, the Fly view photo/video overlay is hidden. The video stream continues to play.",
             "type": "bool",
             "default": true,
-            "label": "Show Video Record Control"
+            "label": "Show Photo/Video Controls",
+            "keywords": "record,camera control,photo,video overlay"
         },
         {
             "name": "recordingFormat",

@@ -18,6 +18,7 @@ Item {
     property real   availableWidth:         width - pageLoader.x
     property real   availableHeight:        height - pageLoader.y
     property bool   showAdvanced:           false
+    property bool   showPageDescription:    true
     property alias  advanced:               advancedCheckBox.checked
     property string sectionNameFilter:       ""
 
@@ -54,8 +55,10 @@ Item {
 
     QGCFlickable {
         anchors.fill:   parent
-        contentWidth:   Math.max(availableWidth, pageLoader.x + pageLoader.item.width)
-        contentHeight:  Math.max(availableHeight, pageLoader.y + pageLoader.item.height)
+        contentWidth:   Math.max(availableWidth, pageLoader.x + (pageLoader.item ? pageLoader.item.width : 0))
+        contentHeight:  Math.max(availableHeight, pageLoader.y + (pageLoader.item ? pageLoader.item.height : 0))
+        // When page content is sized to the viewport (e.g. Radio compact), avoid rubber-band scroll.
+        interactive:    contentHeight > height + 1 || contentWidth > width + 1
         clip:           true
 
         RowLayout {
@@ -63,7 +66,7 @@ Item {
             width:              availableWidth
             spacing:            _margins
             layoutDirection:    Qt.RightToLeft
-            visible:            showAdvanced || (pageDescription !== "" && !ScreenTools.isShortScreen)
+            visible:            showAdvanced || (showPageDescription && pageDescription !== "" && !ScreenTools.isShortScreen)
 
             QGCCheckBox {
                 id:         advancedCheckBox
@@ -79,7 +82,7 @@ Item {
                     Layout.fillWidth:   true
                     wrapMode:           Text.WordWrap
                     text:               pageDescription
-                    visible:            pageDescription !== "" && !ScreenTools.isShortScreen
+                    visible:            showPageDescription && pageDescription !== "" && !ScreenTools.isShortScreen
                 }
 
                 QGCLabel {
@@ -94,7 +97,7 @@ Item {
 
         Loader {
             id:                 pageLoader
-            anchors.topMargin:  _margins
+            anchors.topMargin:  headingRow.visible ? _margins : 0
             anchors.top:        headingRow.bottom
         }
 

@@ -5,11 +5,14 @@
 
 #include <QtCore/QRegularExpression>
 #include <QtCore/QApplicationStatic>
+#include <QtCore/QHash>
+#include <QtCore/QLocale>
 #include <QtCore/QTimer>
 #include <QtTextToSpeech/QTextToSpeech>
 #include <QtTextToSpeech/QVoice>
 
 #include <algorithm>
+#include <optional>
 
 QGC_LOGGING_CATEGORY(AudioOutputLog, "Utilities.AudioOutput");
 // qt.speech.tts.flite
@@ -36,6 +39,205 @@ const QHash<QString, QString> AudioOutput::_textHash = {
     { "SERVOX_FUNCTION","Servo X Function" },
 };
 
+namespace {
+
+struct SpokenWords {
+    QString negative;
+    QString point;
+    QString meters;
+    QString second;
+    QString seconds;
+    QString minute;
+    QString minutes;
+    QString millisecond;
+    QString testPhrase; // contains %1 for volume
+};
+
+SpokenWords spokenWordsFor(const QLocale &locale)
+{
+    switch (locale.language()) {
+    case QLocale::Chinese:
+        if (locale.territory() == QLocale::Taiwan || locale.territory() == QLocale::HongKong
+            || locale.script() == QLocale::TraditionalChineseScript) {
+            return {
+                QStringLiteral("負 "),
+                QStringLiteral(" 點 "),
+                QStringLiteral(" 公尺"),
+                QStringLiteral(" 秒"),
+                QStringLiteral(" 秒"),
+                QStringLiteral(" 分鐘"),
+                QStringLiteral(" 分鐘"),
+                QStringLiteral(" 毫秒"),
+                QStringLiteral("語音測試。目前音量為百分之 %1"),
+            };
+        }
+        return {
+            QStringLiteral("负 "),
+            QStringLiteral(" 点 "),
+            QStringLiteral(" 米"),
+            QStringLiteral(" 秒"),
+            QStringLiteral(" 秒"),
+            QStringLiteral(" 分钟"),
+            QStringLiteral(" 分钟"),
+            QStringLiteral(" 毫秒"),
+            QStringLiteral("语音测试。当前音量为百分之 %1"),
+        };
+    case QLocale::Japanese:
+        return {
+            QStringLiteral("マイナス "),
+            QStringLiteral(" てん "),
+            QStringLiteral(" メートル"),
+            QStringLiteral(" 秒"),
+            QStringLiteral(" 秒"),
+            QStringLiteral(" 分"),
+            QStringLiteral(" 分"),
+            QStringLiteral(" ミリ秒"),
+            QStringLiteral("音声テスト。音量はパーセント %1 です"),
+        };
+    case QLocale::Korean:
+        return {
+            QStringLiteral("마이너스 "),
+            QStringLiteral(" 점 "),
+            QStringLiteral(" 미터"),
+            QStringLiteral(" 초"),
+            QStringLiteral(" 초"),
+            QStringLiteral(" 분"),
+            QStringLiteral(" 분"),
+            QStringLiteral(" 밀리초"),
+            QStringLiteral("음성 테스트. 현재 음량은 퍼센트 %1 입니다"),
+        };
+    case QLocale::Spanish:
+        return {
+            QStringLiteral("menos "),
+            QStringLiteral(" punto "),
+            QStringLiteral(" metros"),
+            QStringLiteral(" segundo"),
+            QStringLiteral(" segundos"),
+            QStringLiteral(" minuto"),
+            QStringLiteral(" minutos"),
+            QStringLiteral(" milisegundo"),
+            QStringLiteral("Prueba de audio. El volumen es %1 por ciento"),
+        };
+    case QLocale::French:
+        return {
+            QStringLiteral("moins "),
+            QStringLiteral(" virgule "),
+            QStringLiteral(" mètres"),
+            QStringLiteral(" seconde"),
+            QStringLiteral(" secondes"),
+            QStringLiteral(" minute"),
+            QStringLiteral(" minutes"),
+            QStringLiteral(" milliseconde"),
+            QStringLiteral("Test audio. Le volume est de %1 pour cent"),
+        };
+    case QLocale::German:
+        return {
+            QStringLiteral("minus "),
+            QStringLiteral(" komma "),
+            QStringLiteral(" meter"),
+            QStringLiteral(" sekunde"),
+            QStringLiteral(" sekunden"),
+            QStringLiteral(" minute"),
+            QStringLiteral(" minuten"),
+            QStringLiteral(" millisekunde"),
+            QStringLiteral("Audiotest. Die Lautstärke beträgt %1 Prozent"),
+        };
+    case QLocale::Russian:
+        return {
+            QStringLiteral("минус "),
+            QStringLiteral(" точка "),
+            QStringLiteral(" метров"),
+            QStringLiteral(" секунда"),
+            QStringLiteral(" секунд"),
+            QStringLiteral(" минута"),
+            QStringLiteral(" минут"),
+            QStringLiteral(" миллисекунда"),
+            QStringLiteral("Проверка звука. Громкость %1 процентов"),
+        };
+    case QLocale::Portuguese:
+        return {
+            QStringLiteral("menos "),
+            QStringLiteral(" ponto "),
+            QStringLiteral(" metros"),
+            QStringLiteral(" segundo"),
+            QStringLiteral(" segundos"),
+            QStringLiteral(" minuto"),
+            QStringLiteral(" minutos"),
+            QStringLiteral(" milissegundo"),
+            QStringLiteral("Teste de áudio. O volume é %1 por cento"),
+        };
+    case QLocale::Italian:
+        return {
+            QStringLiteral("meno "),
+            QStringLiteral(" punto "),
+            QStringLiteral(" metri"),
+            QStringLiteral(" secondo"),
+            QStringLiteral(" secondi"),
+            QStringLiteral(" minuto"),
+            QStringLiteral(" minuti"),
+            QStringLiteral(" millisecondo"),
+            QStringLiteral("Test audio. Il volume è %1 percento"),
+        };
+    case QLocale::Arabic:
+        return {
+            QStringLiteral("سالب "),
+            QStringLiteral(" فاصلة "),
+            QStringLiteral(" أمتار"),
+            QStringLiteral(" ثانية"),
+            QStringLiteral(" ثوان"),
+            QStringLiteral(" دقيقة"),
+            QStringLiteral(" دقائق"),
+            QStringLiteral(" مللي ثانية"),
+            QStringLiteral("اختبار الصوت. مستوى الصوت %1 بالمئة"),
+        };
+    default:
+        return {
+            QStringLiteral("negative "),
+            QStringLiteral(" point "),
+            QStringLiteral(" meters"),
+            QStringLiteral(" second"),
+            QStringLiteral(" seconds"),
+            QStringLiteral(" minute"),
+            QStringLiteral(" minutes"),
+            QStringLiteral(" millisecond"),
+            QStringLiteral("Audio test. Volume is %1 percent"),
+        };
+    }
+}
+
+int naturalVoiceScore(const QVoice &voice)
+{
+    const QString name = voice.name().toLower();
+    int score = 0;
+    if (name.contains(QLatin1String("neural"))
+        || name.contains(QLatin1String("natural"))
+        || name.contains(QLatin1String("wavenet"))
+        || name.contains(QLatin1String("studio"))
+        || name.contains(QLatin1String("journey"))
+        || name.contains(QLatin1String("chirp"))
+        || name.contains(QLatin1String("gemini"))) {
+        score += 4;
+    }
+    if (name.contains(QLatin1String("network"))
+        || name.contains(QLatin1String("online"))
+        || name.contains(QLatin1String("premium"))
+        || name.contains(QLatin1String("enhanced"))
+        || name.contains(QLatin1String("google"))) {
+        score += 2;
+    }
+    if (name.contains(QLatin1String("compact"))
+        || name.contains(QLatin1String("pico"))
+        || name.contains(QLatin1String("flite"))) {
+        score -= 2;
+    }
+    if (voice.gender() == QVoice::Female) {
+        score += 1;
+    }
+    return score;
+}
+
+} // namespace
+
 Q_APPLICATION_STATIC(AudioOutput, _audioOutput);
 
 AudioOutput::AudioOutput(QObject *parent)
@@ -59,7 +261,7 @@ AudioOutput *AudioOutput::instance()
     return _audioOutput();
 }
 
-void AudioOutput::init(Fact* volumeFact, Fact* mutedFact)
+void AudioOutput::init(Fact* volumeFact, Fact* mutedFact, Fact* localeFact)
 {
     Q_CHECK_PTR(volumeFact);
     Q_CHECK_PTR(mutedFact);
@@ -70,6 +272,7 @@ void AudioOutput::init(Fact* volumeFact, Fact* mutedFact)
 
     _volumeFact = volumeFact;
     _mutedFact = mutedFact;
+    _localeFact = localeFact;
 
     // Some QTextToSpeech backends (notably Android) initialize asynchronously, so finalize on Ready rather than bailing (Qt docs).
     (void) connect(_engine, &QTextToSpeech::stateChanged, this, [this](QTextToSpeech::State state) {
@@ -130,10 +333,20 @@ void AudioOutput::_finishInit()
         _setVolume();
     });
 
-    if (AudioOutputLog().isDebugEnabled()) {
-        (void) connect(_engine, &QTextToSpeech::localeChanged, this, [](const QLocale &locale) {
-            qCDebug(AudioOutputLog) << "TTS Locale change to:" << locale;
+    if (_localeFact) {
+        (void) connect(_localeFact, &Fact::valueChanged, this, [this]() {
+            _applyEngineSettings();
         });
+    }
+
+    (void) connect(_engine, &QTextToSpeech::localeChanged, this, [this](const QLocale &locale) {
+        qCDebug(AudioOutputLog) << "TTS Locale change to:" << locale;
+        _spokenLocale = locale;
+        _selectNaturalVoice();
+        _applySpeechRate();
+    });
+
+    if (AudioOutputLog().isDebugEnabled()) {
         (void) connect(_engine, &QTextToSpeech::volumeChanged, this, [](double volume) {
             qCDebug(AudioOutputLog) << "TTS Volume changed to:" << volume;
         });
@@ -164,18 +377,94 @@ void AudioOutput::_applyEngineSettings()
         return;
     }
 
-    const QLocale defaultLocale("en_US");
-    if (_engine->availableLocales().contains(defaultLocale)) {
-        _engine->setLocale(defaultLocale);
+    const QLocale wanted = _requestedLocale();
+    if (const std::optional<QLocale> matched = _bestAvailableLocale(wanted)) {
+        _spokenLocale = *matched;
+        _engine->setLocale(*matched);
+        qCDebug(AudioOutputLog) << "TTS locale set to" << *matched << "(requested" << wanted << ")";
+    } else {
+        _spokenLocale = _engine->locale();
+        qCWarning(AudioOutputLog) << "No TTS voice for" << wanted
+                                  << "- install a language pack in system TTS settings. Available:"
+                                  << _engine->availableLocales();
     }
 
-    // Pin an explicit voice so output doesn't depend on the engine's per-OS default.
-    const QList<QVoice> voices = _engine->availableVoices();
-    if (!voices.isEmpty()) {
-        _engine->setVoice(voices.constFirst());
-    }
+    _selectNaturalVoice();
+    _applySpeechRate();
 
     _speakCapable = _engine->engineCapabilities().testFlag(QTextToSpeech::Capability::Speak);
+}
+
+QLocale AudioOutput::_requestedLocale() const
+{
+    const QString tag = _localeFact ? _localeFact->rawValue().toString() : QStringLiteral("system");
+    if (tag.isEmpty() || tag == QLatin1String("system")) {
+        return QLocale();
+    }
+    return QLocale(tag);
+}
+
+std::optional<QLocale> AudioOutput::_bestAvailableLocale(const QLocale &wanted) const
+{
+    const QList<QLocale> available = _engine->availableLocales();
+    if (available.isEmpty()) {
+        // Some backends (notably Android) populate locales only after setLocale.
+        return wanted;
+    }
+
+    if (available.contains(wanted)) {
+        return wanted;
+    }
+
+    for (const QLocale &locale : available) {
+        if (locale.language() == wanted.language() && locale.territory() == wanted.territory()) {
+            return locale;
+        }
+    }
+
+    for (const QLocale &locale : available) {
+        if (locale.language() == wanted.language()) {
+            return locale;
+        }
+    }
+
+    return std::nullopt;
+}
+
+void AudioOutput::_selectNaturalVoice()
+{
+    const QList<QVoice> voices = _engine->availableVoices();
+    if (voices.isEmpty()) {
+        return;
+    }
+
+    int bestIndex = 0;
+    int bestScore = naturalVoiceScore(voices.constFirst());
+    for (int i = 1; i < voices.size(); ++i) {
+        const int score = naturalVoiceScore(voices.at(i));
+        if (score > bestScore) {
+            bestScore = score;
+            bestIndex = i;
+        }
+    }
+
+    _engine->setVoice(voices.at(bestIndex));
+    qCDebug(AudioOutputLog) << "TTS voice set to" << voices.at(bestIndex).name() << "score" << bestScore;
+}
+
+void AudioOutput::_applySpeechRate()
+{
+    double rate = 0.0;
+    switch (_spokenLocale.language()) {
+    case QLocale::Chinese:
+    case QLocale::Japanese:
+    case QLocale::Korean:
+        rate = -0.15;
+        break;
+    default:
+        break;
+    }
+    _engine->setRate(rate);
 }
 
 void AudioOutput::_setVolume()
@@ -220,7 +509,7 @@ void AudioOutput::say(const QString &text, TextMods textMods)
         return;
     }
 
-    QString outText = _fixTextMessageForAudio(text);
+    QString outText = _fixTextMessageForAudio(text, _spokenLocale);
 
     if (textMods.testFlag(TextMod::Translate)) {
         outText = tr("%1").arg(outText);
@@ -261,27 +550,51 @@ void AudioOutput::testAudioOutput()
     _engine->stop(QTextToSpeech::BoundaryHint::Immediate);
     _textQueueSize = 0;
 
-    const QString testText = tr("Audio test. Volume is %1 percent").arg(_volumeSetting(), 0, 'f', 1);
+    const SpokenWords words = spokenWordsFor(_spokenLocale);
+    const QString testText = words.testPhrase.arg(_volumeSetting(), 0, 'f', 1);
     say(testText);
 }
 
-QString AudioOutput::_fixTextMessageForAudio(const QString &string)
+QString AudioOutput::_fixTextMessageForAudio(const QString &string, const QLocale &locale)
 {
+    const SpokenWords words = spokenWordsFor(locale);
     QString result = string;
-    result = _replaceAbbreviations(result);
-    result = _replaceNegativeSigns(result);
-    result = _replaceDecimalPoints(result);
-    result = _replaceMeters(result);
-    result = _convertMilliseconds(result);
+    result = _replaceAbbreviations(result, locale);
+    result = _replaceNegativeSigns(result, words.negative);
+    result = _replaceDecimalPoints(result, words.point);
+    result = _replaceMeters(result, words.meters);
+    result = _convertMilliseconds(result, locale);
     return result;
 }
 
-QString AudioOutput::_replaceAbbreviations(const QString &input)
+QString AudioOutput::_replaceAbbreviations(const QString &input, const QLocale &locale)
 {
+    static const QHash<QString, QString> chineseHash = {
+        { "ERR",             QStringLiteral("错误") },
+        { "POSCTL",          QStringLiteral("位置控制") },
+        { "ALTCTL",          QStringLiteral("高度控制") },
+        { "AUTO_RTL",        QStringLiteral("自动返航") },
+        { "RTL",             QStringLiteral("返航") },
+        { "ACCEL",           QStringLiteral("加速度计") },
+        { "RC_MAP_MODE_SW",  QStringLiteral("遥控模式开关") },
+        { "REJ",             QStringLiteral("拒绝") },
+        { "WP",              QStringLiteral("航点") },
+        { "CMD",             QStringLiteral("指令") },
+        { "COMPID",          QStringLiteral("组件编号") },
+        { "PARAMS",          QStringLiteral("参数") },
+        { "ID",              QStringLiteral("编号") },
+        { "ADSB",            QStringLiteral("A D S B") },
+        { "EKF",             QStringLiteral("E K F") },
+        { "PREARM",          QStringLiteral("解锁前检查") },
+        { "PITOT",           QStringLiteral("空速管") },
+        { "SERVOX_FUNCTION", QStringLiteral("舵机功能") },
+    };
+    const QHash<QString, QString> &table = (locale.language() == QLocale::Chinese) ? chineseHash : _textHash;
+
     QStringList words = input.split(' ');
     for (QString &word : words) {
-        const auto it = _textHash.constFind(word.toUpper());
-        if (it != _textHash.constEnd()) {
+        const auto it = table.constFind(word.toUpper());
+        if (it != table.constEnd()) {
             word = it.value();
         }
     }
@@ -289,17 +602,17 @@ QString AudioOutput::_replaceAbbreviations(const QString &input)
     return words.join(' ');
 }
 
-QString AudioOutput::_replaceNegativeSigns(const QString &input)
+QString AudioOutput::_replaceNegativeSigns(const QString &input, const QString &negativeWord)
 {
     static const QRegularExpression negNumRegex(QStringLiteral("-\\s*(?=\\d)"));
     Q_ASSERT(negNumRegex.isValid());
 
     QString output = input;
-    (void) output.replace(negNumRegex, "negative ");
+    (void) output.replace(negNumRegex, negativeWord);
     return output;
 }
 
-QString AudioOutput::_replaceDecimalPoints(const QString &input)
+QString AudioOutput::_replaceDecimalPoints(const QString &input, const QString &pointWord)
 {
     static const QRegularExpression realNumRegex(QStringLiteral("([0-9]+)(\\.)([0-9]+)"));
     Q_ASSERT(realNumRegex.isValid());
@@ -308,7 +621,7 @@ QString AudioOutput::_replaceDecimalPoints(const QString &input)
     QRegularExpressionMatch realNumRegexMatch = realNumRegex.match(output);
     while (realNumRegexMatch.hasMatch()) {
         if (!realNumRegexMatch.captured(2).isNull()) {
-            (void) output.replace(realNumRegexMatch.capturedStart(2), realNumRegexMatch.capturedEnd(2) - realNumRegexMatch.capturedStart(2), QStringLiteral(" point "));
+            (void) output.replace(realNumRegexMatch.capturedStart(2), realNumRegexMatch.capturedEnd(2) - realNumRegexMatch.capturedStart(2), pointWord);
         }
         realNumRegexMatch = realNumRegex.match(output);
     }
@@ -316,7 +629,7 @@ QString AudioOutput::_replaceDecimalPoints(const QString &input)
     return output;
 }
 
-QString AudioOutput::_replaceMeters(const QString &input)
+QString AudioOutput::_replaceMeters(const QString &input, const QString &metersWord)
 {
     static const QRegularExpression realNumMeterRegex(QStringLiteral("[0-9]*\\.?[0-9]\\s?(m)([^A-Za-z]|$)"));
     Q_ASSERT(realNumMeterRegex.isValid());
@@ -325,7 +638,7 @@ QString AudioOutput::_replaceMeters(const QString &input)
     QRegularExpressionMatch realNumMeterRegexMatch = realNumMeterRegex.match(output);
     while (realNumMeterRegexMatch.hasMatch()) {
         if (!realNumMeterRegexMatch.captured(1).isNull()) {
-            (void) output.replace(realNumMeterRegexMatch.capturedStart(1), realNumMeterRegexMatch.capturedEnd(1) - realNumMeterRegexMatch.capturedStart(1), QStringLiteral(" meters"));
+            (void) output.replace(realNumMeterRegexMatch.capturedStart(1), realNumMeterRegexMatch.capturedEnd(1) - realNumMeterRegexMatch.capturedStart(1), metersWord);
         }
         realNumMeterRegexMatch = realNumMeterRegex.match(output);
     }
@@ -333,9 +646,10 @@ QString AudioOutput::_replaceMeters(const QString &input)
     return output;
 }
 
-QString AudioOutput::_convertMilliseconds(const QString &input)
+QString AudioOutput::_convertMilliseconds(const QString &input, const QLocale &locale)
 {
     QString result = input;
+    const SpokenWords words = spokenWordsFor(locale);
 
     QString match;
     int number;
@@ -344,16 +658,18 @@ QString AudioOutput::_convertMilliseconds(const QString &input)
         if (number < 60000) {
             const int seconds = number / 1000;
             const int ms = number - (seconds * 1000);
-            newNumber = QStringLiteral("%1 second%2").arg(seconds).arg(seconds > 1 ? "s" : "");
+            newNumber = QStringLiteral("%1%2").arg(seconds).arg(seconds == 1 ? words.second : words.seconds);
             if (ms > 0) {
-                (void) newNumber.append(QStringLiteral(" and %1 millisecond").arg(ms));
+                const QString connector = (locale.language() == QLocale::English) ? QStringLiteral(" and ") : QStringLiteral(" ");
+                (void) newNumber.append(QStringLiteral("%1%2%3").arg(connector).arg(ms).arg(words.millisecond));
             }
         } else {
             const int minutes = number / 60000;
             const int seconds = (number - (minutes * 60000)) / 1000;
-            newNumber = QStringLiteral("%1 minute%2").arg(minutes).arg(minutes > 1 ? "s" : "");
+            newNumber = QStringLiteral("%1%2").arg(minutes).arg(minutes == 1 ? words.minute : words.minutes);
             if (seconds > 0) {
-                (void) newNumber.append(QStringLiteral(" and %1 second%2").arg(seconds).arg(seconds > 1 ? "s" : ""));
+                const QString connector = (locale.language() == QLocale::English) ? QStringLiteral(" and ") : QStringLiteral(" ");
+                (void) newNumber.append(QStringLiteral("%1%2%3").arg(connector).arg(seconds).arg(seconds == 1 ? words.second : words.seconds));
             }
         }
         (void) result.replace(match, newNumber);

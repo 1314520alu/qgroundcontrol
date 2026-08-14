@@ -4,10 +4,21 @@
 #include <QtTest/QSignalSpy>
 
 #include "QGCCachedFileDownload.h"
+#include "QGCApplication.h"
 #include "UnitTest.h"
 
 #include "ComponentInformationTranslation.h"
+#include <QtCore/QLocale>
 #include <QtCore/QTemporaryDir>
+
+namespace {
+
+QString uiLocaleName()
+{
+    return qgcApp() ? qgcApp()->getCurrentLanguage().name() : QLocale().name();
+}
+
+} // namespace
 
 void ComponentInformationTranslationTest::_basic_test()
 {
@@ -43,7 +54,7 @@ void ComponentInformationTranslationTest::_downloadAndTranslateFromSummary_test(
 {
     QTemporaryDir tempDir;
     const QString summaryPath = tempDir.filePath(QStringLiteral("summary.json"));
-    const QString locale = QLocale::system().name();
+    const QString locale = uiLocaleName();
 
     // Skip test on English locales since translation is intentionally skipped
     if (locale.startsWith(QLatin1String("en"))) {
@@ -120,7 +131,7 @@ void ComponentInformationTranslationTest::_downloadAndTranslateMissingUrl_test()
 
     QTemporaryDir tempDir;
     const QString summaryPath = tempDir.filePath(QStringLiteral("summary_missing_url.json"));
-    const QString locale = QLocale::system().name();
+    const QString locale = uiLocaleName();
 
     QFile summaryFile(summaryPath);
     QVERIFY(summaryFile.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text));

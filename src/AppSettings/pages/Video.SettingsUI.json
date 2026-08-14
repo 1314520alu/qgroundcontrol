@@ -42,9 +42,12 @@
         },
         {
             "heading": "Settings",
-            "keywords": ["aspect ratio", "low latency", "decoder", "hardware decode", "disable when disarmed", "gpu", "zero-copy"],
+            "keywords": ["aspect ratio", "low latency", "decoder", "hardware decode", "disable when disarmed", "gpu", "zero-copy", "photo", "record", "camera control"],
             "showWhen": "!sourceDisabled",
             "controls": [
+                {
+                    "setting": "videoSettings.showRecControl"
+                },
                 {
                     "setting": "videoSettings.aspectRatio",
                     "showWhen": "!autoStreamConfig && isStreamSource"

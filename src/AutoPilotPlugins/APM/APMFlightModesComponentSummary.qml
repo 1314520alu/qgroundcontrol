@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 
 import QGroundControl
@@ -9,13 +8,11 @@ import QGroundControl.Controls
 Item {
     implicitWidth: mainLayout.implicitWidth
     implicitHeight: mainLayout.implicitHeight
-    width: parent.width  // grows when Loader is wider than implicitWidth
+    width: parent.width
 
-    FactPanelController { id: controller; }
+    FactPanelController { id: controller }
 
-    property var    _vehicle:       controller.vehicle
-    property bool   _roverFirmware: controller.parameterExists(-1, "MODE1") // This catches all usage of ArduRover firmware vehicle types: Rover, Boat...
-
+    property bool _roverFirmware: controller.parameterExists(-1, "MODE1")
     property Fact flightMode1: controller.getParameterFact(-1, _roverFirmware ? "MODE1" : "FLTMODE1")
     property Fact flightMode2: controller.getParameterFact(-1, _roverFirmware ? "MODE2" : "FLTMODE2")
     property Fact flightMode3: controller.getParameterFact(-1, _roverFirmware ? "MODE3" : "FLTMODE3")
@@ -23,39 +20,18 @@ Item {
     property Fact flightMode5: controller.getParameterFact(-1, _roverFirmware ? "MODE5" : "FLTMODE5")
     property Fact flightMode6: controller.getParameterFact(-1, _roverFirmware ? "MODE6" : "FLTMODE6")
 
-    ColumnLayout {
+    GridLayout {
         id: mainLayout
         width: parent.width
-        spacing: 0
+        columns: 2
+        columnSpacing: ScreenTools.defaultFontPixelWidth * 0.5
+        rowSpacing: ScreenTools.defaultFontPixelHeight * 0.35
 
-        VehicleSummaryRow {
-            labelText: qsTr("Flight Mode 1")
-            valueText: flightMode1.enumStringValue
-        }
-
-        VehicleSummaryRow {
-            labelText: qsTr("Flight Mode 2")
-            valueText: flightMode2.enumStringValue
-        }
-
-        VehicleSummaryRow {
-            labelText: qsTr("Flight Mode 3")
-            valueText: flightMode3.enumStringValue
-        }
-
-        VehicleSummaryRow {
-            labelText: qsTr("Flight Mode 4")
-            valueText: flightMode4.enumStringValue
-        }
-
-        VehicleSummaryRow {
-            labelText: qsTr("Flight Mode 5")
-            valueText: flightMode5.enumStringValue
-        }
-
-        VehicleSummaryRow {
-            labelText: qsTr("Flight Mode 6")
-            valueText: flightMode6.enumStringValue
-        }
+        SummaryChip { Layout.fillWidth: true; text: "1  " + flightMode1.enumStringValue }
+        SummaryChip { Layout.fillWidth: true; text: "2  " + flightMode2.enumStringValue }
+        SummaryChip { Layout.fillWidth: true; text: "3  " + flightMode3.enumStringValue }
+        SummaryChip { Layout.fillWidth: true; text: "4  " + flightMode4.enumStringValue }
+        SummaryChip { Layout.fillWidth: true; text: "5  " + flightMode5.enumStringValue }
+        SummaryChip { Layout.fillWidth: true; text: "6  " + flightMode6.enumStringValue }
     }
 }

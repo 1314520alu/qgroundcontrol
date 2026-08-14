@@ -201,6 +201,7 @@ Rectangle {
                     Loader {
                         id:                         photoVideoControlLoader
                         anchors.horizontalCenter:   parent.horizontalCenter
+                        visible:                    item ? item.visible : false
                         sourceComponent:            globals.activeVehicle ? photoVideoControlComponent : undefined
 
                         property real rightEdgeCenterInset: visible ? parent.width - x : 0

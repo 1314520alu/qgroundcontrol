@@ -517,10 +517,11 @@ ApplicationWindow {
 
         property alias  criticalVehicleMessage:             criticalVehicleMessageText.text
         property bool   additionalCriticalMessagesReceived: false
+        property color  _alertBackground: Qt.rgba(qgcPal.alertBackground.r, qgcPal.alertBackground.g, qgcPal.alertBackground.b, 0.5)
 
         background: Rectangle {
             anchors.fill:   parent
-            color:          qgcPal.alertBackground
+            color:          criticalVehicleMessagePopup._alertBackground
             radius:         ScreenTools.defaultFontPixelHeight * 0.5
             border.color:   qgcPal.alertBorder
             border.width:   2
@@ -529,7 +530,7 @@ ApplicationWindow {
                 anchors.horizontalCenter:   parent.horizontalCenter
                 anchors.top:                parent.top
                 anchors.topMargin:          -(height / 2)
-                color:                      qgcPal.alertBackground
+                color:                      criticalVehicleMessagePopup._alertBackground
                 radius:                     ScreenTools.defaultFontPixelHeight * 0.25
                 border.color:               qgcPal.alertBorder
                 border.width:               1
@@ -552,7 +553,7 @@ ApplicationWindow {
                 anchors.horizontalCenter:   parent.horizontalCenter
                 anchors.bottom:             parent.bottom
                 anchors.bottomMargin:       -(height / 2)
-                color:                      qgcPal.alertBackground
+                color:                      criticalVehicleMessagePopup._alertBackground
                 radius:                     ScreenTools.defaultFontPixelHeight * 0.25
                 border.color:               qgcPal.alertBorder
                 border.width:               1

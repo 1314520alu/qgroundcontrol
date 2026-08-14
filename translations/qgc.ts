@@ -7921,11 +7921,16 @@ VTOL</source>
     </message>
     <message>
         <location filename="../src/Toolbar/GPSIndicatorPage.qml" line="116"/>
+        <source>GPS Heading</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/Toolbar/GPSIndicatorPage.qml" line="121"/>
         <source>GPS Error</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/Toolbar/GPSIndicatorPage.qml" line="123"/>
+        <location filename="../src/Toolbar/GPSIndicatorPage.qml" line="129"/>
         <source>RTK GPS Status</source>
         <translation type="unfinished"></translation>
     </message>
@@ -12523,6 +12528,134 @@ VTOL</source>
     <message>
         <location filename="../src/AppSettings/MavlinkActionSettings.qml" line="36"/>
         <source>Joystick Actions</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>VehicleSetupMenuVisibilitySettings</name>
+    <message>
+        <location filename="../src/AppSettings/VehicleSetupMenuVisibilitySettings.qml" line="10"/>
+        <source>Vehicle Setup Menu</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/AppSettings/VehicleSetupMenuVisibilitySettings.qml" line="11"/>
+        <source>Choose which Vehicle Setup sidebar pages to show. Summary is always visible.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/AppSettings/VehicleSetupMenuVisibilitySettings.qml" line="20"/>
+        <source>Frame</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/AppSettings/VehicleSetupMenuVisibilitySettings.qml" line="21"/>
+        <source>Sensors</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/AppSettings/VehicleSetupMenuVisibilitySettings.qml" line="22"/>
+        <source>Radio</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/AppSettings/VehicleSetupMenuVisibilitySettings.qml" line="23"/>
+        <source>Flight Modes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/AppSettings/VehicleSetupMenuVisibilitySettings.qml" line="24"/>
+        <source>Power</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/AppSettings/VehicleSetupMenuVisibilitySettings.qml" line="25"/>
+        <source>ESC</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/AppSettings/VehicleSetupMenuVisibilitySettings.qml" line="26"/>
+        <source>Motors</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/AppSettings/VehicleSetupMenuVisibilitySettings.qml" line="27"/>
+        <source>Flight Safety</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/AppSettings/VehicleSetupMenuVisibilitySettings.qml" line="28"/>
+        <source>Failsafes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/AppSettings/VehicleSetupMenuVisibilitySettings.qml" line="29"/>
+        <source>Joystick</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/AppSettings/VehicleSetupMenuVisibilitySettings.qml" line="30"/>
+        <source>Tuning</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/AppSettings/VehicleSetupMenuVisibilitySettings.qml" line="31"/>
+        <source>Tuning - Advanced</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/AppSettings/VehicleSetupMenuVisibilitySettings.qml" line="32"/>
+        <source>Servo Outputs</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/AppSettings/VehicleSetupMenuVisibilitySettings.qml" line="33"/>
+        <source>Gimbal</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/AppSettings/VehicleSetupMenuVisibilitySettings.qml" line="34"/>
+        <source>Airspeed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/AppSettings/VehicleSetupMenuVisibilitySettings.qml" line="35"/>
+        <source>Logging</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/AppSettings/VehicleSetupMenuVisibilitySettings.qml" line="36"/>
+        <source>Scripting</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/AppSettings/VehicleSetupMenuVisibilitySettings.qml" line="37"/>
+        <source>Remote Support</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/AppSettings/VehicleSetupMenuVisibilitySettings.qml" line="38"/>
+        <source>WiFi Bridge</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/AppSettings/VehicleSetupMenuVisibilitySettings.qml" line="39"/>
+        <source>Heli</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/AppSettings/VehicleSetupMenuVisibilitySettings.qml" line="40"/>
+        <source>Lights</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/AppSettings/VehicleSetupMenuVisibilitySettings.qml" line="41"/>
+        <source>Follow Me</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/AppSettings/VehicleSetupMenuVisibilitySettings.qml" line="73"/>
+        <source>Restore Defaults</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

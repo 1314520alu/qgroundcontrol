@@ -1,101 +1,69 @@
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 
 import QGroundControl
 import QGroundControl.FactControls
 import QGroundControl.Controls
 
-/*
-    IMPORTANT NOTE: Any changes made here must also be made to SensorsComponentSummary.qml
-*/
-
 Item {
     implicitWidth: mainLayout.implicitWidth
     implicitHeight: mainLayout.implicitHeight
-    width: parent.width  // grows when Loader is wider than implicitWidth
+    width: parent.width
 
-    APMSensorsComponentController { id: controller; }
-
+    APMSensorsComponentController { id: controller }
     APMSensorParams {
-        id:                     sensorParams
-        factPanelController:    controller
+        id: sensorParams
+        factPanelController: controller
     }
+
+    function _compassInstalledCount() {
+        let n = 0
+        for (let i = 0; i < sensorParams.rgCompassAvailable.length; i++) {
+            if (sensorParams.rgCompassAvailable[i]) {
+                n++
+            }
+        }
+        return n
+    }
+
+    readonly property int _compassInstalled: _compassInstalledCount()
+
+    readonly property int _imuCount: sensorParams.rgInsId ? sensorParams.rgInsId.length : 0
+    readonly property int _baroCount: sensorParams.rgBaroId ? sensorParams.rgBaroId.length : 0
 
     ColumnLayout {
         id: mainLayout
         width: parent.width
-        spacing: 0
+        spacing: ScreenTools.defaultFontPixelHeight * 0.4
 
-        VehicleSummaryRow {
-        labelText:  qsTr("Compasses:")
-        valueText: ""
-        }
+        Flow {
+            Layout.fillWidth: true
+            spacing: ScreenTools.defaultFontPixelWidth * 0.5
 
-        Repeater {
-            model: sensorParams.rgCompassAvailable.length
-            RowLayout {
-                Layout.fillWidth: true
-                width: parent.width
-
-                QGCLabel {
-
-                    text:  sensorParams.rgCompassAvailable[index] ?
-                                (sensorParams.rgCompassCalibrated[index] ?
-                                     getPriority(index) +
-                                     (sensorParams.rgCompassExternalParamAvailable[index] ?
-                                          (sensorParams.rgCompassExternal[index] ? ", External" : ", Internal" ) :
-                                          "") :
-                                     qsTr("Setup required")) :
-                                qsTr("Not installed")
-
-                    function getPriority (index) {
-                        if (sensorParams.rgCompassId[index].value == sensorParams.rgCompassPrio[0].value) {
-                            return "Primary"
-                        }
-                        if (sensorParams.rgCompassId[index].value == sensorParams.rgCompassPrio[1].value) {
-                            return "Secondary"
-                        }
-                        if (sensorParams.rgCompassId[index].value == sensorParams.rgCompassPrio[2].value) {
-                            return "Tertiary"
-                        }
-                        return "Unused"
-                    }
-                }
-
-                APMSensorIdDecoder {
-                    horizontalAlignment:    Text.AlignRight
-                    Layout.alignment:       Qt.AlignRight
-
-                    fact: sensorParams.rgCompassPrio[index]
-                }
+            SummaryChip {
+                text: qsTr("Compass ×%1").arg(_compassInstalled)
+            }
+            SummaryChip {
+                text: controller.accelSetupNeeded ? qsTr("IMU setup") : qsTr("IMU ×%1").arg(_imuCount)
+                border.color: controller.accelSetupNeeded
+                                  ? QGroundControl.globalPalette.colorOrange
+                                  : QGroundControl.globalPalette.buttonBorder
+                textColor: controller.accelSetupNeeded
+                               ? QGroundControl.globalPalette.colorOrange
+                               : QGroundControl.globalPalette.text
+            }
+            SummaryChip {
+                visible: sensorParams.baroIdAvailable
+                text: qsTr("Baro ×%1").arg(_baroCount)
             }
         }
 
-        VehicleSummaryRow {
-            labelText: qsTr("Accelerometer(s):")
-            valueText: controller.accelSetupNeeded ? qsTr("Setup required") : qsTr("Ready")
-        }
-
-        Repeater {
-            model: sensorParams.rgInsId.length
-            APMSensorIdDecoder {
-                fact:          sensorParams.rgInsId[index]
-                Layout.alignment: Qt.AlignRight
-            }
-        }
-
-        VehicleSummaryRow {
-            labelText: qsTr("Barometer(s):")
-            valueText: sensorParams.baroIdAvailable ? "" : qsTr("Not Supported(Over APM 4.1)")
-        }
-
-        Repeater {
-            model: sensorParams.rgBaroId.length
-            APMSensorIdDecoder {
-                fact:          sensorParams.rgBaroId[index]
-                Layout.alignment: Qt.AlignRight
-            }
+        QGCLabel {
+            Layout.fillWidth: true
+            wrapMode: Text.WordWrap
+            opacity: 0.7
+            font.pointSize: ScreenTools.defaultFontPointSize * 0.85
+            text: qsTr("Open Sensors for full device IDs.")
         }
     }
 }

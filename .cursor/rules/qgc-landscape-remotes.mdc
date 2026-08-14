@@ -1,0 +1,31 @@
+---
+description: QGC UI targets landscape industrial remotes (Skydroid / SIYI), not phone portrait
+alwaysApply: true
+---
+
+# QGC UI — landscape remote controllers first
+
+When designing or implementing QGroundControl QML/UI in this workspace:
+
+## Primary targets
+
+Prefer **landscape handheld GCS remotes**, not phone-portrait layouts:
+
+| Brand | Examples | Typical screen |
+|-------|----------|----------------|
+| **云卓 Skydroid** | G20 | 7″ ≈ 1920×1200 landscape (~960×600 dp) |
+| **思翼 SIYI** | MK32, MK15 | 7″ / 5.5″ ≈ 1920×1080 landscape |
+
+Height is usually the bottleneck (short landscape + Vehicle Setup sidebar). Desktop / tall phone portrait is secondary.
+
+## Layout rules
+
+- Default to **left/right split** (or otherwise keep primary controls in the first viewport) on short landscape.
+- Do **not** assume tall stacked columns; a tall diagram alone will push controls off-screen.
+- Prefer compact controls (`QGCSlider`, dense rows) over tall widgets (`ValueSlider`) on short screens.
+- Use `ScreenTools.isShortScreen` / available height when choosing split vs stack.
+- Touch targets must stay usable with gloves (`ScreenTools` / min touch sizing).
+
+## Verification
+
+After UI changes meant for Android remotes, check on (or simulate) a **short landscape** viewport — e.g. Skydroid G20 — not only desktop full screen.

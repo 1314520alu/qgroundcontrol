@@ -36,6 +36,9 @@ FirmwarePlugin *APMFirmwarePluginFactory::firmwarePluginForAutopilot(MAV_AUTOPIL
         case MAV_TYPE_TRICOPTER:
         case MAV_TYPE_COAXIAL:
         case MAV_TYPE_HELICOPTER:
+        case MAV_TYPE_DODECAROTOR:
+        case MAV_TYPE_DECAROTOR:
+        case MAV_TYPE_GENERIC_MULTIROTOR:
             if (!_arduCopterPluginInstance) {
                 _arduCopterPluginInstance = new ArduCopterFirmwarePlugin(this);
             }
@@ -47,6 +50,7 @@ FirmwarePlugin *APMFirmwarePluginFactory::firmwarePluginForAutopilot(MAV_AUTOPIL
         case MAV_TYPE_VTOL_TAILSITTER:
         case MAV_TYPE_VTOL_TILTWING:
         case MAV_TYPE_VTOL_RESERVED5:
+        case MAV_TYPE_VTOL_GYRODYNE:
         case MAV_TYPE_FIXED_WING:
             if (!_arduPlanePluginInstance) {
                 _arduPlanePluginInstance = new ArduPlaneFirmwarePlugin;
@@ -54,6 +58,7 @@ FirmwarePlugin *APMFirmwarePluginFactory::firmwarePluginForAutopilot(MAV_AUTOPIL
             return _arduPlanePluginInstance;
         case MAV_TYPE_GROUND_ROVER:
         case MAV_TYPE_SURFACE_BOAT:
+        case MAV_TYPE_GROUND_QUADRUPED:
             if (!_arduRoverPluginInstance) {
                 _arduRoverPluginInstance = new ArduRoverFirmwarePlugin;
             }

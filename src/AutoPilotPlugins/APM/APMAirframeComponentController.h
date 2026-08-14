@@ -100,6 +100,7 @@ private:
     #define FRAME_CLASS_HELI_DUAL       11
     #define FRAME_CLASS_DODECAHEXA      12
     #define FRAME_CLASS_HELIQUAD        13
+    #define FRAME_CLASS_DECA            14
 
     // These should match the ArduCopter FRAME_TYPE parameter enum meta data
     #define FRAME_TYPE_PLUS         0
@@ -157,6 +158,9 @@ private:
 
         { FRAME_CLASS_DODECAHEXA,   FRAME_TYPE_X,       "AirframeUnknown" },        // Default
         { FRAME_CLASS_DODECAHEXA,   FRAME_TYPE_PLUS,    "AirframeUnknown" },
+
+        { FRAME_CLASS_DECA,         FRAME_TYPE_X,       "AirframeUnknown" },        // Default
+        { FRAME_CLASS_DECA,         FRAME_TYPE_PLUS,    "AirframeUnknown" },
 
         { FRAME_CLASS_HELI,         -1,                 "Helicopter" },
         { FRAME_CLASS_TRI,          -1,                 "YPlus" },

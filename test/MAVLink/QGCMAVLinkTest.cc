@@ -63,6 +63,9 @@ void QGCMAVLinkTest::_testVehicleClassClassification()
     QVERIFY(QGCMAVLink::isMultiRotor(MAV_TYPE_TRICOPTER));
     QVERIFY(QGCMAVLink::isMultiRotor(MAV_TYPE_HELICOPTER));
     QVERIFY(QGCMAVLink::isMultiRotor(MAV_TYPE_COAXIAL));
+    QVERIFY(QGCMAVLink::isMultiRotor(MAV_TYPE_DODECAROTOR));
+    QVERIFY(QGCMAVLink::isMultiRotor(MAV_TYPE_DECAROTOR));
+    QVERIFY(QGCMAVLink::isMultiRotor(MAV_TYPE_GENERIC_MULTIROTOR));
 
     QVERIFY(QGCMAVLink::isSub(MAV_TYPE_SUBMARINE));
     QVERIFY(QGCMAVLink::isAirship(MAV_TYPE_AIRSHIP));
@@ -80,6 +83,7 @@ void QGCMAVLinkTest::_testVehicleClassVTOL()
         MAV_TYPE_VTOL_TAILSITTER,
         MAV_TYPE_VTOL_TILTWING,
         MAV_TYPE_VTOL_RESERVED5,
+        MAV_TYPE_VTOL_GYRODYNE,
     };
     for (MAV_TYPE t : vtolTypes) {
         QVERIFY2(QGCMAVLink::isVTOL(t), qPrintable(QStringLiteral("type %1").arg(t)));
@@ -88,9 +92,10 @@ void QGCMAVLinkTest::_testVehicleClassVTOL()
 
 void QGCMAVLinkTest::_testVehicleClassRoverBoatCovers()
 {
-    // Both rover and boat MAV_TYPE values collapse to RoverBoat class.
+    // Rover-class MAV_TYPE values collapse to RoverBoat class.
     QCOMPARE(QGCMAVLink::vehicleClass(MAV_TYPE_GROUND_ROVER), QGCMAVLink::VehicleClassRoverBoat);
     QCOMPARE(QGCMAVLink::vehicleClass(MAV_TYPE_SURFACE_BOAT), QGCMAVLink::VehicleClassRoverBoat);
+    QCOMPARE(QGCMAVLink::vehicleClass(MAV_TYPE_GROUND_QUADRUPED), QGCMAVLink::VehicleClassRoverBoat);
 }
 
 void QGCMAVLinkTest::_testVehicleClassGenericFallback()
@@ -156,6 +161,8 @@ void QGCMAVLinkTest::_testMotorCountStandardTypes()
     QCOMPARE(QGCMAVLink::motorCount(MAV_TYPE_VTOL_TAILSITTER_QUADROTOR),       4);
     QCOMPARE(QGCMAVLink::motorCount(MAV_TYPE_HEXAROTOR),                       6);
     QCOMPARE(QGCMAVLink::motorCount(MAV_TYPE_OCTOROTOR),                       8);
+    QCOMPARE(QGCMAVLink::motorCount(MAV_TYPE_DECAROTOR),                      10);
+    QCOMPARE(QGCMAVLink::motorCount(MAV_TYPE_DODECAROTOR),                    12);
     QCOMPARE(QGCMAVLink::motorCount(MAV_TYPE_SPACECRAFT_ORBITER),              8);
 }
 
