@@ -56,6 +56,7 @@ if [[ "$(uname -m)" == "arm64" ]]; then
     ARCH=arm64-v8a
 fi
 PKG="system-images;android-${API_LEVEL};google_apis;${ARCH}"
+SYSIMG_DIR="$SDK/system-images/android-${API_LEVEL}/google_apis/${ARCH}"
 
 if "$AVDMANAGER" list avd 2>/dev/null | grep -q "Name: ${AVD_NAME}"; then
     if [[ "$FORCE" -eq 0 ]]; then
@@ -65,10 +66,22 @@ if "$AVDMANAGER" list avd 2>/dev/null | grep -q "Name: ${AVD_NAME}"; then
     echo "no" | "$AVDMANAGER" delete avd -n "$AVD_NAME" || true
 fi
 
-if [[ -n "$SDKMANAGER" ]]; then
-    yes | "$SDKMANAGER" --sdk_root="$SDK" "$PKG" "platforms;android-${API_LEVEL}" || true
+if [[ ! -d "$SYSIMG_DIR" ]]; then
+    if [[ -z "$SDKMANAGER" ]]; then
+        echo "Error: system image missing ($SYSIMG_DIR) and sdkmanager not found." >&2
+        echo "Install: sdkmanager \"$PKG\"" >&2
+        exit 1
+    fi
+    echo "Installing $PKG (may take several minutes)..."
+    # Accept licenses non-interactively; avoid unbounded `yes` hang.
+    yes | "$SDKMANAGER" --sdk_root="$SDK" --licenses >/tmp/qgc-sdk-licenses.log 2>&1 || true
+    if ! "$SDKMANAGER" --sdk_root="$SDK" --install "$PKG" "platforms;android-${API_LEVEL}"; then
+        echo "Error: failed to install $PKG. See sdkmanager output above." >&2
+        echo "You can install manually, then re-run this script." >&2
+        exit 1
+    fi
 else
-    echo "Warning: sdkmanager not found; assuming system image $PKG is installed." >&2
+    echo "System image already present: $SYSIMG_DIR"
 fi
 
 echo "no" | "$AVDMANAGER" create avd \
