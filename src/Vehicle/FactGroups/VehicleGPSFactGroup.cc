@@ -33,7 +33,7 @@ VehicleGPSFactGroup::VehicleGPSFactGroup(QObject *parent)
     _hdopFact.setRawValue(std::numeric_limits<float>::quiet_NaN());
     _vdopFact.setRawValue(std::numeric_limits<float>::quiet_NaN());
     _courseOverGroundFact.setRawValue(std::numeric_limits<float>::quiet_NaN());
-    _yawFact.setRawValue(std::numeric_limits<int16_t>::quiet_NaN());
+    _yawFact.setRawValue(std::numeric_limits<float>::quiet_NaN());
     _spoofingStateFact.setRawValue(255);
     _jammingStateFact.setRawValue(255);
     _authenticationStateFact.setRawValue(255);

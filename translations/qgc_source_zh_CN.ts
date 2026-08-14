@@ -7930,25 +7930,30 @@ VTOL</translation>
     <message>
       <location filename="../src/Toolbar/GPSIndicatorPage.qml" line="101"/>
       <source>HDOP</source>
-      <translation type="unfinished">HDOP</translation>
+      <translation>水平精度因子</translation>
     </message>
     <message>
       <location filename="../src/Toolbar/GPSIndicatorPage.qml" line="106"/>
       <source>VDOP</source>
-      <translation type="unfinished">VDOP</translation>
+      <translation>垂直精度因子</translation>
     </message>
     <message>
       <location filename="../src/Toolbar/GPSIndicatorPage.qml" line="111"/>
       <source>Course Over Ground</source>
-      <translation type="unfinished">Course Over Ground</translation>
+      <translation>航迹角</translation>
     </message>
     <message>
       <location filename="../src/Toolbar/GPSIndicatorPage.qml" line="116"/>
+      <source>GPS Heading</source>
+      <translation>GPS 航向</translation>
+    </message>
+    <message>
+      <location filename="../src/Toolbar/GPSIndicatorPage.qml" line="121"/>
       <source>GPS Error</source>
       <translation type="unfinished">GPS Error</translation>
     </message>
     <message>
-      <location filename="../src/Toolbar/GPSIndicatorPage.qml" line="123"/>
+      <location filename="../src/Toolbar/GPSIndicatorPage.qml" line="129"/>
       <source>RTK GPS Status</source>
       <translation type="unfinished">RTK GPS Status</translation>
     </message>

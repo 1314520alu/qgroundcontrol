@@ -113,6 +113,12 @@ ToolIndicatorPage {
                 }
 
                 LabelledLabel {
+                    label:      qsTr("GPS Heading")
+                    labelText:  activeVehicle ? activeVehicle.gps.yaw.valueString : valueNA
+                    visible:    activeVehicle && !isNaN(activeVehicle.gps.yaw.rawValue)
+                }
+
+                LabelledLabel {
                     label: qsTr("GPS Error")
                     labelText: errorText()
                     visible: activeVehicle && activeVehicle.gps.systemErrors.value > 0

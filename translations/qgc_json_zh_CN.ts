@@ -8333,25 +8333,25 @@
       <extracomment>.QGC.MetaData.Facts[hdop].shortDesc</extracomment>
       <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/Vehicle/FactGroups/GPSFact.json"/>
       <source>HDOP</source>
-      <translation type="unfinished">HDOP</translation>
+      <translation>水平精度因子</translation>
     </message>
     <message>
       <extracomment>.QGC.MetaData.Facts[vdop].shortDesc</extracomment>
       <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/Vehicle/FactGroups/GPSFact.json"/>
       <source>VDOP</source>
-      <translation type="unfinished">VDOP</translation>
+      <translation>垂直精度因子</translation>
     </message>
     <message>
       <extracomment>.QGC.MetaData.Facts[courseOverGround].shortDesc</extracomment>
       <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/Vehicle/FactGroups/GPSFact.json"/>
       <source>Course Over Ground</source>
-      <translation type="unfinished">Course Over Ground</translation>
+      <translation>航迹角</translation>
     </message>
     <message>
       <extracomment>.QGC.MetaData.Facts[yaw].shortDesc</extracomment>
       <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/Vehicle/FactGroups/GPSFact.json"/>
       <source>Yaw</source>
-      <translation type="unfinished">Yaw</translation>
+      <translation>GPS 航向</translation>
     </message>
     <message>
       <extracomment>.QGC.MetaData.Facts[lock].shortDesc</extracomment>

@@ -7921,11 +7921,16 @@ VTOL</source>
     </message>
     <message>
         <location filename="../src/Toolbar/GPSIndicatorPage.qml" line="116"/>
+        <source>GPS Heading</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/Toolbar/GPSIndicatorPage.qml" line="121"/>
         <source>GPS Error</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/Toolbar/GPSIndicatorPage.qml" line="123"/>
+        <location filename="../src/Toolbar/GPSIndicatorPage.qml" line="129"/>
         <source>RTK GPS Status</source>
         <translation type="unfinished"></translation>
     </message>
