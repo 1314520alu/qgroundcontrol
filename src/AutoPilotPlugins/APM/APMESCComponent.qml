@@ -76,7 +76,126 @@ SetupPage {
                     border.width: 1
                     border.color: qgcPal.groupBorder
                     radius: pageRoot._panelRadius
-                    // placeholder ColumnLayout for Task 2
+                    clip: true
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: pageRoot._pad
+                        spacing: ScreenTools.defaultFontPixelHeight * 0.45
+
+                        QGCLabel {
+                            text: qsTr("Configuration")
+                            font.bold: true
+                        }
+                        QGCLabel {
+                            text: qsTr("Configure and calibrate electronic speed controllers.")
+                            font.pointSize: ScreenTools.smallFontPointSize
+                            opacity: 0.55
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: ScreenTools.defaultFontPixelWidth
+                            visible: _motPwmTypeAvailable
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+                                QGCLabel { text: qsTr("Output type") }
+                                FactComboBox {
+                                    fact: _motPwmType
+                                    indexModel: false
+                                    Layout.fillWidth: true
+                                }
+                            }
+
+                            Rectangle {
+                                Layout.alignment: Qt.AlignBottom
+                                radius: height / 2
+                                color: qgcPal.button
+                                border.color: qgcPal.buttonBorder
+                                border.width: 1
+                                implicitHeight: ScreenTools.implicitButtonHeight * 0.85
+                                implicitWidth: rebootLabel.implicitWidth + ScreenTools.defaultFontPixelWidth * 2
+                                QGCLabel {
+                                    id: rebootLabel
+                                    anchors.centerIn: parent
+                                    text: qsTr("Requires vehicle reboot")
+                                    font.pointSize: ScreenTools.smallFontPointSize
+                                    color: qgcPal.text
+                                    opacity: 0.7
+                                }
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: ScreenTools.defaultFontPixelWidth
+                            visible: _motPwmMinAvailable || _motPwmMaxAvailable
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+                                visible: _motPwmMinAvailable
+                                QGCLabel { text: qsTr("Output PWM min") }
+                                FactTextField {
+                                    fact: _motPwmMin
+                                    Layout.fillWidth: true
+                                }
+                            }
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+                                visible: _motPwmMaxAvailable
+                                QGCLabel { text: qsTr("Output PWM max") }
+                                FactTextField {
+                                    fact: _motPwmMax
+                                    Layout.fillWidth: true
+                                }
+                            }
+                        }
+
+                        LabelledFactTextField {
+                            label: qsTr("Spin when armed")
+                            fact: _motSpinArm
+                            visible: _motSpinArmAvailable
+                            textFieldShowHelp: true
+                            Layout.fillWidth: true
+                        }
+                        LabelledFactTextField {
+                            label: qsTr("Spin minimum")
+                            fact: _motSpinMin
+                            visible: _motSpinMinAvailable
+                            textFieldShowHelp: true
+                            Layout.fillWidth: true
+                        }
+                        LabelledFactTextField {
+                            label: qsTr("Spin maximum")
+                            fact: _motSpinMax
+                            visible: _motSpinMaxAvailable
+                            textFieldShowHelp: true
+                            Layout.fillWidth: true
+                        }
+
+                        LabelledFactComboBox {
+                            label: qsTr("DShot ESC type")
+                            fact: _servoDshotEsc
+                            indexModel: false
+                            visible: _isDshot && _servoDshotEscAvailable
+                            Layout.fillWidth: true
+                        }
+                        LabelledFactComboBox {
+                            label: qsTr("DShot output rate")
+                            fact: _servoDshotRate
+                            indexModel: false
+                            visible: _isDshot && _servoDshotRateAvailable
+                            Layout.fillWidth: true
+                        }
+
+                        Item { Layout.fillHeight: true }
+                    }
                 }
 
                 Rectangle {
@@ -104,7 +223,126 @@ SetupPage {
                     border.width: 1
                     border.color: qgcPal.groupBorder
                     radius: pageRoot._panelRadius
-                    // placeholder ColumnLayout for Task 2
+                    clip: true
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: pageRoot._pad
+                        spacing: ScreenTools.defaultFontPixelHeight * 0.45
+
+                        QGCLabel {
+                            text: qsTr("Configuration")
+                            font.bold: true
+                        }
+                        QGCLabel {
+                            text: qsTr("Configure and calibrate electronic speed controllers.")
+                            font.pointSize: ScreenTools.smallFontPointSize
+                            opacity: 0.55
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: ScreenTools.defaultFontPixelWidth
+                            visible: _motPwmTypeAvailable
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+                                QGCLabel { text: qsTr("Output type") }
+                                FactComboBox {
+                                    fact: _motPwmType
+                                    indexModel: false
+                                    Layout.fillWidth: true
+                                }
+                            }
+
+                            Rectangle {
+                                Layout.alignment: Qt.AlignBottom
+                                radius: height / 2
+                                color: qgcPal.button
+                                border.color: qgcPal.buttonBorder
+                                border.width: 1
+                                implicitHeight: ScreenTools.implicitButtonHeight * 0.85
+                                implicitWidth: rebootLabelNarrow.implicitWidth + ScreenTools.defaultFontPixelWidth * 2
+                                QGCLabel {
+                                    id: rebootLabelNarrow
+                                    anchors.centerIn: parent
+                                    text: qsTr("Requires vehicle reboot")
+                                    font.pointSize: ScreenTools.smallFontPointSize
+                                    color: qgcPal.text
+                                    opacity: 0.7
+                                }
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: ScreenTools.defaultFontPixelWidth
+                            visible: _motPwmMinAvailable || _motPwmMaxAvailable
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+                                visible: _motPwmMinAvailable
+                                QGCLabel { text: qsTr("Output PWM min") }
+                                FactTextField {
+                                    fact: _motPwmMin
+                                    Layout.fillWidth: true
+                                }
+                            }
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+                                visible: _motPwmMaxAvailable
+                                QGCLabel { text: qsTr("Output PWM max") }
+                                FactTextField {
+                                    fact: _motPwmMax
+                                    Layout.fillWidth: true
+                                }
+                            }
+                        }
+
+                        LabelledFactTextField {
+                            label: qsTr("Spin when armed")
+                            fact: _motSpinArm
+                            visible: _motSpinArmAvailable
+                            textFieldShowHelp: true
+                            Layout.fillWidth: true
+                        }
+                        LabelledFactTextField {
+                            label: qsTr("Spin minimum")
+                            fact: _motSpinMin
+                            visible: _motSpinMinAvailable
+                            textFieldShowHelp: true
+                            Layout.fillWidth: true
+                        }
+                        LabelledFactTextField {
+                            label: qsTr("Spin maximum")
+                            fact: _motSpinMax
+                            visible: _motSpinMaxAvailable
+                            textFieldShowHelp: true
+                            Layout.fillWidth: true
+                        }
+
+                        LabelledFactComboBox {
+                            label: qsTr("DShot ESC type")
+                            fact: _servoDshotEsc
+                            indexModel: false
+                            visible: _isDshot && _servoDshotEscAvailable
+                            Layout.fillWidth: true
+                        }
+                        LabelledFactComboBox {
+                            label: qsTr("DShot output rate")
+                            fact: _servoDshotRate
+                            indexModel: false
+                            visible: _isDshot && _servoDshotRateAvailable
+                            Layout.fillWidth: true
+                        }
+
+                        Item { Layout.fillHeight: true }
+                    }
                 }
 
                 Rectangle {
