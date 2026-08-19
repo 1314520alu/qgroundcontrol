@@ -419,6 +419,7 @@ Item {
             z: QGroundControl.zOrderWidgets
             maxHeight: parent.height - toolStrip.y
             visible: _editingLayer == _layerMission
+            circularButtons: QGroundControl.settingsManager.flyViewSettings.flyViewUiStyle.rawValue === 1
 
             property bool _isMissionLayer: _editingLayer == _layerMission
 

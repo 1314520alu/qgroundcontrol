@@ -28,11 +28,9 @@ Item {
         height: ScreenTools.toolbarHeight
         color: qgcPal.toolbarBackground
 
-        QGCToolBarButton {
+        BrandAvatarButton {
             objectName: "toolbar_qgcLogo"
             height: parent.height
-            icon.source: "/res/QGCLogoFull.svg"
-            logo: true
             onClicked: mainWindow.showToolSelectDialog()
         }
 

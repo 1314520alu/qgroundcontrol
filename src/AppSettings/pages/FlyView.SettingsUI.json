@@ -9,8 +9,12 @@
     "groups": [
         {
             "heading": "General",
-            "keywords": ["checklist", "preflight", "multi vehicle", "center map", "log replay", "camera control", "home position", "mission popup"],
+            "keywords": ["checklist", "preflight", "multi vehicle", "center map", "log replay", "camera control", "home position", "mission popup", "style", "hud", "风格"],
             "controls": [
+                {
+                    "setting": "flyViewSettings.flyViewUiStyle",
+                    "control": "combobox"
+                },
                 {
                     "setting": "appSettings.useChecklist",
                     "showWhen": "hasChecklist"

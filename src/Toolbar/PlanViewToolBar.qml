@@ -33,14 +33,12 @@ Rectangle {
         visible: qgcPal.globalTheme === QGCPalette.Light
     }
 
-    QGCToolBarButton {
-        id: qgcButton
-        objectName: "toolbar_qgcLogo"
-        height: parent.height
-        icon.source: "/res/QGCLogoFull.svg"
-        logo: true
-        onClicked: mainWindow.showToolSelectDialog()
-    }
+                BrandAvatarButton {
+                    id: qgcButton
+                    objectName: "toolbar_qgcLogo"
+                    height: parent.height
+                    onClicked: mainWindow.showToolSelectDialog()
+                }
 
     QGCFlickable {
         id: toolsFlickable

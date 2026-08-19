@@ -11,9 +11,12 @@ Rectangle {
     height:     Math.min(maxHeight, toolStripColumn.height + (flickable.anchors.margins * 2))
     radius:     ScreenTools.defaultFontPixelWidth / 2
 
+    QGCPalette { id: qgcPal }
+
     property alias  model:              repeater.model
     property real   maxHeight           ///< Maximum height for control, determines whether text is hidden to make control shorter
     property var    fontSize:           ScreenTools.smallFontPointSize
+    property bool   circularButtons:    false
 
     property var _dropPanel: dropPanel
 
@@ -53,7 +56,7 @@ Rectangle {
                     anchors.left:       toolStripColumn.left
                     anchors.right:      toolStripColumn.right
                     height:             width
-                    radius:             ScreenTools.defaultFontPixelWidth / 2
+                    radius:             _root.circularButtons ? width / 2 : ScreenTools.defaultFontPixelWidth / 2
                     fontPointSize:      _root.fontSize
                     toolStripAction:    modelData
                     dropPanel:          _dropPanel

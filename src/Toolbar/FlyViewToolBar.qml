@@ -74,12 +74,11 @@ Item {
                         height:     parent.height
                         spacing:    0
 
-                        QGCToolBarButton {
+                        BrandAvatarButton {
                             id:                 qgcButton
                             objectName:         "toolbar_qgcLogo"
                             Layout.fillHeight:  true
-                            icon.source:        "/res/QGCLogoFull.svg"
-                            logo:               true
+                            Layout.preferredWidth: height
                             onClicked:          mainWindow.showToolSelectDialog()
                         }
 
