@@ -5,6 +5,7 @@ import QtQuick.Layouts
 import QtQuick.Window
 
 import QGroundControl
+import QGroundControl.AppSettings
 import QGroundControl.Controls
 import QGroundControl.FactControls
 import QGroundControl.FlyView
@@ -27,6 +28,18 @@ ApplicationWindow {
     bottomPadding: 0
     leftPadding:   0
     rightPadding:  0
+
+    // Off-screen: remote UDP presets (G20 / UniRC / …) only ran when Comm Links was opened.
+    // Load once at startup on Android so detection applies without visiting settings.
+    Loader {
+        active:     ScreenTools.isAndroid
+        visible:    false
+        width:      0
+        height:     0
+        sourceComponent: Component {
+            LinkConfigurationManager { }
+        }
+    }
 
     Component.onCompleted: {
         // Start the sequence of first run prompt(s)
@@ -184,7 +197,7 @@ ApplicationWindow {
     }
 
     function showSettingsTool(settingsPage = "") {
-        showTool(qsTr("Application Settings"), "qrc:/qml/QGroundControl/Controls/AppSettings.qml", "/res/QGCLogoWhite")
+        showTool(qsTr("Application Settings"), "qrc:/qml/QGroundControl/Controls/AppSettings.qml", "/res/MiduoLogo.png")
         if (settingsPage !== "") {
             toolDrawerLoader.item.showSettingsPage(settingsPage)
         }
@@ -466,7 +479,7 @@ ApplicationWindow {
                     id: qgcButton
                     objectName: "toolbar_qgcLogo"
                     height: parent.height
-                    icon.source: "/res/QGCLogoFull.svg"
+                    icon.source: "/res/MiduoLogo.png"
                     logo: true
                     onClicked: mainWindow.showToolSelectDialog()
                 }

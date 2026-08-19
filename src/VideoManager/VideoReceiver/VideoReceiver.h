@@ -36,6 +36,11 @@ public:
     QGCVideoStreamInfo *videoStreamInfo() { return _videoStreamInfo; }
     QString recordingOutput() const { return _recordingOutput; }
 
+    /// Active decoder factory name (empty when not decoding / non-GStreamer backends).
+    virtual QString decoderName() const { return {}; }
+    /// True when the active decoder is classified as hardware (MediaCodec, VA, etc.).
+    virtual bool decoderIsHardware() const { return false; }
+
     virtual void setSink(VideoSinkHandle sink) { if (sink != _sink) { _sink = sink; emit sinkChanged(_sink); } }
     virtual void setWidget(QQuickItem *widget) { if (widget != _widget) { _widget = widget; emit widgetChanged(_widget); } }
     void setName(const QString &name) { if (name != _name) { _name = name; emit nameChanged(_name); } }
@@ -86,6 +91,7 @@ signals:
     void autoReconnectChanged(bool enabled);
     void videoStreamInfoChanged();
     void widgetChanged(QQuickItem *widget);
+    void decoderStatsChanged();
 
     void onStartComplete(STATUS status);
     void onStopComplete(STATUS status);

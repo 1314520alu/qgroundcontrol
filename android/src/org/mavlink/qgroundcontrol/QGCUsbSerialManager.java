@@ -385,9 +385,11 @@ public class QGCUsbSerialManager {
                     break;
                 case UsbManager.ACTION_USB_DEVICE_DETACHED:
                     handleUsbDeviceDetached(intent);
+                    QGCSiyiEthernetHelper.onUsbTopologyChanged();
                     break;
                 case UsbManager.ACTION_USB_DEVICE_ATTACHED:
                     handleUsbDeviceAttached(intent);
+                    QGCSiyiEthernetHelper.onUsbTopologyChanged();
                     break;
                 default:
                     break;
@@ -462,6 +464,10 @@ public class QGCUsbSerialManager {
      * @param device The UsbDevice to add or update.
      */
     private static void addOrUpdateDevice(UsbDevice device) {
+        if (QGCSiyiEthernetHelper.isRadioEthernetUsbDevice(device)) {
+            QGCLogger.i(TAG, "Ignoring SIYI radio ethernet USB device " + device.getDeviceName());
+            return;
+        }
         UsbSerialDriver driver = findDriverByDeviceId(device.getDeviceId());
         if (driver != null) {
             if (usbManager.hasPermission(device)) {
@@ -601,6 +607,10 @@ public class QGCUsbSerialManager {
      */
     private static void addDriver(final UsbSerialDriver newDriver) {
         UsbDevice device = newDriver.getDevice();
+        if (QGCSiyiEthernetHelper.isRadioEthernetUsbDevice(device)) {
+            QGCLogger.i(TAG, "Skipping serial claim on SIYI radio ethernet USB device");
+            return;
+        }
         String deviceName = device.getDeviceName();
 
         final boolean alreadyTracked = drivers.stream()

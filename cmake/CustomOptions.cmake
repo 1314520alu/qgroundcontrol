@@ -14,13 +14,15 @@ set(QGC_CUSTOM_DIR "custom" CACHE STRING "Custom build overlay directory, relati
 # Application Metadata
 # ============================================================================
 
-set(QGC_APP_NAME "QGroundControl" CACHE STRING "Application name")
+set(QGC_APP_NAME "米多地面站" CACHE STRING "Application name" FORCE)
 string(TIMESTAMP _copyright_year "%Y")
-set(QGC_APP_COPYRIGHT "Copyright (c) ${_copyright_year} QGroundControl. All rights reserved." CACHE STRING "Copyright notice")
-set(QGC_APP_DESCRIPTION "Open Source Ground Control App" CACHE STRING "Application description")
-set(QGC_ORG_NAME "QGroundControl" CACHE STRING "Organization name")
+set(QGC_APP_COPYRIGHT "Copyright (c) ${_copyright_year} 米多地面站. All rights reserved." CACHE STRING "Copyright notice" FORCE)
+set(QGC_APP_DESCRIPTION "米多地面站" CACHE STRING "Application description" FORCE)
+set(QGC_ORG_NAME "米多地面站" CACHE STRING "Organization name" FORCE)
 set(QGC_ORG_DOMAIN "qgroundcontrol.com" CACHE STRING "Organization domain")
 set(QGC_PACKAGE_NAME "org.mavlink.qgroundcontrol" CACHE STRING "Package identifier")
+# Keep the CMake/Android target id ASCII-stable; display name is QGC_APP_NAME.
+set(QGC_PROJECT_TARGET_NAME "QGroundControl" CACHE STRING "CMake project/target name" FORCE)
 
 # Settings version - increment to clear stored settings on next boot after incompatible changes
 set(QGC_SETTINGS_VERSION "9" CACHE STRING "Settings schema version")

@@ -5249,6 +5249,56 @@
       <translation>低延迟</translation>
     </message>
     <message>
+      <extracomment>.QGC.MetaData.Facts[rtpJitterLatencyMs].shortDesc</extracomment>
+      <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/Settings/Video.SettingsGroup.json"/>
+      <source>RTP jitter-buffer playout latency (ms).</source>
+      <translation>RTP 抖动缓冲播放延迟（毫秒）。</translation>
+    </message>
+    <message>
+      <extracomment>.QGC.MetaData.Facts[rtpJitterLatencyMs].longDesc</extracomment>
+      <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/Settings/Video.SettingsGroup.json"/>
+      <source>Latency budget for the RTP jitter buffer (rtspsrc.latency / rtpjitterbuffer.latency). Lower = less glass-to-glass delay; higher = more headroom for packet reordering and retransmission. The default of 80 ms allows RFC 4588 retransmission to recover lost packets before the playout deadline; values &lt;40 ms effectively disable retransmission. Ignored when Low Latency Mode is enabled.</source>
+      <translation>RTP 抖动缓冲的延迟预算（rtspsrc.latency / rtpjitterbuffer.latency）。数值越小端到端延迟越低；越大则更利于乱序重排与重传。默认 80 毫秒可为 RFC 4588 重传留出恢复时间；小于 40 毫秒实际上会关闭重传。启用低延迟模式时忽略此项。</translation>
+    </message>
+    <message>
+      <extracomment>.QGC.MetaData.Facts[rtpJitterLatencyMs].label</extracomment>
+      <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/Settings/Video.SettingsGroup.json"/>
+      <source>RTP jitter latency</source>
+      <translation>RTP 抖动延迟</translation>
+    </message>
+    <message>
+      <extracomment>.QGC.MetaData.Facts[rtpJitterLatencyMs].keywords</extracomment>
+      <translatorcomment>Only use english comma ',' to separate strings</translatorcomment>
+      <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/Settings/Video.SettingsGroup.json"/>
+      <source>rtp,jitter,latency,rtsp,rtx,retransmission,advanced</source>
+      <translation>rtp,抖动,延迟,rtsp,rtx,重传,高级</translation>
+    </message>
+    <message>
+      <extracomment>.QGC.MetaData.Facts[rtspAutoReconnect].shortDesc</extracomment>
+      <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/Settings/Video.SettingsGroup.json"/>
+      <source>Automatically restart the pipeline on watchdog timeout or pipeline error.</source>
+      <translation>在看门狗超时或管道错误时自动重启视频管道。</translation>
+    </message>
+    <message>
+      <extracomment>.QGC.MetaData.Facts[rtspAutoReconnect].longDesc</extracomment>
+      <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/Settings/Video.SettingsGroup.json"/>
+      <source>When enabled, the receiver reconnects with exponential backoff (1s → 30s) after a stream timeout or a fatal pipeline error. Disable to fall back to the legacy behaviour of giving up after one failure.</source>
+      <translation>启用后，流超时或致命管道错误时接收端会按指数退避（1 秒 → 30 秒）自动重连。关闭则回退为失败一次即放弃的旧行为。</translation>
+    </message>
+    <message>
+      <extracomment>.QGC.MetaData.Facts[rtspAutoReconnect].label</extracomment>
+      <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/Settings/Video.SettingsGroup.json"/>
+      <source>Auto-reconnect on stream loss</source>
+      <translation>断流自动重连</translation>
+    </message>
+    <message>
+      <extracomment>.QGC.MetaData.Facts[rtspAutoReconnect].keywords</extracomment>
+      <translatorcomment>Only use english comma ',' to separate strings</translatorcomment>
+      <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/Settings/Video.SettingsGroup.json"/>
+      <source>rtsp,reconnect,watchdog,recovery,advanced</source>
+      <translation>rtsp,重连,看门狗,恢复,高级</translation>
+    </message>
+    <message>
       <extracomment>.QGC.MetaData.Facts[forceVideoDecoder].shortDesc</extracomment>
       <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/Settings/Video.SettingsGroup.json"/>
       <source>Override automatic video decoder selection to force a specific decoding method.</source>
@@ -11052,6 +11102,30 @@
       <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/AppSettings/pages/Video.SettingsUI.json"/>
       <source>zero-copy</source>
       <translation>零拷贝</translation>
+    </message>
+    <message>
+      <extracomment>.groups[Settings].keywords[7]</extracomment>
+      <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/AppSettings/pages/Video.SettingsUI.json"/>
+      <source>photo</source>
+      <translation>拍照</translation>
+    </message>
+    <message>
+      <extracomment>.groups[Settings].keywords[8]</extracomment>
+      <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/AppSettings/pages/Video.SettingsUI.json"/>
+      <source>record</source>
+      <translation>录制</translation>
+    </message>
+    <message>
+      <extracomment>.groups[Settings].keywords[9]</extracomment>
+      <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/AppSettings/pages/Video.SettingsUI.json"/>
+      <source>camera control</source>
+      <translation>相机控制</translation>
+    </message>
+    <message>
+      <extracomment>.groups[Settings].controls[8].label</extracomment>
+      <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/AppSettings/pages/Video.SettingsUI.json"/>
+      <source>Active decoder</source>
+      <translation>当前解码器</translation>
     </message>
     <message>
       <extracomment>.groups[Local Video Storage].heading</extracomment>

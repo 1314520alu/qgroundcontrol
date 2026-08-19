@@ -77,6 +77,18 @@ GstVideoReceiver::~GstVideoReceiver()
     qCDebug(GstVideoReceiverLog) << this;
 }
 
+QString GstVideoReceiver::decoderName() const
+{
+    QMutexLocker locker(&_decoderNameMutex);
+    return _decoderName;
+}
+
+bool GstVideoReceiver::decoderIsHardware() const
+{
+    QMutexLocker locker(&_decoderNameMutex);
+    return _decoderIsHardware;
+}
+
 void GstVideoReceiver::start(uint32_t timeout)
 {
     if (_needDispatch()) {
@@ -952,15 +964,16 @@ void GstVideoReceiver::_logDecodebin3SelectedCodec(GstElement *decodebin3)
                 qCDebug(GstVideoReceiverLog) << "Decodebin3 selected codec:rank -" << pluginName << "/" << featureName << "-" << decoderKlass << (isHardwareDecoder ? "(HW)" : "(SW)") << ":" << rank;
 
                 const QString newName = QString::fromUtf8(featureName);
-                bool nameChanged = false;
+                bool changed = false;
                 {
                     QMutexLocker locker(&_decoderNameMutex);
-                    if (newName != _decoderName) {
+                    if (newName != _decoderName || isHardwareDecoder != _decoderIsHardware) {
                         _decoderName = newName;
-                        nameChanged = true;
+                        _decoderIsHardware = isHardwareDecoder;
+                        changed = true;
                     }
                 }
-                if (nameChanged) {
+                if (changed) {
                     emit decoderStatsChanged();
                 }
 
@@ -1257,6 +1270,19 @@ void GstVideoReceiver::_shutdownDecodingBranch()
     }
 
     _removingDecoder = false;
+
+    bool decoderCleared = false;
+    {
+        QMutexLocker locker(&_decoderNameMutex);
+        if (!_decoderName.isEmpty() || _decoderIsHardware) {
+            _decoderName.clear();
+            _decoderIsHardware = false;
+            decoderCleared = true;
+        }
+    }
+    if (decoderCleared) {
+        emit decoderStatsChanged();
+    }
 
     if (_decoding) {
         _decoding = false;

@@ -15,6 +15,10 @@ Button {
     checkable:          false
 
     property bool logo: false
+    property bool _logoIsRaster: {
+        var src = String(button.icon.source)
+        return src.indexOf(".png") !== -1 || src.indexOf(".jpg") !== -1 || src.indexOf(".jpeg") !== -1 || src.indexOf(".webp") !== -1
+    }
 
     property real _horizontalMargin: ScreenTools.defaultFontPixelWidth
 
@@ -30,10 +34,20 @@ Button {
     contentItem: Row {
         spacing:                ScreenTools.defaultFontPixelWidth
         anchors.verticalCenter: button.verticalCenter
-        // Logo buttons render the multi-color SVG natively via VectorImage; non-logo buttons
-        // tint their monochrome icon through QGCColoredImage. Plain `Row` skips visible:false items.
+        // Logo buttons: SVG via VectorImage (multi-color), raster (e.g. Miduo PNG) via Image.
+        // Non-logo buttons tint monochrome icons through QGCColoredImage. Plain `Row` skips visible:false items.
+        Image {
+            visible:                button.logo && button._logoIsRaster
+            height:                 ScreenTools.defaultFontPixelHeight * 2
+            width:                  height
+            source:                 visible ? button.icon.source : ""
+            fillMode:               Image.PreserveAspectFit
+            mipmap:                 true
+            asynchronous:           true
+            anchors.verticalCenter: parent.verticalCenter
+        }
         QGCVectorImage {
-            visible:                button.logo
+            visible:                button.logo && !button._logoIsRaster
             height:                 ScreenTools.defaultFontPixelHeight * 2
             width:                  height
             source:                 visible ? button.icon.source : ""

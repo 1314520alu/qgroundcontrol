@@ -31,7 +31,7 @@ Item {
         QGCToolBarButton {
             objectName: "toolbar_qgcLogo"
             height: parent.height
-            icon.source: "/res/QGCLogoFull.svg"
+            icon.source: "/res/MiduoLogo.png"
             logo: true
             onClicked: mainWindow.showToolSelectDialog()
         }

@@ -111,7 +111,7 @@ static QStringList normalizeArgs(const QStringList &args)
 CommandLineParseResult parseCommandLine()
 {
     // Set application info (needed for --help and --version)
-    QCoreApplication::setApplicationName(QLatin1String(QGC_APP_NAME));
+    QCoreApplication::setApplicationName(QString::fromUtf8(QGC_APP_NAME));
     QCoreApplication::setApplicationVersion(QLatin1String(QGC_APP_VERSION_STR));
 
     CommandLineParseResult out{};

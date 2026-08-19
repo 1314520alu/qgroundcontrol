@@ -15,6 +15,12 @@ Button {
     property color textColor: checked || pressed ? qgcPal.buttonHighlightText : qgcPal.buttonText
     property bool expandable: false
     property bool expanded:   false
+    // Brand raster logos (e.g. Miduo PNG) must keep original colors — same rule as QGCToolBarButton.
+    property bool _iconIsRaster: {
+        var src = String(control.icon.source)
+        return src.indexOf(".png") !== -1 || src.indexOf(".jpg") !== -1
+               || src.indexOf(".jpeg") !== -1 || src.indexOf(".webp") !== -1
+    }
 
     signal toggleExpand()
 
@@ -32,11 +38,28 @@ Button {
     contentItem: RowLayout {
         spacing: ScreenTools.defaultFontPixelWidth
 
+        Image {
+            visible:               control._iconIsRaster
+            source:                visible ? control.icon.source : ""
+            Layout.preferredWidth: ScreenTools.defaultFontPixelHeight
+            Layout.preferredHeight: ScreenTools.defaultFontPixelHeight
+            Layout.maximumWidth:   ScreenTools.defaultFontPixelHeight
+            Layout.maximumHeight:  ScreenTools.defaultFontPixelHeight
+            sourceSize.width:      ScreenTools.defaultFontPixelHeight * 2
+            sourceSize.height:     ScreenTools.defaultFontPixelHeight * 2
+            fillMode:              Image.PreserveAspectFit
+            mipmap:                true
+            asynchronous:          true
+        }
+
         QGCColoredImage {
-            source: control.icon.source
-            color:  control.icon.color
-            width:  ScreenTools.defaultFontPixelHeight
-            height: ScreenTools.defaultFontPixelHeight
+            visible:               !control._iconIsRaster
+            source:                visible ? control.icon.source : ""
+            color:                 control.icon.color
+            Layout.preferredWidth: ScreenTools.defaultFontPixelHeight
+            Layout.preferredHeight: ScreenTools.defaultFontPixelHeight
+            width:                 ScreenTools.defaultFontPixelHeight
+            height:                ScreenTools.defaultFontPixelHeight
         }
 
         QGCLabel {

@@ -2,10 +2,15 @@
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="#000000"/>
+            <solid android:color="#F5E6C8"/>
         </shape>
     </item>
-    <item>
-        <bitmap android:src="@drawable/icon" android:gravity="center"/>
+    <item
+        android:width="160dp"
+        android:height="160dp"
+        android:gravity="center">
+        <bitmap
+            android:src="@drawable/ic_launcher_foreground"
+            android:gravity="fill"/>
     </item>
 </layer-list>

@@ -371,6 +371,45 @@ void preferZeroCopyDecoders(GstRegistry* registry)
 }
 #endif  // Q_OS_LINUX
 
+#ifdef Q_OS_ANDROID
+// Prefer vendor MediaCodec factories (amcviddec-*) over avdec / Google soft wrappers so live
+// FPV streams stay on the hardware path. Soft wrappers are already excluded by isHardwareDecoderFactory.
+void preferAndroidMediaCodec(GstRegistry* registry)
+{
+    if (!registry) {
+        qCCritical(GStreamerHelpersLog) << "Invalid registry!";
+        return;
+    }
+
+    static constexpr uint16_t MediaCodecRank = GST_RANK_PRIMARY + 2;
+
+    GList* decoderFactories = gst_element_factory_list_get_elements(
+        static_cast<GstElementFactoryListType>(GST_ELEMENT_FACTORY_TYPE_DECODER | GST_ELEMENT_FACTORY_TYPE_MEDIA_VIDEO),
+        GST_RANK_NONE);
+    if (!decoderFactories) {
+        qCDebug(GStreamerHelpersLog) << "No decoder factories while preferring Android MediaCodec";
+        return;
+    }
+
+    int matched = 0;
+    for (GList* node = decoderFactories; node != nullptr; node = node->next) {
+        GstElementFactory* factory = GST_ELEMENT_FACTORY(node->data);
+        if (!factory || !GStreamer::isHardwareDecoderFactory(factory)) {
+            continue;
+        }
+        const gchar* featureName = gst_plugin_feature_get_name(GST_PLUGIN_FEATURE(factory));
+        if (!featureName || !g_str_has_prefix(featureName, "amcviddec-")) {
+            continue;
+        }
+        changeFeatureRank(registry, featureName, MediaCodecRank);
+        ++matched;
+    }
+
+    qCDebug(GStreamerHelpersLog) << "Preferring Android MediaCodec decoders; promoted" << matched << "factories";
+    gst_plugin_feature_list_free(decoderFactories);
+}
+#endif  // Q_OS_ANDROID
+
 }  // anonymous namespace
 
 void setCodecPriorities(int rawOption)
@@ -400,12 +439,18 @@ void setCodecPriorities(VideoDecoderOptions option)
 #ifdef Q_OS_LINUX
             preferZeroCopyDecoders(registry);
 #endif
+#ifdef Q_OS_ANDROID
+            preferAndroidMediaCodec(registry);
+#endif
             break;
         case ForceVideoDecoderSoftware:
             prioritizeByHardwareClass(registry, PrioritizedRank, false);
             break;
         case ForceVideoDecoderHardware:
             prioritizeByHardwareClass(registry, PrioritizedRank, true);
+#ifdef Q_OS_ANDROID
+            preferAndroidMediaCodec(registry);
+#endif
             break;
         case ForceVideoDecoderVAAPI:
             applyRanks(registry, kVaDecoders, PrioritizedRank);

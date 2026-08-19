@@ -1,0 +1,1126 @@
+{
+  "meta": {
+    "product": "UniPod MT11",
+    "vendor": "Reebot / 锐川",
+    "manual_version_primary": "V2.0",
+    "manual_date_primary": "2026-06-04",
+    "faq_date": "2026-04-07",
+    "firmware_log_date": "2026-07-27",
+    "download_page_zh": "https://www.reebot.com/index.php?asd=491&id=downloads2",
+    "download_page_en": "https://reebot.com/en/index.php?asd=481&id=downloads2",
+    "support_phone": "400-097-0971",
+    "support_email": "info@reebot.com"
+  },
+  "documents": [
+    {
+      "id": 1,
+      "doc_key": "manual_cn_v2",
+      "title": "用户手册（中文）",
+      "version": "V2.0",
+      "lang": "zh",
+      "date": "2026-06-04",
+      "filename": "UniPod-MT11-User-Manual-V2.0-CN.pdf",
+      "source_url": "https://reebot.com/reebot_file/UniPodMT11/UniPod%20MT11%20v2.0.pdf",
+      "notes": "官网当前中文说明书"
+    },
+    {
+      "id": 2,
+      "doc_key": "manual_en_v2",
+      "title": "User Manual (English)",
+      "version": "V2.0",
+      "lang": "en",
+      "date": "2026-06-04",
+      "filename": "UniPod-MT11-User-Manual-V2.0-EN.pdf",
+      "source_url": "https://reebot.com/reebot_file/UniPodMT11/UniPod%20MT11%20User%20Manual%20V2.0.pdf",
+      "notes": "官网当前英文说明书"
+    },
+    {
+      "id": 3,
+      "doc_key": "manual_en_v12",
+      "title": "User Manual (English archive)",
+      "version": "v1.2",
+      "lang": "en",
+      "date": "2025-12-31",
+      "filename": "UniPod-MT11-User-Manual-v1.2.pdf",
+      "source_url": "https://reebot.com/reebot_file/UniPodMT11/UniPod%20MT11%20User%20Manual%20v1.2%20.pdf",
+      "notes": "归档保留"
+    },
+    {
+      "id": 4,
+      "doc_key": "faq_zh",
+      "title": "常见问题解答",
+      "version": "2026-04-07",
+      "lang": "zh",
+      "date": "2026-04-07",
+      "filename": "UniPod-MT11-FAQ.pdf",
+      "source_url": "https://reebot.com/reebot_file/UniPodMT11/MT11%20FAQ.pdf",
+      "notes": null
+    },
+    {
+      "id": 5,
+      "doc_key": "fw_log_cn",
+      "title": "固件更新记录",
+      "version": "2026-07-27",
+      "lang": "zh",
+      "date": "2026-07-27",
+      "filename": "UniPod-MT11-Firmware-Update-Log-2026-07-27-CN.pdf",
+      "source_url": "https://reebot.com/reebot_file/UniPodMT11/UniPod%20MT11log%202026-07-27.pdf",
+      "notes": null
+    },
+    {
+      "id": 6,
+      "doc_key": "fw_log_en",
+      "title": "Firmware Update Log",
+      "version": "2026-07-27",
+      "lang": "en",
+      "date": "2026-07-27",
+      "filename": "UniPod-MT11-Firmware-Update-Log-2026-07-27-EN.pdf",
+      "source_url": "https://reebot.com/reebot_file/UniPodMT11/UniPod%20MT11%20Firmware%20Update%20Log_2026-07-27.pdf",
+      "notes": null
+    }
+  ],
+  "chapters": [
+    {
+      "id": 1,
+      "chapter_no": "0",
+      "title": "阅读提示 / 安全",
+      "parent": null,
+      "summary": "危险警告、禁止事项、闲置携带回收"
+    },
+    {
+      "id": 2,
+      "chapter_no": "1",
+      "title": "产品简介",
+      "parent": null,
+      "summary": "特性、接口、技术参数、物品清单、指示灯"
+    },
+    {
+      "id": 3,
+      "chapter_no": "1.1",
+      "title": "主要特性",
+      "parent": "1",
+      "summary": "四光传感、8K、AI、无限航向、正装/倒装/机头模式"
+    },
+    {
+      "id": 4,
+      "chapter_no": "1.2",
+      "title": "接口与定义",
+      "parent": "1",
+      "summary": "TYPE-C 拓展坞针脚、S.BUS、以太网"
+    },
+    {
+      "id": 5,
+      "chapter_no": "1.3",
+      "title": "技术参数",
+      "parent": "1",
+      "summary": "整机/云台/广角/变焦/激光/红外规格"
+    },
+    {
+      "id": 6,
+      "chapter_no": "2",
+      "title": "使用前",
+      "parent": null,
+      "summary": "安装固定、连接供电、注意事项"
+    },
+    {
+      "id": 7,
+      "chapter_no": "3",
+      "title": "特色功能",
+      "parent": null,
+      "summary": "双可见光、对焦、AI、EIS、ISP、IP、去雾、夜视、双击对准"
+    },
+    {
+      "id": 8,
+      "chapter_no": "4",
+      "title": "云台控制",
+      "parent": null,
+      "summary": "UniGCS、S.BUS、融合飞控、UART+ArduPilot、AI跟飞"
+    },
+    {
+      "id": 9,
+      "chapter_no": "5",
+      "title": "视频输出",
+      "parent": null,
+      "summary": "UniGCS/PotPlayer/EasyPlayer、常用地址、排障"
+    },
+    {
+      "id": 10,
+      "chapter_no": "6",
+      "title": "激光测距",
+      "parent": null,
+      "summary": "测距使用说明"
+    },
+    {
+      "id": 11,
+      "chapter_no": "7",
+      "title": "热成像",
+      "parent": null,
+      "summary": "测温、环境修正、伪彩、超分、增益、原始温度公式"
+    },
+    {
+      "id": 12,
+      "chapter_no": "8",
+      "title": "UniGCS APP",
+      "parent": null,
+      "summary": "主界面与功能列表"
+    },
+    {
+      "id": 13,
+      "chapter_no": "9",
+      "title": "固件升级与加速度校准",
+      "parent": null,
+      "summary": "TF卡/APP升级、校准"
+    },
+    {
+      "id": 14,
+      "chapter_no": "10",
+      "title": "售后与保修",
+      "parent": null,
+      "summary": "退换货与保修条款"
+    }
+  ],
+  "specs": [
+    {
+      "id": 1,
+      "category": "整体",
+      "name": "尺寸(含快拆爪)",
+      "value": "141.5×141.5×169",
+      "unit": "mm",
+      "notes": null
+    },
+    {
+      "id": 2,
+      "category": "整体",
+      "name": "尺寸(不含快拆爪)",
+      "value": "90×102.5×128",
+      "unit": "mm",
+      "notes": null
+    },
+    {
+      "id": 3,
+      "category": "整体",
+      "name": "重量(含快拆爪+拓展坞)",
+      "value": "533.5±5",
+      "unit": "g",
+      "notes": null
+    },
+    {
+      "id": 4,
+      "category": "整体",
+      "name": "重量(不含快拆爪)",
+      "value": "405±5",
+      "unit": "g",
+      "notes": null
+    },
+    {
+      "id": 5,
+      "category": "整体",
+      "name": "平均功耗",
+      "value": "11.4",
+      "unit": "W",
+      "notes": "26V 静止"
+    },
+    {
+      "id": 6,
+      "category": "整体",
+      "name": "防护等级",
+      "value": "IP54",
+      "unit": null,
+      "notes": "IEC 60529 实验室条件，非永久"
+    },
+    {
+      "id": 7,
+      "category": "整体",
+      "name": "环境温度",
+      "value": "-20 ~ 50",
+      "unit": "℃",
+      "notes": null
+    },
+    {
+      "id": 8,
+      "category": "整体",
+      "name": "存储温度",
+      "value": "-20 ~ 60",
+      "unit": "℃",
+      "notes": null
+    },
+    {
+      "id": 9,
+      "category": "整体",
+      "name": "最大空速",
+      "value": "极限140 / 巡航120",
+      "unit": "km/h",
+      "notes": "实验室"
+    },
+    {
+      "id": 10,
+      "category": "整体",
+      "name": "控制输入",
+      "value": "S.Bus / UART / 以太网 TCP·UDP",
+      "unit": null,
+      "notes": null
+    },
+    {
+      "id": 11,
+      "category": "整体",
+      "name": "视频输出",
+      "value": "以太网口",
+      "unit": null,
+      "notes": "RTSP"
+    },
+    {
+      "id": 12,
+      "category": "整体",
+      "name": "工作电压",
+      "value": "10-26",
+      "unit": "V",
+      "notes": "3-6S 独立供电，供电≥5A"
+    },
+    {
+      "id": 13,
+      "category": "相机",
+      "name": "光学变焦",
+      "value": "11",
+      "unit": "x",
+      "notes": null
+    },
+    {
+      "id": 14,
+      "category": "相机",
+      "name": "混合变焦",
+      "value": "165",
+      "unit": "x",
+      "notes": null
+    },
+    {
+      "id": 15,
+      "category": "相机",
+      "name": "AI算力",
+      "value": "10",
+      "unit": "TOPS",
+      "notes": null
+    },
+    {
+      "id": 16,
+      "category": "云台",
+      "name": "增稳轴",
+      "value": "航向/俯仰/横滚",
+      "unit": null,
+      "notes": null
+    },
+    {
+      "id": 17,
+      "category": "云台",
+      "name": "角度抖动量",
+      "value": "0.01",
+      "unit": "°",
+      "notes": null
+    },
+    {
+      "id": 18,
+      "category": "云台",
+      "name": "可控航向",
+      "value": "360×N",
+      "unit": "°",
+      "notes": "无限位"
+    },
+    {
+      "id": 19,
+      "category": "云台",
+      "name": "可控俯仰",
+      "value": "-90 ~ 20",
+      "unit": "°",
+      "notes": "FAQ另写-90~-20，以手册技术参数为准"
+    },
+    {
+      "id": 20,
+      "category": "云台",
+      "name": "机械横滚",
+      "value": "-60 ~ +60",
+      "unit": "°",
+      "notes": null
+    },
+    {
+      "id": 21,
+      "category": "云台",
+      "name": "机械俯仰",
+      "value": "-120 ~ +60",
+      "unit": "°",
+      "notes": null
+    },
+    {
+      "id": 22,
+      "category": "云台",
+      "name": "工作模式",
+      "value": "跟随 / 锁定 / FPV",
+      "unit": null,
+      "notes": "机头模式不支持锁定与AI跟踪"
+    },
+    {
+      "id": 23,
+      "category": "广角",
+      "name": "传感器",
+      "value": "1/2\" CMOS 4800万",
+      "unit": null,
+      "notes": null
+    },
+    {
+      "id": 24,
+      "category": "广角",
+      "name": "焦距",
+      "value": "4.5 (等效24)",
+      "unit": "mm",
+      "notes": "f/2.8"
+    },
+    {
+      "id": 25,
+      "category": "广角",
+      "name": "DFOV",
+      "value": "84",
+      "unit": "°",
+      "notes": null
+    },
+    {
+      "id": 26,
+      "category": "广角",
+      "name": "录像最高",
+      "value": "3840×2160@30fps",
+      "unit": null,
+      "notes": "H.265 MP4"
+    },
+    {
+      "id": 27,
+      "category": "广角",
+      "name": "拍照最高",
+      "value": "8000×6000",
+      "unit": null,
+      "notes": "JPG"
+    },
+    {
+      "id": 28,
+      "category": "变焦",
+      "name": "传感器",
+      "value": "1/2\" CMOS 4800万",
+      "unit": null,
+      "notes": null
+    },
+    {
+      "id": 29,
+      "category": "变焦",
+      "name": "焦距",
+      "value": "15-50 (等效81-270±5%)",
+      "unit": "mm",
+      "notes": "f/3.8-f/4.4"
+    },
+    {
+      "id": 30,
+      "category": "变焦",
+      "name": "FOV宽端",
+      "value": "28.98D / 23.48H / 17.81V",
+      "unit": "°",
+      "notes": null
+    },
+    {
+      "id": 31,
+      "category": "变焦",
+      "name": "FOV长端",
+      "value": "9.06D / 7.29H / 5.49V",
+      "unit": "°",
+      "notes": null
+    },
+    {
+      "id": 32,
+      "category": "激光",
+      "name": "波长",
+      "value": "905",
+      "unit": "nm",
+      "notes": "Class 3R"
+    },
+    {
+      "id": 33,
+      "category": "激光",
+      "name": "测距范围",
+      "value": "5-1200",
+      "unit": "m",
+      "notes": "大楼场景"
+    },
+    {
+      "id": 34,
+      "category": "激光",
+      "name": "精度",
+      "value": "±1",
+      "unit": "m",
+      "notes": null
+    },
+    {
+      "id": 35,
+      "category": "激光",
+      "name": "频率",
+      "value": "3Hz(5-45m); 0.75-3Hz(45-1200m)",
+      "unit": null,
+      "notes": null
+    },
+    {
+      "id": 36,
+      "category": "红外",
+      "name": "传感器",
+      "value": "氧化钒非制冷 12um",
+      "unit": null,
+      "notes": "640×512"
+    },
+    {
+      "id": 37,
+      "category": "红外",
+      "name": "镜头",
+      "value": "18mm f/1.1",
+      "unit": null,
+      "notes": "DFOV 31°"
+    },
+    {
+      "id": 38,
+      "category": "红外",
+      "name": "数字变焦",
+      "value": "8",
+      "unit": "x",
+      "notes": null
+    },
+    {
+      "id": 39,
+      "category": "红外",
+      "name": "NETD",
+      "value": "≤50",
+      "unit": "mK",
+      "notes": "@25℃ F#1.0"
+    },
+    {
+      "id": 40,
+      "category": "红外",
+      "name": "波长",
+      "value": "8~14",
+      "unit": "μm",
+      "notes": null
+    },
+    {
+      "id": 41,
+      "category": "红外",
+      "name": "测温高增益",
+      "value": "-20~+150",
+      "unit": "℃",
+      "notes": "±2℃或±2%"
+    },
+    {
+      "id": 42,
+      "category": "红外",
+      "name": "测温低增益",
+      "value": "0~+550",
+      "unit": "℃",
+      "notes": "±3℃或±3%"
+    },
+    {
+      "id": 43,
+      "category": "网络",
+      "name": "码流协议",
+      "value": "RTSP 主副双路",
+      "unit": null,
+      "notes": null
+    },
+    {
+      "id": 44,
+      "category": "网络",
+      "name": "编码",
+      "value": "H.265 / H.264",
+      "unit": null,
+      "notes": null
+    },
+    {
+      "id": 45,
+      "category": "存储",
+      "name": "卡类型",
+      "value": "FAT32 / exFAT",
+      "unit": null,
+      "notes": "建议 U3/Class10/V30+"
+    },
+    {
+      "id": 46,
+      "category": "存储",
+      "name": "4K码率",
+      "value": "40",
+      "unit": "Mbps",
+      "notes": "H.265"
+    },
+    {
+      "id": 47,
+      "category": "快拆爪",
+      "name": "尺寸",
+      "value": "141.5×141.5×63",
+      "unit": "mm",
+      "notes": null
+    },
+    {
+      "id": 48,
+      "category": "快拆爪",
+      "name": "重量",
+      "value": "123±5",
+      "unit": "g",
+      "notes": "不含拓展坞"
+    },
+    {
+      "id": 49,
+      "category": "光学切换",
+      "name": "广角变倍区间",
+      "value": "1.0 ~ 3.2",
+      "unit": "x",
+      "notes": "FAQ：可见光下"
+    },
+    {
+      "id": 50,
+      "category": "光学切换",
+      "name": "变焦变倍区间",
+      "value": "3.3 ~ 11",
+      "unit": "x",
+      "notes": "FAQ：可见光下"
+    }
+  ],
+  "endpoints": [
+    {
+      "id": 1,
+      "kind": "ip_primary",
+      "uri": "192.168.144.25",
+      "notes": "默认主 IP"
+    },
+    {
+      "id": 2,
+      "kind": "ip_secondary",
+      "uri": "192.168.144.80",
+      "notes": "副 IP / 忘记主IP时的复位出图入口"
+    },
+    {
+      "id": 3,
+      "kind": "rtsp_main",
+      "uri": "rtsp://192.168.144.25:8554/video1",
+      "notes": "主码流"
+    },
+    {
+      "id": 4,
+      "kind": "rtsp_sub",
+      "uri": "rtsp://192.168.144.25:8554/video2",
+      "notes": "副码流"
+    },
+    {
+      "id": 5,
+      "kind": "rtsp_secondary_ip",
+      "uri": "rtsp://192.168.144.80:8554/video1",
+      "notes": "副IP主码流；改IP后需重启才可用"
+    },
+    {
+      "id": 6,
+      "kind": "sdk_udp_tcp",
+      "uri": "192.168.144.25:37260",
+      "notes": "外部SDK"
+    }
+  ],
+  "faq": [
+    {
+      "id": 1,
+      "q_no": 1,
+      "question": "广角镜头怎么打开？",
+      "answer": "可见光下变倍 1–3.2 为广角，3.3–11 为变焦镜头。"
+    },
+    {
+      "id": 2,
+      "q_no": 2,
+      "question": "主副码流能同时录制拍照吗？",
+      "answer": "可以，在 UniGCS 里设置。"
+    },
+    {
+      "id": 3,
+      "q_no": 3,
+      "question": "减震爪能装 ZT30/ZR30 镜头吗？",
+      "answer": "可以；但 MT11 镜头本体不能装到 ZT30/ZR30 减震爪上。"
+    },
+    {
+      "id": 4,
+      "q_no": 4,
+      "question": "官网固件为什么只有一个？",
+      "answer": "整合了相机、变焦板、云台固件，升级一个即可。"
+    },
+    {
+      "id": 5,
+      "q_no": 5,
+      "question": "有几种升级方式？",
+      "answer": "1) UniGCS 一键升级；2) 固件放入内存卡插入吊舱升级。"
+    },
+    {
+      "id": 6,
+      "q_no": 6,
+      "question": "热成像超分效果？",
+      "answer": "2x 视频超分：640×512→1280×1024；照片超分可达 1280×1024 或 2560×2048。"
+    },
+    {
+      "id": 7,
+      "q_no": 7,
+      "question": "镜头像素？",
+      "answer": "有效像素 4800 万。"
+    },
+    {
+      "id": 8,
+      "q_no": 8,
+      "question": "AI 能否用第三方数据？",
+      "answer": "需用 UniAI Studio 训练后导入。"
+    },
+    {
+      "id": 9,
+      "q_no": 9,
+      "question": "抗风数据？",
+      "answer": "极限 140km/h、巡航 120km/h（实验室）。"
+    },
+    {
+      "id": 10,
+      "q_no": 10,
+      "question": "支持哪些融合飞控固件？",
+      "answer": "ArduPilot；部分闭源飞控。"
+    },
+    {
+      "id": 11,
+      "q_no": 11,
+      "question": "是否适配其他链路出图？",
+      "answer": "第三方支持 RTSP 拉流即可。"
+    },
+    {
+      "id": 12,
+      "q_no": 12,
+      "question": "激光测距距离？",
+      "answer": "5–1200 米。"
+    },
+    {
+      "id": 13,
+      "q_no": 13,
+      "question": "适配场景？",
+      "answer": "无人机、车、船、机器狗。"
+    },
+    {
+      "id": 14,
+      "q_no": 14,
+      "question": "是否支持航测？",
+      "answer": "可做基础航测。"
+    },
+    {
+      "id": 15,
+      "q_no": 15,
+      "question": "是否支持二次开发？",
+      "answer": "可以，参考官网 SDK。"
+    },
+    {
+      "id": 16,
+      "q_no": 16,
+      "question": "AI 算力？",
+      "answer": "10T。"
+    },
+    {
+      "id": 17,
+      "q_no": 17,
+      "question": "横滚轴电机能控制吗？",
+      "answer": "不可以。"
+    },
+    {
+      "id": 18,
+      "q_no": 18,
+      "question": "支持什么协议控制？",
+      "answer": "UDP/TCP、UART、S.BUS。"
+    },
+    {
+      "id": 19,
+      "q_no": 19,
+      "question": "视频流协议？",
+      "answer": "RTSP。"
+    },
+    {
+      "id": 20,
+      "q_no": 20,
+      "question": "防护等级？",
+      "answer": "IP54。"
+    },
+    {
+      "id": 21,
+      "q_no": 21,
+      "question": "拉流地址？",
+      "answer": "主：rtsp://192.168.144.25:8554/video1；副：.../video2。"
+    },
+    {
+      "id": 22,
+      "q_no": 22,
+      "question": "可以更改 IP 吗？",
+      "answer": "需连接 UniGCS 更改。"
+    },
+    {
+      "id": 23,
+      "q_no": 23,
+      "question": "可转动角度？",
+      "answer": "俯仰 -90°~-20°、航向 360°无限（FAQ 表述；手册技术参数俯仰为 -90°~20°）。"
+    },
+    {
+      "id": 24,
+      "q_no": 24,
+      "question": "支持 HDMI 出图吗？",
+      "answer": "不可以。"
+    },
+    {
+      "id": 25,
+      "q_no": 25,
+      "question": "照片如何显示坐标？",
+      "answer": "需连接飞控并配置对应参数。"
+    },
+    {
+      "id": 26,
+      "q_no": 26,
+      "question": "S.BUS 无法控制？",
+      "answer": "查线序、通道设置、确认 S.BUS 1.0。"
+    },
+    {
+      "id": 27,
+      "q_no": 27,
+      "question": "支持大疆无人机吗？",
+      "answer": "不支持。"
+    },
+    {
+      "id": 28,
+      "q_no": 28,
+      "question": "热成像无法变倍？",
+      "answer": "检查是否打开热成像联动变倍。"
+    },
+    {
+      "id": 29,
+      "q_no": 29,
+      "question": "变倍>11 拍照仍是 11 倍？",
+      "answer": "若打开 8K 拍照，上限 11 倍。"
+    },
+    {
+      "id": 30,
+      "q_no": 30,
+      "question": "广角和变焦能分开拉流吗？",
+      "answer": "不可以。"
+    },
+    {
+      "id": 31,
+      "q_no": 31,
+      "question": "NETD？",
+      "answer": "≤50mK@25℃，F#1.0。"
+    },
+    {
+      "id": 32,
+      "q_no": 32,
+      "question": "内存卡类型？",
+      "answer": "FAT32、exFAT。"
+    },
+    {
+      "id": 33,
+      "q_no": 33,
+      "question": "改 IP 后忘记怎么办？",
+      "answer": "UniGCS 扫描；或拉 rtsp://192.168.144.80:8554/video1 后复位。"
+    },
+    {
+      "id": 34,
+      "q_no": 34,
+      "question": "录像编码？",
+      "answer": "H.265。"
+    }
+  ],
+  "firmware_releases": [
+    {
+      "id": 1,
+      "release_date": "2026-07-27",
+      "package_version": "1.0.5",
+      "camera_version": "1.0.12",
+      "gimbal_version": "1.0.6",
+      "unigcs_version": "3.0.5",
+      "changes": "优化异常振动；修复其他已知问题"
+    },
+    {
+      "id": 2,
+      "release_date": "2026-05-27",
+      "package_version": "1.0.2",
+      "camera_version": "1.0.11",
+      "gimbal_version": "1.0.5",
+      "unigcs_version": "3.0.5",
+      "changes": "新增：AI跟飞、双击对准、海外车牌识别、S.BUS控制画面显示模式；SDK增强（时间/AI待选目标/安装方式自适应姿态/去雾与夜视开关）；修复偶现无法变倍"
+    },
+    {
+      "id": 3,
+      "release_date": "2025-11-21",
+      "package_version": "0.0.9",
+      "camera_version": "1.0.6",
+      "gimbal_version": "0.1.17",
+      "unigcs_version": "2.0.5",
+      "changes": "修复 MAVLink 转发 S.BUS 与 S.BUS 线同时连接冲突；修复已知问题"
+    },
+    {
+      "id": 4,
+      "release_date": "2025-11-04",
+      "package_version": "0.0.8",
+      "camera_version": "1.0.5",
+      "gimbal_version": "0.1.16",
+      "unigcs_version": "2.0.5",
+      "changes": "新增：UART MAVLink/SIYI协议控云台；SDK控制；EXIF写入；推流H.264/H.265切换；TF卡信息显示"
+    }
+  ],
+  "ardupilot_params": [
+    {
+      "id": 1,
+      "protocol": "MAVLink2",
+      "param": "SERIAL1_BAUD",
+      "value": "115",
+      "meaning": "115200",
+      "notes": "以 TELEM1 为例"
+    },
+    {
+      "id": 2,
+      "protocol": "MAVLink2",
+      "param": "SERIAL1_PROTOCOL",
+      "value": "2",
+      "meaning": "MAVLink2",
+      "notes": null
+    },
+    {
+      "id": 3,
+      "protocol": "MAVLink2",
+      "param": "CAM1_TYPE",
+      "value": "6",
+      "meaning": "MAVLinkCamV2",
+      "notes": null
+    },
+    {
+      "id": 4,
+      "protocol": "MAVLink2",
+      "param": "MNT1_TYPE",
+      "value": "4",
+      "meaning": "SToRM32 MAVLink",
+      "notes": null
+    },
+    {
+      "id": 5,
+      "protocol": "MAVLink2",
+      "param": "MNT1_RC_RATE",
+      "value": "90",
+      "meaning": null,
+      "notes": "写入后设置"
+    },
+    {
+      "id": 6,
+      "protocol": "MAVLink2",
+      "param": "MNT1_PITCH_MAX",
+      "value": "20",
+      "meaning": "deg",
+      "notes": null
+    },
+    {
+      "id": 7,
+      "protocol": "MAVLink2",
+      "param": "MNT1_PITCH_MIN",
+      "value": "-90",
+      "meaning": "deg",
+      "notes": null
+    },
+    {
+      "id": 8,
+      "protocol": "MAVLink2",
+      "param": "MNT1_YAW_MAX",
+      "value": "180",
+      "meaning": "deg",
+      "notes": null
+    },
+    {
+      "id": 9,
+      "protocol": "MAVLink2",
+      "param": "MNT1_YAW_MIN",
+      "value": "-180",
+      "meaning": "deg",
+      "notes": null
+    },
+    {
+      "id": 10,
+      "protocol": "Private",
+      "param": "ArduPilot固件",
+      "value": "≥4.6.0",
+      "meaning": null,
+      "notes": "否则无位置信息/激光经纬度"
+    },
+    {
+      "id": 11,
+      "protocol": "Private",
+      "param": "吊舱固件",
+      "value": "≥0.0.8",
+      "meaning": null,
+      "notes": "相机≥1.0.5 云台≥0.1.6"
+    },
+    {
+      "id": 12,
+      "protocol": "MAVLink2",
+      "param": "ArduPilot固件",
+      "value": "≥4.4.4",
+      "meaning": null,
+      "notes": null
+    },
+    {
+      "id": 13,
+      "protocol": "Private",
+      "param": "SERIAL1_BAUD",
+      "value": "115",
+      "meaning": "115200",
+      "notes": "TELEM1 示例"
+    },
+    {
+      "id": 14,
+      "protocol": "Private",
+      "param": "SERIAL1_PROTOCOL",
+      "value": "8",
+      "meaning": "Gimbal",
+      "notes": null
+    },
+    {
+      "id": 15,
+      "protocol": "Private",
+      "param": "CAM1_TYPE",
+      "value": "4",
+      "meaning": "Mount(Siyi/Topotek/Viewpro/Xacti)",
+      "notes": null
+    },
+    {
+      "id": 16,
+      "protocol": "Private",
+      "param": "MNT1_TYPE",
+      "value": "8",
+      "meaning": "SIYI",
+      "notes": null
+    },
+    {
+      "id": 17,
+      "protocol": "Private",
+      "param": "MNT1_RC_RATE",
+      "value": "90",
+      "meaning": null,
+      "notes": null
+    },
+    {
+      "id": 18,
+      "protocol": "Private",
+      "param": "MNT1_PITCH_MAX",
+      "value": "20",
+      "meaning": "deg",
+      "notes": null
+    },
+    {
+      "id": 19,
+      "protocol": "Private",
+      "param": "MNT1_PITCH_MIN",
+      "value": "-90",
+      "meaning": "deg",
+      "notes": null
+    },
+    {
+      "id": 20,
+      "protocol": "Private",
+      "param": "MNT1_YAW_MAX",
+      "value": "180",
+      "meaning": "deg",
+      "notes": null
+    },
+    {
+      "id": 21,
+      "protocol": "Private",
+      "param": "MNT1_YAW_MIN",
+      "value": "-180",
+      "meaning": "deg",
+      "notes": null
+    }
+  ],
+  "safety_notes": [
+    {
+      "id": 1,
+      "level": "禁止",
+      "text": "禁止使用思翼 ZT30/ZR30 减震快拆爪安装 MT11"
+    },
+    {
+      "id": 2,
+      "level": "禁止",
+      "text": "禁止红外镜头对准太阳、熔岩、激光等强能量源"
+    },
+    {
+      "id": 3,
+      "level": "禁止",
+      "text": "禁止超过工作电压范围供电"
+    },
+    {
+      "id": 4,
+      "level": "禁止",
+      "text": "禁止擅自拆卸改装；禁止军事用途"
+    },
+    {
+      "id": 5,
+      "level": "注意",
+      "text": "勿带电插拔 TF / 拆装吊舱"
+    },
+    {
+      "id": 6,
+      "level": "注意",
+      "text": "关机后间隔 ≥30s 再重启"
+    },
+    {
+      "id": 7,
+      "level": "注意",
+      "text": "供电设备应满足 5A 过流"
+    },
+    {
+      "id": 8,
+      "level": "注意",
+      "text": "使用后放入防爆箱并放干燥剂"
+    },
+    {
+      "id": 9,
+      "level": "注意",
+      "text": "ZT30/ZR30 用 MT11 快拆爪时起始方向与 MT11 相差 90°"
+    },
+    {
+      "id": 10,
+      "level": "危险",
+      "text": "闲置远离儿童；避免 >60℃ 或 <-20℃"
+    }
+  ],
+  "interfaces": [
+    {
+      "id": 1,
+      "name": "拓展坞① UART",
+      "role": "飞控融合/控制",
+      "details": "接飞控 TELEM：TX↔RX，RX↔TX；支持 MAVLink / 私有协议"
+    },
+    {
+      "id": 2,
+      "name": "拓展坞② 以太网",
+      "role": "视频与SDK",
+      "details": "出图、TCP/UDP SDK 37260"
+    },
+    {
+      "id": 3,
+      "name": "拓展坞③ S.BUS 输入",
+      "role": "遥控通道",
+      "details": "接天空端 S.BUS，可一分二转飞控"
+    },
+    {
+      "id": 4,
+      "name": "拓展坞④ 供电",
+      "role": "独立供电",
+      "details": "MX1.25 4P→XT30，10-26V，≥5A"
+    },
+    {
+      "id": 5,
+      "name": "TYPE-C 拓展坞针脚",
+      "role": "物理接口",
+      "details": "含差分以太网、VBUS、S.BUS、UART 等（见手册针脚表）"
+    },
+    {
+      "id": 6,
+      "name": "TF 卡槽",
+      "role": "存储",
+      "details": "拍照录像；升级时可放固件包"
+    }
+  ]
+}

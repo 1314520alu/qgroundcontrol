@@ -98,7 +98,7 @@ set_target_properties(${CMAKE_PROJECT_NAME}
         QT_ANDROID_PACKAGE_SOURCE_DIR "${QGC_ANDROID_PACKAGE_SOURCE_DIR}"
         QT_ANDROID_VERSION_NAME "${CMAKE_PROJECT_VERSION}"
         QT_ANDROID_VERSION_CODE ${ANDROID_VERSION_CODE}
-        QT_ANDROID_APP_NAME "${CMAKE_PROJECT_NAME}"
+        QT_ANDROID_APP_NAME "${QGC_APP_NAME}"
         QT_ANDROID_APP_ICON "@mipmap/ic_launcher"
         QT_ANDROID_LEGACY_PACKAGING $<BOOL:${QGC_ENABLE_ASAN}>
         QT_QML_ROOT_PATH "${CMAKE_SOURCE_DIR}"
@@ -173,6 +173,13 @@ qt_add_android_permission(${CMAKE_PROJECT_NAME}
 )
 qt_add_android_permission(${CMAKE_PROJECT_NAME}
     NAME android.permission.ACCESS_NETWORK_STATE
+)
+qt_add_android_permission(${CMAKE_PROJECT_NAME}
+    NAME android.permission.CHANGE_NETWORK_STATE
+)
+# Used to mirror SIYI static ethernet settings when the app is allowed to write them.
+qt_add_android_permission(${CMAKE_PROJECT_NAME}
+    NAME android.permission.WRITE_SETTINGS
 )
 
 qt_add_android_permission(${CMAKE_PROJECT_NAME}

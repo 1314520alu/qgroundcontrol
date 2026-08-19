@@ -19,6 +19,7 @@ Button {
     property string imageResource:  "/qmlimages/subMenuButtonImage.png"     ///< Button image
     property bool   largeSize:      false
     property bool   showHighlight:  control.pressed | control.checked
+    property bool   colorizeImage:  true                                    ///< false: keep original image colors (e.g. brand avatar)
 
     property size   sourceSize:     Qt.size(ScreenTools.defaultFontPixelHeight * 2, ScreenTools.defaultFontPixelHeight * 2)
 
@@ -48,6 +49,20 @@ Button {
             opacity:        showHighlight ? 1 : control.enabled && control.hovered ? .2 : 0
         }
 
+        Image {
+            id:                     imageRaster
+            anchors.leftMargin:     ScreenTools.defaultFontPixelWidth
+            anchors.left:           parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            width:                  ScreenTools.defaultFontPixelHeight * 2
+            height:                 ScreenTools.defaultFontPixelHeight * 2
+            fillMode:               Image.PreserveAspectFit
+            mipmap:                 true
+            visible:                !control.colorizeImage
+            source:                 visible ? control.imageResource : ""
+            sourceSize:             control.sourceSize
+        }
+
         QGCColoredImage {
             id:                     image
             anchors.leftMargin:     ScreenTools.defaultFontPixelWidth
@@ -57,15 +72,16 @@ Button {
             height:                 ScreenTools.defaultFontPixelHeight * 2
             fillMode:               Image.PreserveAspectFit
             mipmap:                 true
+            visible:                control.colorizeImage
             color:                  imageColor ? imageColor : (control.setupComplete ? titleBar.color : "red")
-            source:                 control.imageResource
+            source:                 visible ? control.imageResource : ""
             sourceSize:             control.sourceSize
         }
 
         QGCLabel {
             id:                     titleBar
             anchors.leftMargin:     ScreenTools.defaultFontPixelWidth
-            anchors.left:           image.right
+            anchors.left:           control.colorizeImage ? image.right : imageRaster.right
             anchors.verticalCenter: parent.verticalCenter
             verticalAlignment:      TextEdit.AlignVCenter
             color:                  showHighlight ? qgcPal.buttonHighlightText : qgcPal.buttonText

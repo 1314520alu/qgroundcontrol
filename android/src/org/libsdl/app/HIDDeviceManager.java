@@ -68,9 +68,11 @@ public class HIDDeviceManager {
             if (action.equals(UsbManager.ACTION_USB_DEVICE_ATTACHED)) {
                 UsbDevice usbDevice = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
                 handleUsbDeviceAttached(usbDevice);
+                org.mavlink.qgroundcontrol.QGCSiyiEthernetHelper.onUsbTopologyChanged();
             } else if (action.equals(UsbManager.ACTION_USB_DEVICE_DETACHED)) {
                 UsbDevice usbDevice = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
                 handleUsbDeviceDetached(usbDevice);
+                org.mavlink.qgroundcontrol.QGCSiyiEthernetHelper.onUsbTopologyChanged();
             } else if (action.equals(HIDDeviceManager.ACTION_USB_PERMISSION)) {
                 UsbDevice usbDevice = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
                 handleUsbDevicePermission(usbDevice, intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false));
@@ -312,6 +314,10 @@ public class HIDDeviceManager {
     }
 
     private void handleUsbDeviceAttached(UsbDevice usbDevice) {
+        if (org.mavlink.qgroundcontrol.QGCSiyiEthernetHelper.isRadioEthernetUsbDevice(usbDevice)) {
+            Log.i(TAG, "Ignoring SIYI radio ethernet USB device for HID");
+            return;
+        }
         connectHIDDeviceUSB(usbDevice);
     }
 

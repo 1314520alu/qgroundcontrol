@@ -46,6 +46,7 @@ class GstVideoReceiver : public VideoReceiver
 {
     Q_OBJECT
     Q_PROPERTY(QString decoderName       READ decoderName       NOTIFY decoderStatsChanged)
+    Q_PROPERTY(bool    decoderIsHardware READ decoderIsHardware NOTIFY decoderStatsChanged)
     Q_PROPERTY(quint64 processedFrames   READ processedFrames   NOTIFY decoderStatsChanged)
     Q_PROPERTY(quint64 droppedFrames     READ droppedFrames     NOTIFY decoderStatsChanged)
     Q_PROPERTY(qint64  currentJitterNs   READ currentJitterNs   NOTIFY decoderStatsChanged)
@@ -56,7 +57,8 @@ public:
     explicit GstVideoReceiver(QObject *parent = nullptr);
     ~GstVideoReceiver();
 
-    QString decoderName()     const { QMutexLocker locker(&_decoderNameMutex); return _decoderName; }
+    QString decoderName() const override;
+    bool decoderIsHardware() const override;
     quint64 processedFrames() const { return _processedFrames.load(std::memory_order_relaxed); }
     quint64 droppedFrames()   const { return _droppedFrames.load(std::memory_order_relaxed); }
     qint64  currentJitterNs() const { return _currentJitterNs.load(std::memory_order_relaxed); }
@@ -76,9 +78,6 @@ public slots:
     /// CacheLocation/qgc-pipeline-dot for field-bug-report bundles. No-op when
     /// the pipeline isn't running. Callable from QML for a debug menu.
     Q_INVOKABLE void dumpPipelineGraph(const QString &tag = QStringLiteral("manual"));
-
-signals:
-    void decoderStatsChanged();
 
 private slots:
     void _watchdog();
@@ -145,6 +144,7 @@ private:
 
     mutable QMutex _decoderNameMutex;  // QString refcount isn't thread-safe across reader/writer threads
     QString _decoderName;
+    bool _decoderIsHardware = false;
     std::atomic<quint64> _processedFrames{0};   // written on streaming thread (QOS), read on GUI
     std::atomic<quint64> _droppedFrames{0};
     std::atomic<qint64>  _currentJitterNs{0};

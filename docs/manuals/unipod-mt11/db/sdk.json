@@ -1,0 +1,1517 @@
+{
+  "meta": {
+    "product": "UniPod MT11",
+    "vendor": "Reebot / 锐川",
+    "sdk_version": "V0.1.0",
+    "sdk_date": "2025-09-16",
+    "web_server_version": "V1.0",
+    "source_sdk_pdf": "UniPod-MT11-SDK-V0.1.0.pdf",
+    "source_web_pdf": "UniPod-MT11-Web-Server.pdf",
+    "source_manual_pdf": "UniPod-MT11-User-Manual-v1.2.pdf",
+    "download_page_zh": "https://www.reebot.com/index.php?asd=491&id=downloads2",
+    "download_page_en": "https://reebot.com/en/index.php?asd=481&id=downloads2",
+    "default_ip": "192.168.144.25",
+    "sdk_port": "37260",
+    "rtsp_primary": "rtsp://192.168.144.25:8554/video1",
+    "endian": "little",
+    "stx": "0x6655",
+    "crc": "CRC16-CCITT poly 0x1021 init 0",
+    "rtsp_secondary": "rtsp://192.168.144.25:8554/video2",
+    "manual_version": "V2.0"
+  },
+  "commands": [
+    {
+      "cmd_id": 0,
+      "cmd_hex": "0x00",
+      "name": "TCP心跳",
+      "name_en": "TCP Heartbeat",
+      "category": "link",
+      "direction": "request",
+      "need_ack": 0,
+      "mt11_notes": "仅 TCP",
+      "description": "TCP 连接保活"
+    },
+    {
+      "cmd_id": 1,
+      "cmd_hex": "0x01",
+      "name": "请求固件版本号",
+      "name_en": "Firmware Version",
+      "category": "system",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": "无变焦固件版本；相机启动约30s内版本为0",
+      "description": "查询相机/云台/变焦固件版本"
+    },
+    {
+      "cmd_id": 2,
+      "cmd_hex": "0x02",
+      "name": "请求云台硬件ID",
+      "name_en": "Hardware ID",
+      "category": "system",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": "前两位产品编码，8A=MT11",
+      "description": "返回12字节硬件ID字符串"
+    },
+    {
+      "cmd_id": 4,
+      "cmd_hex": "0x04",
+      "name": "自动对焦",
+      "name_en": "Auto Focus",
+      "category": "camera",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": "光学变焦画面；双拼时x取半宽",
+      "description": "点选自动对焦"
+    },
+    {
+      "cmd_id": 5,
+      "cmd_hex": "0x05",
+      "name": "手动变倍自动对焦",
+      "name_en": "Manual Zoom",
+      "category": "camera",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": null,
+      "description": "连续变倍：1放大/-1缩小/0停止"
+    },
+    {
+      "cmd_id": 6,
+      "cmd_hex": "0x06",
+      "name": "手动对焦",
+      "name_en": "Manual Focus",
+      "category": "camera",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": "仅光学变焦产品",
+      "description": "远/近/停"
+    },
+    {
+      "cmd_id": 7,
+      "cmd_hex": "0x07",
+      "name": "云台转向",
+      "name_en": "Gimbal Speed",
+      "category": "gimbal",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": null,
+      "description": "速度控制 yaw/pitch -100..100，松手发0"
+    },
+    {
+      "cmd_id": 8,
+      "cmd_hex": "0x08",
+      "name": "一键回中",
+      "name_en": "Center",
+      "category": "gimbal",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": null,
+      "description": "回中/居中朝下/居中/朝下"
+    },
+    {
+      "cmd_id": 10,
+      "cmd_hex": "0x0A",
+      "name": "请求相机系统信息",
+      "name_en": "Camera System Info",
+      "category": "system",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": null,
+      "description": "HDR/录像/云台模式/安装方向/输出/联动变倍"
+    },
+    {
+      "cmd_id": 11,
+      "cmd_hex": "0x0B",
+      "name": "回传功能反馈信息",
+      "name_en": "Function Feedback",
+      "category": "system",
+      "direction": "push",
+      "need_ack": 0,
+      "mt11_notes": "相机主动推送，无需请求",
+      "description": "拍照/录像/HDR反馈"
+    },
+    {
+      "cmd_id": 12,
+      "cmd_hex": "0x0C",
+      "name": "拍照录像与模式",
+      "name_en": "Photo/Video/Mode",
+      "category": "camera",
+      "direction": "request",
+      "need_ack": 0,
+      "mt11_notes": "无ACK；部分功能暂不支持",
+      "description": "拍照/录像/运动模式/联动变倍等"
+    },
+    {
+      "cmd_id": 13,
+      "cmd_hex": "0x0D",
+      "name": "请求云台姿态数据",
+      "name_en": "Gimbal Attitude",
+      "category": "gimbal",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": "推荐用0x25按频率推送；值/10=度",
+      "description": "yaw/pitch/roll及角速度"
+    },
+    {
+      "cmd_id": 14,
+      "cmd_hex": "0x0E",
+      "name": "设置云台姿态角度",
+      "name_en": "Set Gimbal Attitude",
+      "category": "gimbal",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": "Pitch MT11: -90~30；角度*10",
+      "description": "绝对角控制"
+    },
+    {
+      "cmd_id": 15,
+      "cmd_hex": "0x0F",
+      "name": "绝对变倍自动对焦",
+      "name_en": "Absolute Zoom",
+      "category": "camera",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": null,
+      "description": "整数+小数部分指定倍数"
+    },
+    {
+      "cmd_id": 16,
+      "cmd_hex": "0x10",
+      "name": "请求视频拼接模式",
+      "name_en": "Get Video Layout",
+      "category": "video",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": null,
+      "description": "主/副码流镜头组合"
+    },
+    {
+      "cmd_id": 17,
+      "cmd_hex": "0x11",
+      "name": "设置视频拼接模式",
+      "name_en": "Set Video Layout",
+      "category": "video",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": "暂仅支持主变焦-副热、主热-副变焦、主变焦拼热-副热",
+      "description": "设置主副码流"
+    },
+    {
+      "cmd_id": 18,
+      "cmd_hex": "0x12",
+      "name": "获取选定点温度",
+      "name_en": "Point Temperature",
+      "category": "thermal",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": "温度/100",
+      "description": "点测温"
+    },
+    {
+      "cmd_id": 19,
+      "cmd_hex": "0x13",
+      "name": "局部测温",
+      "name_en": "Area Temperature",
+      "category": "thermal",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": "电子变倍下建议用返回框",
+      "description": "矩形区域测温"
+    },
+    {
+      "cmd_id": 20,
+      "cmd_hex": "0x14",
+      "name": "全局测温",
+      "name_en": "Global Temperature",
+      "category": "thermal",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": null,
+      "description": "全帧最大最小温度"
+    },
+    {
+      "cmd_id": 21,
+      "cmd_hex": "0x15",
+      "name": "请求激光测距距离",
+      "name_en": "Laser Distance",
+      "category": "laser",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": "单位dm，最小50；需0x32开启；推荐0x25推送；5-1200m",
+      "description": "激光距离"
+    },
+    {
+      "cmd_id": 22,
+      "cmd_hex": "0x16",
+      "name": "请求当前支持的变倍范围",
+      "name_en": "Zoom Range",
+      "category": "camera",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": null,
+      "description": "最大变倍整数/小数"
+    },
+    {
+      "cmd_id": 23,
+      "cmd_hex": "0x17",
+      "name": "请求激光测距目标经纬度",
+      "name_en": "Laser Target LatLon",
+      "category": "laser",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": "degE7 WGS84",
+      "description": "目标经纬度"
+    },
+    {
+      "cmd_id": 24,
+      "cmd_hex": "0x18",
+      "name": "请求当前变倍倍数",
+      "name_en": "Current Zoom",
+      "category": "camera",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": null,
+      "description": "当前变倍"
+    },
+    {
+      "cmd_id": 25,
+      "cmd_hex": "0x19",
+      "name": "请求当前云台模式",
+      "name_en": "Gimbal Mode",
+      "category": "gimbal",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": null,
+      "description": "锁定/跟随/FPV"
+    },
+    {
+      "cmd_id": 26,
+      "cmd_hex": "0x1A",
+      "name": "请求热成像伪彩色",
+      "name_en": "Get Pseudo Color",
+      "category": "thermal",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": null,
+      "description": "色板查询"
+    },
+    {
+      "cmd_id": 27,
+      "cmd_hex": "0x1B",
+      "name": "设置热成像伪彩色",
+      "name_en": "Set Pseudo Color",
+      "category": "thermal",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": null,
+      "description": "色板设置"
+    },
+    {
+      "cmd_id": 32,
+      "cmd_hex": "0x20",
+      "name": "请求相机编码参数",
+      "name_en": "Get Encode Params",
+      "category": "video",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": null,
+      "description": "录像/主/副码流编码参数"
+    },
+    {
+      "cmd_id": 33,
+      "cmd_hex": "0x21",
+      "name": "设置相机编码参数",
+      "name_en": "Set Encode Params",
+      "category": "video",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": "录像流编码暂不可改；码率暂不支持",
+      "description": "H264/H265与分辨率"
+    },
+    {
+      "cmd_id": 34,
+      "cmd_hex": "0x22",
+      "name": "发送飞行器姿态至云台",
+      "name_en": "Send Aircraft Attitude",
+      "category": "fc_bridge",
+      "direction": "request",
+      "need_ack": 0,
+      "mt11_notes": "NED；推荐20-50Hz",
+      "description": "飞控姿态注入"
+    },
+    {
+      "cmd_id": 35,
+      "cmd_hex": "0x23",
+      "name": "发送RC通道至云台",
+      "name_en": "Send RC Channels",
+      "category": "fc_bridge",
+      "direction": "request",
+      "need_ack": 0,
+      "mt11_notes": "暂不使用",
+      "description": "RC通道转发"
+    },
+    {
+      "cmd_id": 36,
+      "cmd_hex": "0x24",
+      "name": "请求飞控发送数据流至云台",
+      "name_en": "Request FC Stream",
+      "category": "fc_bridge",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": "暂不使用",
+      "description": "请求飞控推流"
+    },
+    {
+      "cmd_id": 37,
+      "cmd_hex": "0x25",
+      "name": "请求云台发送数据流",
+      "name_en": "Request Gimbal Stream",
+      "category": "gimbal",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": "激光频率不可设，非0即开",
+      "description": "姿态/激光/磁编/电机电压推送"
+    },
+    {
+      "cmd_id": 38,
+      "cmd_hex": "0x26",
+      "name": "请求云台磁编码角度",
+      "name_en": "Magnetic Encoder Angles",
+      "category": "gimbal",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": "值/10=度；可用0x25推送",
+      "description": "磁编码角度"
+    },
+    {
+      "cmd_id": 42,
+      "cmd_hex": "0x2A",
+      "name": "请求云台电机电压",
+      "name_en": "Motor Voltage",
+      "category": "gimbal",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": "值/1000=V；可用0x25推送",
+      "description": "电机电压"
+    },
+    {
+      "cmd_id": 48,
+      "cmd_hex": "0x30",
+      "name": "设置UTC时间",
+      "name_en": "Set UTC Time",
+      "category": "system",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": "暂不使用",
+      "description": "UNIX us"
+    },
+    {
+      "cmd_id": 49,
+      "cmd_hex": "0x31",
+      "name": "请求云台系统信息",
+      "name_en": "Gimbal Board Info",
+      "category": "laser",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": null,
+      "description": "激光开关状态"
+    },
+    {
+      "cmd_id": 50,
+      "cmd_hex": "0x32",
+      "name": "设置激光测距状态",
+      "name_en": "Set Laser State",
+      "category": "laser",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": null,
+      "description": "开/关激光"
+    },
+    {
+      "cmd_id": 55,
+      "cmd_hex": "0x37",
+      "name": "请求热成像增益模式",
+      "name_en": "Get IR Gain",
+      "category": "thermal",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": null,
+      "description": "低/高增益"
+    },
+    {
+      "cmd_id": 56,
+      "cmd_hex": "0x38",
+      "name": "设置热成像增益模式",
+      "name_en": "Set IR Gain",
+      "category": "thermal",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": null,
+      "description": "低/高增益"
+    },
+    {
+      "cmd_id": 62,
+      "cmd_hex": "0x3E",
+      "name": "发送GPS原始数据至云台",
+      "name_en": "Send GPS Raw",
+      "category": "fc_bridge",
+      "direction": "request",
+      "need_ack": 0,
+      "mt11_notes": null,
+      "description": "飞控GPS注入"
+    },
+    {
+      "cmd_id": 64,
+      "cmd_hex": "0x40",
+      "name": "请求系统时间",
+      "name_en": "Get System Time",
+      "category": "system",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": "暂不使用",
+      "description": "UNIX/boot时间"
+    },
+    {
+      "cmd_id": 72,
+      "cmd_hex": "0x48",
+      "name": "格式化SD卡",
+      "name_en": "Format SD",
+      "category": "storage",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": null,
+      "description": "格式化TF"
+    },
+    {
+      "cmd_id": 73,
+      "cmd_hex": "0x49",
+      "name": "请求TF卡信息",
+      "name_en": "TF Card Info",
+      "category": "storage",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": "容量/100=GB",
+      "description": "状态/文件系统/容量"
+    },
+    {
+      "cmd_id": 77,
+      "cmd_hex": "0x4D",
+      "name": "获取AI模式状态",
+      "name_en": "Get AI Mode",
+      "category": "ai",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": null,
+      "description": "AI模式开/关"
+    },
+    {
+      "cmd_id": 78,
+      "cmd_hex": "0x4E",
+      "name": "获取AI追踪坐标流状态",
+      "name_en": "Get AI Track Stream State",
+      "category": "ai",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": null,
+      "description": "坐标信息流状态"
+    },
+    {
+      "cmd_id": 79,
+      "cmd_hex": "0x4F",
+      "name": "手动更新热成像快门",
+      "name_en": "NUC Shutter",
+      "category": "thermal",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": null,
+      "description": "手动打快门"
+    },
+    {
+      "cmd_id": 80,
+      "cmd_hex": "0x50",
+      "name": "AI追踪目标坐标信息流",
+      "name_en": "AI Track BBox Stream",
+      "category": "ai",
+      "direction": "push",
+      "need_ack": 0,
+      "mt11_notes": "由0x51开启后主动推送；坐标原点框中心，基于1280x720",
+      "description": "目标框与状态"
+    },
+    {
+      "cmd_id": 81,
+      "cmd_hex": "0x51",
+      "name": "设置AI追踪坐标流状态",
+      "name_en": "Set AI Track Stream",
+      "category": "ai",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": null,
+      "description": "开/关坐标推流"
+    },
+    {
+      "cmd_id": 85,
+      "cmd_hex": "0x55",
+      "name": "设置AI追踪模式",
+      "name_en": "Set AI Track Mode",
+      "category": "ai",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": "夜视/超分开启时可能仅框选跟踪",
+      "description": "AI追踪开/关"
+    },
+    {
+      "cmd_id": 86,
+      "cmd_hex": "0x56",
+      "name": "AI选择追踪目标",
+      "name_en": "Select AI Track Target",
+      "category": "ai",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": "点选rx/ry=0；框选给对角",
+      "description": "点选/框选目标"
+    },
+    {
+      "cmd_id": 87,
+      "cmd_hex": "0x57",
+      "name": "AI跟踪状态",
+      "name_en": "AI Track Status",
+      "category": "ai",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": null,
+      "description": "跟踪/丢失"
+    },
+    {
+      "cmd_id": 96,
+      "cmd_hex": "0x60",
+      "name": "EIS状态获取",
+      "name_en": "Get EIS",
+      "category": "video",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": null,
+      "description": "电子增稳"
+    },
+    {
+      "cmd_id": 97,
+      "cmd_hex": "0x61",
+      "name": "EIS状态设置",
+      "name_en": "Set EIS",
+      "category": "video",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": null,
+      "description": "电子增稳"
+    },
+    {
+      "cmd_id": 129,
+      "cmd_hex": "0x81",
+      "name": "获取云台相机IP",
+      "name_en": "Get IP",
+      "category": "network",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": null,
+      "description": "IP/掩码/网关"
+    },
+    {
+      "cmd_id": 130,
+      "cmd_hex": "0x82",
+      "name": "设置云台相机IP",
+      "name_en": "Set IP",
+      "category": "network",
+      "direction": "request",
+      "need_ack": 1,
+      "mt11_notes": null,
+      "description": "IP/掩码/网关"
+    }
+  ],
+  "examples": [
+    {
+      "id": 1,
+      "cmd_id": 0,
+      "title": "TCP心跳",
+      "hex_packet": "55 66 01 01 00 00 00 00 00 59 8B",
+      "notes": null
+    },
+    {
+      "id": 2,
+      "cmd_id": 1,
+      "title": "请求固件版本号",
+      "hex_packet": "55 66 01 00 00 00 00 01 64 C4",
+      "notes": null
+    },
+    {
+      "id": 3,
+      "cmd_id": 2,
+      "title": "请求硬件ID",
+      "hex_packet": "55 66 01 00 00 00 00 02 07 F4",
+      "notes": null
+    },
+    {
+      "id": 4,
+      "cmd_id": 4,
+      "title": "自动对焦 960,540",
+      "hex_packet": "55 66 01 05 00 00 00 04 01 C0 03 1C 02 15 8E",
+      "notes": "屏幕坐标960,540"
+    },
+    {
+      "id": 5,
+      "cmd_id": 5,
+      "title": "变倍放大",
+      "hex_packet": "55 66 01 01 00 00 00 05 01 8D 64",
+      "notes": null
+    },
+    {
+      "id": 6,
+      "cmd_id": 5,
+      "title": "变倍停止",
+      "hex_packet": "55 66 01 01 00 00 00 05 00 AC 74",
+      "notes": null
+    },
+    {
+      "id": 7,
+      "cmd_id": 5,
+      "title": "变倍缩小",
+      "hex_packet": "55 66 01 01 00 00 00 05 FF 5C 6A",
+      "notes": null
+    },
+    {
+      "id": 8,
+      "cmd_id": 6,
+      "title": "对焦远景",
+      "hex_packet": "55 66 01 01 00 00 00 06 01 DE 31",
+      "notes": null
+    },
+    {
+      "id": 9,
+      "cmd_id": 6,
+      "title": "对焦停止",
+      "hex_packet": "55 66 01 01 00 00 00 06 00 FF 21",
+      "notes": null
+    },
+    {
+      "id": 10,
+      "cmd_id": 6,
+      "title": "对焦近景",
+      "hex_packet": "55 66 01 01 00 00 00 06 FF 0F 3F",
+      "notes": null
+    },
+    {
+      "id": 11,
+      "cmd_id": 7,
+      "title": "yaw 20% pitch停",
+      "hex_packet": "55 66 01 02 00 00 00 07 14 00 46 EB",
+      "notes": null
+    },
+    {
+      "id": 12,
+      "cmd_id": 7,
+      "title": "yaw/pitch停止",
+      "hex_packet": "55 66 01 02 00 00 00 07 00 00 F1 24",
+      "notes": null
+    },
+    {
+      "id": 13,
+      "cmd_id": 8,
+      "title": "一键回中",
+      "hex_packet": "55 66 01 01 00 00 00 08 01 D1 12",
+      "notes": null
+    },
+    {
+      "id": 14,
+      "cmd_id": 8,
+      "title": "居中朝下",
+      "hex_packet": "55 66 01 01 00 00 00 08 02 B2 22",
+      "notes": null
+    },
+    {
+      "id": 15,
+      "cmd_id": 8,
+      "title": "居中",
+      "hex_packet": "55 66 01 01 00 00 00 08 03 93 32",
+      "notes": null
+    },
+    {
+      "id": 16,
+      "cmd_id": 8,
+      "title": "朝下",
+      "hex_packet": "55 66 01 01 00 00 00 08 04 74 42",
+      "notes": null
+    },
+    {
+      "id": 17,
+      "cmd_id": 10,
+      "title": "请求相机系统信息",
+      "hex_packet": "55 66 01 00 00 00 00 0A 0F 75",
+      "notes": null
+    },
+    {
+      "id": 18,
+      "cmd_id": 12,
+      "title": "拍照",
+      "hex_packet": "55 66 01 01 00 00 00 0C 00 34 CE",
+      "notes": null
+    },
+    {
+      "id": 19,
+      "cmd_id": 12,
+      "title": "录像",
+      "hex_packet": "55 66 01 01 00 00 00 0C 02 76 EE",
+      "notes": null
+    },
+    {
+      "id": 20,
+      "cmd_id": 12,
+      "title": "锁定模式",
+      "hex_packet": "55 66 01 01 00 00 00 0C 03 57 FE",
+      "notes": null
+    },
+    {
+      "id": 21,
+      "cmd_id": 12,
+      "title": "跟随模式",
+      "hex_packet": "55 66 01 01 00 00 00 0C 04 B0 8E",
+      "notes": null
+    },
+    {
+      "id": 22,
+      "cmd_id": 12,
+      "title": "FPV模式",
+      "hex_packet": "55 66 01 01 00 00 00 0C 05 91 9E",
+      "notes": null
+    },
+    {
+      "id": 23,
+      "cmd_id": 12,
+      "title": "切换联动变倍",
+      "hex_packet": "55 66 01 01 00 00 00 0C 0A 7E 6F",
+      "notes": null
+    },
+    {
+      "id": 24,
+      "cmd_id": 13,
+      "title": "请求姿态",
+      "hex_packet": "55 66 01 00 00 00 00 0D E8 05",
+      "notes": null
+    },
+    {
+      "id": 25,
+      "cmd_id": 14,
+      "title": "姿态 yaw0 pitch-90",
+      "hex_packet": "55 66 01 04 00 00 00 0E 00 00 7C FC 4F A4",
+      "notes": null
+    },
+    {
+      "id": 26,
+      "cmd_id": 14,
+      "title": "姿态 yaw30 pitch20",
+      "hex_packet": "55 66 01 04 00 00 00 0E 2C 01 C8 00 59 17",
+      "notes": null
+    },
+    {
+      "id": 27,
+      "cmd_id": 15,
+      "title": "绝对变倍1.0",
+      "hex_packet": "55 66 01 02 00 00 00 0F 01 00 61 BE",
+      "notes": null
+    },
+    {
+      "id": 28,
+      "cmd_id": 15,
+      "title": "绝对变倍7.5",
+      "hex_packet": "55 66 01 02 00 00 00 0F 07 05 62 44",
+      "notes": null
+    },
+    {
+      "id": 29,
+      "cmd_id": 16,
+      "title": "请求拼接模式",
+      "hex_packet": "55 66 01 00 00 00 00 10 74 C6",
+      "notes": null
+    },
+    {
+      "id": 30,
+      "cmd_id": 17,
+      "title": "主变焦副热成像",
+      "hex_packet": "55 66 01 02 00 00 00 11 00 02 70 F5",
+      "notes": "文档示例标注可能有歧义，以字段定义为准"
+    },
+    {
+      "id": 31,
+      "cmd_id": 17,
+      "title": "主热成像副变焦",
+      "hex_packet": "55 66 01 02 00 00 00 11 02 00 50 B3",
+      "notes": null
+    },
+    {
+      "id": 32,
+      "cmd_id": 17,
+      "title": "主变焦拼热副热",
+      "hex_packet": "55 66 01 02 00 00 00 11 03 02 23 A0",
+      "notes": null
+    },
+    {
+      "id": 33,
+      "cmd_id": 18,
+      "title": "点测温960,540一次",
+      "hex_packet": "55 66 01 05 00 00 00 12 C0 03 1C 02 01 AC D7",
+      "notes": null
+    },
+    {
+      "id": 34,
+      "cmd_id": 19,
+      "title": "局部测温200,200-400,400",
+      "hex_packet": "55 66 01 09 00 00 00 13 C8 00 C8 00 90 01 90 01 01 7C 03",
+      "notes": null
+    },
+    {
+      "id": 35,
+      "cmd_id": 21,
+      "title": "一次激光测距",
+      "hex_packet": "55 66 01 00 00 00 00 15 D1 96",
+      "notes": null
+    },
+    {
+      "id": 36,
+      "cmd_id": 22,
+      "title": "变倍范围",
+      "hex_packet": "55 66 01 00 00 00 00 16 B2 A6",
+      "notes": null
+    },
+    {
+      "id": 37,
+      "cmd_id": 23,
+      "title": "激光目标经纬度",
+      "hex_packet": "55 66 01 00 00 00 00 17 93 B6",
+      "notes": null
+    },
+    {
+      "id": 38,
+      "cmd_id": 24,
+      "title": "当前变倍",
+      "hex_packet": "55 66 01 00 00 00 00 18 7C 47",
+      "notes": null
+    },
+    {
+      "id": 39,
+      "cmd_id": 25,
+      "title": "云台模式",
+      "hex_packet": "55 66 01 00 00 00 00 19 5D 57",
+      "notes": null
+    },
+    {
+      "id": 40,
+      "cmd_id": 26,
+      "title": "伪彩色查询",
+      "hex_packet": "55 66 01 00 00 00 00 1A 3E 67",
+      "notes": null
+    },
+    {
+      "id": 41,
+      "cmd_id": 27,
+      "title": "伪彩色白热",
+      "hex_packet": "55 66 01 01 00 00 00 1B 00 D0 54",
+      "notes": null
+    },
+    {
+      "id": 42,
+      "cmd_id": 27,
+      "title": "伪彩色辉金",
+      "hex_packet": "55 66 01 01 00 00 00 1B 02 92 74",
+      "notes": null
+    },
+    {
+      "id": 43,
+      "cmd_id": 32,
+      "title": "请求主码流编码",
+      "hex_packet": "55 66 01 01 00 00 00 20 01 9E 9D",
+      "notes": null
+    },
+    {
+      "id": 44,
+      "cmd_id": 33,
+      "title": "主码流H265 1080p",
+      "hex_packet": "55 66 01 09 00 00 00 21 01 02 80 07 38 04 00 00 00 59 94",
+      "notes": null
+    },
+    {
+      "id": 45,
+      "cmd_id": 33,
+      "title": "主码流H265 720p",
+      "hex_packet": "55 66 01 09 00 00 00 21 01 02 00 05 D0 02 00 00 00 58 AA",
+      "notes": null
+    },
+    {
+      "id": 46,
+      "cmd_id": 37,
+      "title": "姿态10Hz",
+      "hex_packet": "55 66 01 02 00 00 00 25 01 04 E2 BF",
+      "notes": null
+    },
+    {
+      "id": 47,
+      "cmd_id": 37,
+      "title": "姿态停止",
+      "hex_packet": "55 66 01 02 00 00 00 25 01 00 66 FF",
+      "notes": null
+    },
+    {
+      "id": 48,
+      "cmd_id": 37,
+      "title": "激光推送",
+      "hex_packet": "55 66 01 02 00 00 00 25 02 01 14 BA",
+      "notes": null
+    },
+    {
+      "id": 49,
+      "cmd_id": 38,
+      "title": "磁编码角度",
+      "hex_packet": "55 66 01 00 00 00 00 26 E1 90",
+      "notes": null
+    },
+    {
+      "id": 50,
+      "cmd_id": 42,
+      "title": "电机电压",
+      "hex_packet": "55 66 01 00 00 00 00 2A 6D 51",
+      "notes": null
+    },
+    {
+      "id": 51,
+      "cmd_id": 49,
+      "title": "激光开关状态",
+      "hex_packet": "55 66 01 00 00 00 00 31 37 F2",
+      "notes": null
+    },
+    {
+      "id": 52,
+      "cmd_id": 50,
+      "title": "开激光",
+      "hex_packet": "55 66 01 01 00 00 00 32 01 8F F8",
+      "notes": null
+    },
+    {
+      "id": 53,
+      "cmd_id": 50,
+      "title": "关激光",
+      "hex_packet": "55 66 01 01 00 00 00 32 00 AE E8",
+      "notes": null
+    },
+    {
+      "id": 54,
+      "cmd_id": 55,
+      "title": "IR增益状态",
+      "hex_packet": "55 66 01 00 00 00 00 37 F1 92",
+      "notes": null
+    },
+    {
+      "id": 55,
+      "cmd_id": 56,
+      "title": "IR低增益",
+      "hex_packet": "55 66 01 01 00 00 00 38 00 65 07",
+      "notes": null
+    },
+    {
+      "id": 56,
+      "cmd_id": 56,
+      "title": "IR高增益",
+      "hex_packet": "55 66 01 01 00 00 00 38 01 44 17",
+      "notes": null
+    },
+    {
+      "id": 57,
+      "cmd_id": 72,
+      "title": "格式化SD",
+      "hex_packet": "55 66 01 00 00 00 00 48 89 1D",
+      "notes": null
+    },
+    {
+      "id": 58,
+      "cmd_id": 77,
+      "title": "AI模式",
+      "hex_packet": "55 66 01 00 00 00 00 4D 2C 4D",
+      "notes": null
+    },
+    {
+      "id": 59,
+      "cmd_id": 78,
+      "title": "AI坐标流状态",
+      "hex_packet": "55 66 01 00 00 00 00 4E 4F 7D",
+      "notes": null
+    },
+    {
+      "id": 60,
+      "cmd_id": 79,
+      "title": "热成像快门",
+      "hex_packet": "55 66 01 00 00 00 00 4F 6E 6D",
+      "notes": null
+    },
+    {
+      "id": 61,
+      "cmd_id": 81,
+      "title": "开AI坐标流",
+      "hex_packet": "55 66 01 01 00 00 00 51 01 F6 A6",
+      "notes": null
+    },
+    {
+      "id": 62,
+      "cmd_id": 81,
+      "title": "关AI坐标流",
+      "hex_packet": "55 66 01 01 00 00 00 51 00 D7 B6",
+      "notes": null
+    },
+    {
+      "id": 63,
+      "cmd_id": 85,
+      "title": "开AI追踪",
+      "hex_packet": "55 66 01 01 00 00 00 55 01 32 6A",
+      "notes": null
+    },
+    {
+      "id": 64,
+      "cmd_id": 85,
+      "title": "关AI追踪",
+      "hex_packet": "55 66 01 01 00 00 00 55 00 13 7A",
+      "notes": null
+    },
+    {
+      "id": 65,
+      "cmd_id": 86,
+      "title": "框选跟踪",
+      "hex_packet": "55 66 01 09 00 00 00 56 01 C8 00 C8 00 90 01 90 01 92 20",
+      "notes": "200,200-400,400"
+    },
+    {
+      "id": 66,
+      "cmd_id": 86,
+      "title": "取消跟踪",
+      "hex_packet": "55 66 01 09 00 00 00 56 00 00 00 00 00 00 00 00 00 2D 94",
+      "notes": null
+    },
+    {
+      "id": 67,
+      "cmd_id": 86,
+      "title": "点选960,540",
+      "hex_packet": "55 66 01 09 00 00 00 56 01 C0 03 1C 02 00 00 00 00 39 F9",
+      "notes": null
+    },
+    {
+      "id": 68,
+      "cmd_id": 87,
+      "title": "AI跟踪状态",
+      "hex_packet": "55 66 01 00 00 00 00 57 57 FE",
+      "notes": null
+    },
+    {
+      "id": 69,
+      "cmd_id": 96,
+      "title": "EIS查询",
+      "hex_packet": "55 66 01 00 00 00 00 60 E3 B8",
+      "notes": null
+    },
+    {
+      "id": 70,
+      "cmd_id": 97,
+      "title": "EIS开",
+      "hex_packet": "55 66 01 01 00 00 00 61 01 63 A3",
+      "notes": null
+    },
+    {
+      "id": 71,
+      "cmd_id": 97,
+      "title": "EIS关",
+      "hex_packet": "55 66 01 01 00 00 00 61 00 42 B3",
+      "notes": null
+    },
+    {
+      "id": 72,
+      "cmd_id": 129,
+      "title": "获取IP",
+      "hex_packet": "55 66 01 00 00 00 00 81 EC 55",
+      "notes": null
+    },
+    {
+      "id": 73,
+      "cmd_id": 130,
+      "title": "设置默认IP",
+      "hex_packet": "55 66 02 0C 00 00 00 82 C0 A8 90 19 FF FF FF 00 C0 A8 90 01 DF A6",
+      "notes": "192.168.144.25/24 gw .1"
+    }
+  ],
+  "web_apis": [
+    {
+      "id": 1,
+      "path": "/api/v1/getdirectories",
+      "method": "GET",
+      "summary": "获取文件目录列表",
+      "request_params": "{\"media_type\": \"int 0图片1视频\"}",
+      "response_notes": "data.directories[{name,path}]"
+    },
+    {
+      "id": 2,
+      "path": "/api/v1/getmediacount",
+      "method": "GET",
+      "summary": "获取目录下文件个数",
+      "request_params": "{\"media_type\": \"int\", \"path\": \"string 空=全部\"}",
+      "response_notes": "data.{media_type,count,path}"
+    },
+    {
+      "id": 3,
+      "path": "/api/v1/getmedialist",
+      "method": "GET",
+      "summary": "获取文件列表",
+      "request_params": "{\"media_type\": \"int\", \"path\": \"string\", \"start\": \"int\", \"count\": \"int; path非空且start/end=-1返回全部\"}",
+      "response_notes": "data.list[{name,url}]"
+    },
+    {
+      "id": 4,
+      "path": "/api/v1/deletemediadirectories",
+      "method": "POST",
+      "summary": "删除文件夹",
+      "request_params": "{\"media_type\": \"int\", \"paths\": \"string[]\"}",
+      "response_notes": "data.{media_type,success}"
+    },
+    {
+      "id": 5,
+      "path": "/api/v1/deletemedialist",
+      "method": "POST",
+      "summary": "删除文件列表",
+      "request_params": "{\"media_type\": \"int\", \"paths\": \"string[] 可为完整URL\"}",
+      "response_notes": "data.{media_type,success}"
+    }
+  ],
+  "media_endpoints": [
+    {
+      "id": 1,
+      "kind": "rtsp_primary",
+      "uri": "rtsp://192.168.144.25:8554/video1",
+      "notes": "QGC UniPod MT11 默认主码流"
+    },
+    {
+      "id": 2,
+      "kind": "sdk_udp",
+      "uri": "udp://192.168.144.25:37260",
+      "notes": "外部SDK协议"
+    },
+    {
+      "id": 3,
+      "kind": "sdk_tcp",
+      "uri": "tcp://192.168.144.25:37260",
+      "notes": "外部SDK协议+心跳"
+    },
+    {
+      "id": 4,
+      "kind": "web_base",
+      "uri": "http://192.168.144.25/",
+      "notes": "Web Server 媒体文件接口基址(以设备实际为准)"
+    },
+    {
+      "id": 5,
+      "kind": "rtsp_sub",
+      "uri": "rtsp://192.168.144.25:8554/video2",
+      "notes": "副码流（说明书/FAQ）"
+    },
+    {
+      "id": 6,
+      "kind": "rtsp_secondary_ip",
+      "uri": "rtsp://192.168.144.80:8554/video1",
+      "notes": "副IP主码流"
+    },
+    {
+      "id": 7,
+      "kind": "ip_secondary",
+      "uri": "192.168.144.80",
+      "notes": "副IP"
+    }
+  ],
+  "enums": {
+    "ai_target_id": [
+      {
+        "value": 0,
+        "label": "人",
+        "notes": null
+      },
+      {
+        "value": 1,
+        "label": "汽车",
+        "notes": null
+      },
+      {
+        "value": 2,
+        "label": "巴士",
+        "notes": null
+      },
+      {
+        "value": 3,
+        "label": "卡车",
+        "notes": null
+      },
+      {
+        "value": 255,
+        "label": "任意物体",
+        "notes": null
+      }
+    ],
+    "center_pos": [
+      {
+        "value": 1,
+        "label": "一键回中",
+        "notes": null
+      },
+      {
+        "value": 2,
+        "label": "居中朝下",
+        "notes": null
+      },
+      {
+        "value": 3,
+        "label": "居中",
+        "notes": null
+      },
+      {
+        "value": 4,
+        "label": "朝下",
+        "notes": null
+      }
+    ],
+    "data_freq": [
+      {
+        "value": 0,
+        "label": "关闭",
+        "notes": null
+      },
+      {
+        "value": 1,
+        "label": "2Hz",
+        "notes": null
+      },
+      {
+        "value": 2,
+        "label": "4Hz",
+        "notes": null
+      },
+      {
+        "value": 3,
+        "label": "5Hz",
+        "notes": null
+      },
+      {
+        "value": 4,
+        "label": "10Hz",
+        "notes": null
+      },
+      {
+        "value": 5,
+        "label": "20Hz",
+        "notes": null
+      },
+      {
+        "value": 6,
+        "label": "50Hz",
+        "notes": null
+      },
+      {
+        "value": 7,
+        "label": "100Hz",
+        "notes": null
+      }
+    ],
+    "gimbal_mode": [
+      {
+        "value": 0,
+        "label": "锁定",
+        "notes": null
+      },
+      {
+        "value": 1,
+        "label": "跟随",
+        "notes": null
+      },
+      {
+        "value": 2,
+        "label": "FPV",
+        "notes": null
+      }
+    ],
+    "gimbal_stream_type": [
+      {
+        "value": 1,
+        "label": "姿态",
+        "notes": null
+      },
+      {
+        "value": 2,
+        "label": "激光测距",
+        "notes": null
+      },
+      {
+        "value": 3,
+        "label": "磁编码角度",
+        "notes": null
+      },
+      {
+        "value": 4,
+        "label": "电机电压",
+        "notes": null
+      }
+    ],
+    "media_type": [
+      {
+        "value": 0,
+        "label": "图片",
+        "notes": null
+      },
+      {
+        "value": 1,
+        "label": "视频",
+        "notes": null
+      }
+    ],
+    "pseudo_color": [
+      {
+        "value": 0,
+        "label": "白热 White_Hot",
+        "notes": null
+      },
+      {
+        "value": 1,
+        "label": "保留",
+        "notes": null
+      },
+      {
+        "value": 2,
+        "label": "辉金 Sepia",
+        "notes": null
+      },
+      {
+        "value": 3,
+        "label": "铁红 Ironbow",
+        "notes": null
+      },
+      {
+        "value": 4,
+        "label": "彩虹 Rainbow",
+        "notes": null
+      },
+      {
+        "value": 5,
+        "label": "微光 Night",
+        "notes": null
+      },
+      {
+        "value": 6,
+        "label": "极光 Aurora",
+        "notes": null
+      },
+      {
+        "value": 7,
+        "label": "红热 Red_Hot",
+        "notes": null
+      },
+      {
+        "value": 8,
+        "label": "丛林 Jungle",
+        "notes": null
+      },
+      {
+        "value": 9,
+        "label": "医疗 Medical",
+        "notes": null
+      },
+      {
+        "value": 10,
+        "label": "黑热 Black_Hot",
+        "notes": null
+      },
+      {
+        "value": 11,
+        "label": "金红 Glory_Hot",
+        "notes": null
+      }
+    ],
+    "stream_layout": [
+      {
+        "value": 0,
+        "label": "变焦",
+        "notes": null
+      },
+      {
+        "value": 1,
+        "label": "广角",
+        "notes": null
+      },
+      {
+        "value": 2,
+        "label": "热成像",
+        "notes": null
+      },
+      {
+        "value": 3,
+        "label": "变焦+热成像",
+        "notes": null
+      },
+      {
+        "value": 4,
+        "label": "广角+热成像",
+        "notes": null
+      },
+      {
+        "value": 5,
+        "label": "变焦+广角",
+        "notes": null
+      },
+      {
+        "value": 6,
+        "label": "无输入",
+        "notes": "仅副码流"
+      }
+    ],
+    "stream_type": [
+      {
+        "value": 0,
+        "label": "录像流",
+        "notes": null
+      },
+      {
+        "value": 1,
+        "label": "主码流",
+        "notes": null
+      },
+      {
+        "value": 2,
+        "label": "副码流",
+        "notes": null
+      }
+    ],
+    "temp_flag": [
+      {
+        "value": 0,
+        "label": "关闭",
+        "notes": null
+      },
+      {
+        "value": 1,
+        "label": "测量一次",
+        "notes": null
+      },
+      {
+        "value": 2,
+        "label": "持续5Hz",
+        "notes": null
+      }
+    ],
+    "video_enc": [
+      {
+        "value": 1,
+        "label": "H264",
+        "notes": null
+      },
+      {
+        "value": 2,
+        "label": "H265",
+        "notes": null
+      }
+    ]
+  }
+}

@@ -41,6 +41,13 @@ public class QGCActivity extends QtActivity {
         QGCUsbSerialManager.initialize(this);
         QGCSDLManager.initialize(this);
         m_storagePermissionController = new QGCStoragePermissionController(this);
+
+        // SIYI UniRC remotes: start ensuring eth0 / 192.168.144.x for RTSP (UniPod) as early as possible.
+        QGCSiyiEthernetHelper.ensureRadioEthernet();
+    }
+
+    public static QGCActivity getInstance() {
+        return m_instance;
     }
 
     @Override
