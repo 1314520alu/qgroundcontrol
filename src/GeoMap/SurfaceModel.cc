@@ -1,15 +1,24 @@
 #include "SurfaceModel.h"
 
+#include <QtCore/QElapsedTimer>
 #include <QtCore/QSet>
 #include <QtCore/QTimer>
 #include <QtCore/QVarLengthArray>
 #include <QtCore/QtMath>
-#include <cmath>
 #include <queue>
+
+#include <algorithm>
+#include <cmath>
+#include <utility>
 #include <vector>
 
 #include "GeoMapCamera.h"
+#include "HeightField.h"
 #include "HeightSource.h"
+#include "QGCLoggingCategory.h"
+
+QGC_LOGGING_CATEGORY(GeoMapSurfaceModelLog, "GeoMap.SurfaceModel")
+QGC_LOGGING_CATEGORY(GeoMapSurfaceModelVerboseLog, "GeoMap.SurfaceModel.Verbose")
 
 namespace {
 
@@ -20,32 +29,74 @@ QRectF patchRect(const TileMath::TileKey& key)
     return QRectF(minCorner.x(), minCorner.y(), span, span);
 }
 
+/// Region contact including edge-only touch: patch edge vertices exactly on
+/// the region boundary sample the changed data, but QRectF::intersects is
+/// false for edge-only contact, so the patch rect is inflated first
+bool patchTouchesRegion(const TileMath::TileKey& key, const QRectF& region)
+{
+    const QRectF rect = patchRect(key);
+    const double margin = rect.width() * 1e-6;
+    return rect.marginsAdded(QMarginsF(margin, margin, margin, margin)).intersects(region);
+}
+
+float maxHeightOf(const QList<float>& heights)
+{
+    float maxHeight = 0.0f;
+    for (const float height : heights) {
+        if (std::isfinite(height)) {
+            maxHeight = std::max(maxHeight, height);
+        }
+    }
+    return maxHeight;
+}
+
 }  // namespace
 
-SurfaceModel::SurfaceModel(GeoMapCamera* camera, HeightSource* heightSource, QObject* parent)
-    : QObject(parent), _camera(camera), _heightSource(heightSource)
+SurfaceModel::SurfaceModel(GeoMapCamera* camera, HeightSource* heightSource, HeightField* field, QObject* parent)
+    : QObject(parent), _camera(camera), _heightSource(heightSource), _field(field)
 {
     qRegisterMetaType<TileMath::TileKey>();
 
-    connect(_heightSource, &HeightSource::patchHeightsReady, this, &SurfaceModel::_heightsReady);
-    connect(_heightSource, &HeightSource::patchHeightsFailed, this, &SurfaceModel::_heightsFailed);
+    connect(_field, &HeightField::regionChanged, this, &SurfaceModel::_fieldRegionChanged);
 
-    connect(_camera, &GeoMapCamera::centerChanged, this, &SurfaceModel::update);
-    connect(_camera, &GeoMapCamera::headingChanged, this, &SurfaceModel::update);
-    connect(_camera, &GeoMapCamera::tiltChanged, this, &SurfaceModel::update);
-    connect(_camera, &GeoMapCamera::distanceChanged, this, &SurfaceModel::update);
-    connect(_camera, &GeoMapCamera::viewportSizeChanged, this, &SurfaceModel::update);
-    connect(_camera, &GeoMapCamera::fieldOfViewChanged, this, &SurfaceModel::update);
+    // Coalesce: camera signals fire per input event (up to 120/s during a
+    // gesture); one queued pass per event-loop iteration bounds the cost
+    connect(_camera, &GeoMapCamera::centerChanged, this, &SurfaceModel::_scheduleUpdate);
+    connect(_camera, &GeoMapCamera::headingChanged, this, &SurfaceModel::_scheduleUpdate);
+    connect(_camera, &GeoMapCamera::tiltChanged, this, &SurfaceModel::_scheduleUpdate);
+    connect(_camera, &GeoMapCamera::distanceChanged, this, &SurfaceModel::_scheduleUpdate);
+    connect(_camera, &GeoMapCamera::viewportSizeChanged, this, &SurfaceModel::_scheduleUpdate);
+    connect(_camera, &GeoMapCamera::fieldOfViewChanged, this, &SurfaceModel::_scheduleUpdate);
+}
+
+void SurfaceModel::_scheduleUpdate()
+{
+    if (_updatePending) {
+        return;
+    }
+    _updatePending = true;
+    QTimer::singleShot(0, this, [this] {
+        if (!_updatePending) {
+            return;  // absorbed by a direct update() call meanwhile
+        }
+        update();
+    });
 }
 
 void SurfaceModel::update()
 {
+    // Any direct pass supersedes a queued coalesced one (its singleShot
+    // becomes a no-op), so updateSettled() is truthful right after a call
+    _updatePending = false;
     if (!_camera->isPositioned()) {
         return;  // the default pose is null island; building patches there fires doomed terrain fetches
     }
     if (_camera->viewportSize().isEmpty()) {
         return;  // keep the last valid set; transient 0-size viewports occur during layout
     }
+
+    QElapsedTimer updateTimer;
+    updateTimer.start();
 
     // Max terrain height scans every resident vertex: compute once per update
     const double terrainZ = _maxTerrainZ();
@@ -58,49 +109,126 @@ void SurfaceModel::update()
 
     QSet<TileMath::TileKey> desiredSet(desired.cbegin(), desired.cend());
 
-    // Drop pending patches no longer desired, cancelling in-flight height
-    // requests. Ready patches being replaced retire instead: they keep
-    // rendering until their replacements have heights, so LOD churn and
-    // panning never open holes in the surface.
-    for (auto it = _patches.begin(); it != _patches.end();) {
-        if (desiredSet.contains(it.key())) {
-            it.value().retiring = false;  // re-desired while retiring: it is ready, keep as-is
-            ++it;
-            continue;
-        }
-        if (it.value().retiring) {
-            ++it;  // awaiting sweep
-            continue;
-        }
-        if (it.value().ready) {
-            it.value().retiring = true;
-            ++it;
-            continue;
-        }
-        // Pending patches own a tracked request, except while awaiting a retry
-        // (requestId 0, never issued by a source): then both calls are no-ops.
-        // _heightsReady untracks the id when a patch becomes ready (guard also
-        // protects against a future source reusing ids).
-        _heightSource->cancelRequest(it.value().requestId);
-        _requestKeys.remove(it.value().requestId);
-        const TileMath::TileKey removedKey = it.key();
-        it = _patches.erase(it);
-        emit patchRemoved(removedKey);
-    }
-
-    // Request heights for newly desired patches
+    // Add newly desired patches, capped per pass: each add synchronously
+    // builds a render delegate downstream, and uncapped bursts (300+ adds/s
+    // while zooming) blow the frame budget. A new patch meshes immediately
+    // from the field's best estimate; tile coverage is requested so the
+    // estimate refines when data arrives.
+    QVarLengthArray<QRectF, 8> churnRects;  // added/removed extents: neighbors there re-stitch
+    int adds = 0;
+    _addsDeferred = false;
     for (const TileMath::TileKey& key : desired) {
         if (_patches.contains(key)) {
             continue;
         }
+        if (adds >= kMaxPatchAddsPerUpdate) {
+            _addsDeferred = true;
+            continue;
+        }
         PatchData data;
-        data.requestId = _heightSource->requestPatchHeights(key, kGridSize);
-        _requestKeys.insert(data.requestId, key);
-        _patches.insert(key, data);
+        data.heights = _field->samplePatch(key, kGridSize);
+        data.maxHeight = maxHeightOf(data.heights);
+        _patches.insert(key, std::move(data));
+        churnRects.append(patchRect(key));
+        _heightSource->requestTile(key);
         emit patchAdded(key);
+        adds++;
     }
 
-    _sweepRetiring();
+    // Rects of desired patches still not resident after the capped adds: a
+    // no-longer-desired patch overlapping one may not be removed yet, or the
+    // surface would show a hole until the adds catch up. Computed after the
+    // adds so a replaced patch drops in the same pass its last replacement
+    // arrives, instead of both rendering (and z-fighting) one extra pass.
+    QVarLengthArray<QRectF, 16> missingRects;
+    for (const TileMath::TileKey& key : desired) {
+        if (!_patches.contains(key)) {
+            missingRects.append(patchRect(key));
+        }
+    }
+    const auto overlapsMissing = [&missingRects](const TileMath::TileKey& key) {
+        const QRectF rect = patchRect(key);
+        for (const QRectF& missing : missingRects) {
+            if (rect.intersects(missing)) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    // Drop patches no longer desired. Removals are capped like adds: each
+    // erase synchronously destroys a render delegate, and pose jumps
+    // (high-tilt orbits) can invalidate hundreds of patches at once. Patches
+    // whose replacements are not resident yet stay for a follow-up pass.
+    _removalsThisPass = 0;
+    _removalsDeferred = false;
+    for (auto it = _patches.begin(); it != _patches.end();) {
+        if (desiredSet.contains(it.key())) {
+            ++it;
+            continue;
+        }
+        if ((_removalsThisPass >= kMaxPatchRemovalsPerUpdate) || overlapsMissing(it.key())) {
+            _removalsDeferred = true;  // stays resident one more pass; follow-up finishes the cull
+            ++it;
+            continue;
+        }
+        const TileMath::TileKey removedKey = it.key();
+        it = _patches.erase(it);
+        churnRects.append(patchRect(removedKey));
+        emit patchRemoved(removedKey);
+        _removalsThisPass++;
+    }
+
+    // Added/removed patches change their neighbors' edge LOD deltas: notify
+    // every resident patch touching a churned extent so it re-stitches
+    for (auto it = _patches.cbegin(); it != _patches.cend(); ++it) {
+        for (const QRectF& rect : churnRects) {
+            if (patchTouchesRegion(it.key(), rect)) {
+                emit patchEdgeDeltasChanged(it.key());
+                break;
+            }
+        }
+    }
+
+    // Pin every resident patch's key and its full ancestor chain: whatever
+    // tile the field resolves a patch sample to is in that chain, and an
+    // eviction there would silently coarsen a rendered mesh
+    if ((adds > 0) || (_removalsThisPass > 0)) {
+        QSet<TileMath::TileKey> pinned;
+        for (auto it = _patches.cbegin(); it != _patches.cend(); ++it) {
+            TileMath::TileKey key = it.key();
+            while (true) {
+                pinned.insert(key);
+                if (key.zoom == TileMath::kMinZoom) {
+                    break;
+                }
+                key = TileMath::TileKey{key.x >> 1, key.y >> 1, key.zoom - 1};
+            }
+        }
+        _field->setPinnedKeys(std::move(pinned));
+    }
+
+    // The caps guarantee every deferred pass makes progress, so follow-ups
+    // always converge
+    if (_addsDeferred || _removalsDeferred) {
+        _scheduleUpdate();
+    }
+
+    const qint64 elapsedUs = updateTimer.nsecsElapsed() / 1000;
+    qCDebug(GeoMapSurfaceModelVerboseLog)
+        << "update pass: desired" << desired.count() << "resident" << _patches.count() << "adds" << adds << "removals"
+        << _removalsThisPass << "deferred adds" << _addsDeferred << "deferred removals" << _removalsDeferred
+        << "elapsedUs" << elapsedUs;
+    _updateStats.updates++;
+    _updateStats.totalUs += elapsedUs;
+    _updateStats.maxUs = std::max(_updateStats.maxUs, elapsedUs);
+}
+
+SurfaceModel::UpdateStats SurfaceModel::takeUpdateStats()
+{
+    const UpdateStats stats = _updateStats;
+    _updateStats = UpdateStats{};
+    return stats;
 }
 
 QList<SurfaceModel::Patch> SurfaceModel::patches() const
@@ -108,7 +236,7 @@ QList<SurfaceModel::Patch> SurfaceModel::patches() const
     QList<Patch> result;
     result.reserve(_patches.count());
     for (auto it = _patches.cbegin(); it != _patches.cend(); ++it) {
-        result.append(Patch{it.key(), it.value().heights, it.value().ready, _isCovered(it.key(), it.value())});
+        result.append(Patch{it.key(), it.value().heights, true, false});
     }
     return result;
 }
@@ -116,39 +244,42 @@ QList<SurfaceModel::Patch> SurfaceModel::patches() const
 std::optional<SurfaceModel::Patch> SurfaceModel::patch(const TileMath::TileKey& key) const
 {
     const auto it = _patches.constFind(key);
-    if (it == _patches.constEnd()) {
+    if (it == _patches.cend()) {
         return std::nullopt;
     }
-    return Patch{key, it.value().heights, it.value().ready, _isCovered(key, it.value())};
+    return Patch{key, it.value().heights, true, false};
 }
 
-bool SurfaceModel::_isCovered(const TileMath::TileKey& key, const PatchData& data) const
+QList<int> SurfaceModel::edgeLodDeltas(const TileMath::TileKey& key) const
 {
-    if (data.ready) {
-        return false;
+    // {N,S,W,E} neighbor offsets; slippy y grows south, so north is y-1
+    static constexpr int kOffsets[4][2] = {{0, -1}, {0, 1}, {-1, 0}, {1, 0}};
+    QList<int> deltas;
+    deltas.reserve(4);
+    for (const auto& offset : kOffsets) {
+        deltas.append(_edgeDelta(key, offset[0], offset[1]));
     }
-    // A pending patch overlapped by ready geometry (its retiring ancestor,
-    // descendants, or a degraded flat fallback) is covered: rendering its
-    // empty flat grid too would z-fight the cover and occlude terrain below
-    // sea level
-    const QRectF rect = patchRect(key);
-    for (auto it = _patches.cbegin(); it != _patches.cend(); ++it) {
-        if (it.value().ready && (it.key() != key) && rect.intersects(patchRect(it.key()))) {
-            return true;
-        }
-    }
-    return false;
+    return deltas;
 }
 
-int SurfaceModel::pendingCount() const
+int SurfaceModel::_edgeDelta(const TileMath::TileKey& key, int dx, int dy) const
 {
-    int pending = 0;
-    for (const PatchData& data : _patches) {
-        if (!data.ready) {
-            pending++;
+    const TileMath::TileKey neighbor{key.x + dx, key.y + dy, key.zoom};
+    if (!TileMath::isValidKey(neighbor) || _patches.contains(neighbor)) {
+        return 0;  // world edge or same-zoom neighbor: unconstrained
+    }
+    // First resident ancestor of the missing same-zoom neighbor is the coarse
+    // patch rendering across this edge; finer neighbors constrain themselves
+    TileMath::TileKey ancestor = neighbor;
+    while (ancestor.zoom > TileMath::kMinZoom) {
+        ancestor = TileMath::TileKey{ancestor.x >> 1, ancestor.y >> 1, ancestor.zoom - 1};
+        if (_patches.contains(ancestor)) {
+            const int delta = key.zoom - ancestor.zoom;
+            // No coincident vertices beyond this: leave unconstrained (skirts cover)
+            return ((kGridSize % (1 << delta)) == 0) ? delta : 0;
         }
     }
-    return pending;
+    return 0;
 }
 
 QRectF SurfaceModel::_visibleGroundRect(double terrainZ) const
@@ -215,11 +346,7 @@ double SurfaceModel::_maxTerrainZ() const
 {
     float maxHeight = 0.0f;
     for (const PatchData& data : _patches) {
-        for (const float height : data.heights) {
-            if (std::isfinite(height)) {
-                maxHeight = std::max(maxHeight, height);
-            }
-        }
+        maxHeight = std::max(maxHeight, data.maxHeight);
     }
     if (maxHeight <= 0.0f) {
         return 0.0;
@@ -304,97 +431,29 @@ QList<TileMath::TileKey> SurfaceModel::_desiredPatches(const QRectF& visible, co
     return desired;
 }
 
-void SurfaceModel::_heightsReady(int requestId, const QList<float>& heights)
+void SurfaceModel::_fieldRegionChanged(const QRectF& worldRect)
 {
-    const auto it = _requestKeys.constFind(requestId);
-    if (it == _requestKeys.constEnd()) {
-        return;  // patch was dropped before delivery
+    // Re-mesh exactly the patches touching the changed region: their field
+    // samples (and skirt/normal data downstream) may have changed. Patch edge
+    // vertices exactly on the region boundary sample the new data too, hence
+    // the inflated-rect contact test.
+    int remeshed = 0;
+    for (auto it = _patches.begin(); it != _patches.end(); ++it) {
+        if (!patchTouchesRegion(it.key(), worldRect)) {
+            continue;
+        }
+        PatchData& data = it.value();
+        data.heights = _field->samplePatch(it.key(), kGridSize);
+        data.maxHeight = maxHeightOf(data.heights);
+        emit patchMeshChanged(it.key());
+        remeshed++;
     }
-    const TileMath::TileKey key = it.value();
-    _requestKeys.erase(it);
-
-    const auto patchIt = _patches.find(key);
-    if (patchIt == _patches.end()) {
-        return;
-    }
-    patchIt.value().heights = heights;
-    patchIt.value().ready = true;
-    emit patchReady(key);
-    _sweepRetiring();
+    qCDebug(GeoMapSurfaceModelVerboseLog)
+        << "regionChanged" << worldRect << "re-meshed" << remeshed << "of" << _patches.count() << "patches";
 
     // Terrain taller than the last cull assumed may be visible below/behind
     // the camera: re-cull terrain-aware
     if (_maxTerrainZ() > (_culledTerrainZ + kRecullHeightMargin)) {
-        update();
+        _scheduleUpdate();
     }
-}
-
-void SurfaceModel::_sweepRetiring()
-{
-    // A retiring patch may go once every pending patch it covers for has its
-    // heights (or it covers for none, e.g. it was panned out of the view)
-    for (auto it = _patches.begin(); it != _patches.end();) {
-        if (!it.value().retiring || _overlapsPendingPatch(it.key())) {
-            ++it;
-            continue;
-        }
-        const TileMath::TileKey key = it.key();
-        it = _patches.erase(it);
-        emit patchRemoved(key);
-    }
-}
-
-bool SurfaceModel::_overlapsPendingPatch(const TileMath::TileKey& key) const
-{
-    const QRectF rect = patchRect(key);
-    for (auto it = _patches.cbegin(); it != _patches.cend(); ++it) {
-        // Touching edges do not intersect, so only true overlaps (the
-        // quadtree ancestor/descendant replacements) count. Desired degraded
-        // patches still need cover: their flat fallback is worse than the
-        // cover. Retiring patches never do (they are on their way out) -
-        // otherwise a retiring degraded patch would retain itself forever.
-        if (it.value().retiring) {
-            continue;
-        }
-        if ((!it.value().ready || it.value().degraded) && rect.intersects(patchRect(it.key()))) {
-            return true;
-        }
-    }
-    return false;
-}
-
-void SurfaceModel::_heightsFailed(int requestId)
-{
-    const auto it = _requestKeys.constFind(requestId);
-    if (it == _requestKeys.constEnd()) {
-        return;  // patch was dropped before delivery
-    }
-    const auto patchIt = _patches.find(it.value());
-    if ((patchIt != _patches.end()) && !patchIt.value().ready && (patchIt.value().retriesLeft > 0)) {
-        // Transient failures (elevation tile fetch timeouts) self-heal: keep the
-        // patch pending and re-request after the backoff delay
-        patchIt.value().retriesLeft--;
-        patchIt.value().requestId = 0;
-        const TileMath::TileKey key = patchIt.key();
-        _requestKeys.erase(it);
-        QTimer::singleShot(_heightRetryDelayMs, this, [this, key] { _retryHeights(key); });
-        return;
-    }
-    // Retries exhausted: degrade to flat ground; a later cull/re-add starts
-    // fresh. Degraded patches keep any retiring cover (see _overlapsPendingPatch),
-    // so a real-height predecessor is not replaced by the flat fallback.
-    if (patchIt != _patches.end()) {
-        patchIt.value().degraded = true;
-    }
-    _heightsReady(requestId, QList<float>());
-}
-
-void SurfaceModel::_retryHeights(const TileMath::TileKey& key)
-{
-    const auto it = _patches.find(key);
-    if ((it == _patches.end()) || it.value().ready || (it.value().requestId != 0)) {
-        return;  // dropped, delivered, or re-requested meanwhile
-    }
-    it.value().requestId = _heightSource->requestPatchHeights(key, kGridSize);
-    _requestKeys.insert(it.value().requestId, key);
 }

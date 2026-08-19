@@ -1,10 +1,13 @@
 #include "SurfacePatchModelTest.h"
 
+#include <QtCore/QPointF>
 #include <QtTest/QSignalSpy>
+
 #include <cmath>
 
 #include "GeoMapCamera.h"
 #include "GeoScene.h"
+#include "HeightField.h"
 #include "SurfaceModel.h"
 #include "SurfacePatchModel.h"
 #include "TileMath.h"
@@ -24,6 +27,7 @@ void attach(SurfacePatchModel& model, GeoScene& scene, GeoMapCamera& camera)
 {
     scene.setCamera(&camera);
     model.setScene(&scene);
+    model.drainUpdates();
 }
 
 }  // namespace
@@ -103,6 +107,7 @@ void SurfacePatchModelTest::_incrementalUpdatesOnMove()
 
     // Small pan within the re-anchor threshold: incremental row churn, no reset
     camera.setCenter(QGeoCoordinate(47.42, 8.58));
+    model.drainUpdates();
     QCOMPARE(resetSpy.count(), 0);
     QCOMPARE_GT(insertSpy.count() + removeSpy.count(), 0);
     QCOMPARE(model.rowCount(), model.patchCount());
@@ -121,6 +126,7 @@ void SurfacePatchModelTest::_reanchorsOnLargeMove()
     // Move far beyond kReanchorDistance: origin follows the camera
     const QGeoCoordinate faraway(48.85, 2.35);  // Paris, ~490km from Zurich
     camera.setCenter(faraway);
+    model.drainUpdates();
     QCOMPARE_GT(originSpy.count(), 0);
 
     const QPointF expectedOrigin = TileMath::geoToWorld(faraway);
@@ -154,6 +160,7 @@ void SurfacePatchModelTest::_cameraSwapAnchorsFresh()
     const QGeoCoordinate sydney(-33.8688, 151.2093);
     setupCamera(sydneyCamera, sydney);
     scene.setCamera(&sydneyCamera);
+    model.drainUpdates();
 
     const QPointF expectedOrigin = TileMath::geoToWorld(sydney);
     QCOMPARE_LT(std::hypot(scene.sceneOrigin().x() - expectedOrigin.x(), scene.sceneOrigin().y() - expectedOrigin.y()),
@@ -173,25 +180,27 @@ void SurfacePatchModelTest::_debugHillsSwitchResets()
 
     QSignalSpy resetSpy(&model, &QAbstractItemModel::modelReset);
     model.setDebugHills(true);
+    model.drainUpdates();
     QCOMPARE_GT(resetSpy.count(), 0);
     QCOMPARE_GT(model.rowCount(), 0);
-    QTRY_COMPARE_WITH_TIMEOUT(model.pendingCount(), 0, 5000);
 
-    // Debug hills deliver non-flat heights
-    bool nonZeroSeen = false;
-    for (int row = 0; (row < model.rowCount()) && !nonZeroSeen; row++) {
-        const auto heights = model.data(model.index(row), SurfacePatchModel::HeightsRole).value<QList<float>>();
-        for (float h : heights) {
-            if (h > 0.0f) {
-                nonZeroSeen = true;
-                break;
+    // Debug hills deliver non-flat heights once the synthesized tiles land in
+    // the field (delivered via the event loop)
+    const auto nonZeroSeen = [&model]() {
+        for (int row = 0; row < model.rowCount(); row++) {
+            const auto heights = model.data(model.index(row), SurfacePatchModel::HeightsRole).value<QList<float>>();
+            for (float h : heights) {
+                if (h > 0.0f) {
+                    return true;
+                }
             }
         }
-    }
-    QVERIFY(nonZeroSeen);
+        return false;
+    };
+    QTRY_VERIFY_WITH_TIMEOUT(nonZeroSeen(), 5000);
 }
 
-void SurfacePatchModelTest::_pendingRowsCoveredDuringLodChurn()
+void SurfacePatchModelTest::_rowsAlwaysMeshedDuringLodChurn()
 {
     GeoMapCamera camera;
     GeoScene scene;
@@ -199,28 +208,106 @@ void SurfacePatchModelTest::_pendingRowsCoveredDuringLodChurn()
     camera.setViewportSize(kViewport);
     camera.lookAt(kCenter, 0, 0, GeoMapCamera::kMaxDistance);
     attach(model, scene, camera);
-    QTRY_COMPARE_WITH_TIMEOUT(model.pendingCount(), 0, 5000);
 
-    // Refine: pending replacements report covered so the delegate hides their
-    // empty flat mesh instead of z-fighting the retained retiring cover
+    // Refine hard: every row must present a full mesh from the field's
+    // estimate - the delegate never sees a pending/hidden row. (Per-pass
+    // coverage during churn is guarded at the SurfaceModel level.)
     camera.lookAt(kCenter, 0, 0, 2000);
-    QCOMPARE_GT(model.pendingCount(), 0);
-    int coveredRows = 0;
+    model.drainUpdates();
+    QCOMPARE_GT(model.rowCount(), 0);
     for (int row = 0; row < model.rowCount(); row++) {
         const QModelIndex idx = model.index(row);
-        const bool ready = model.data(idx, SurfacePatchModel::ReadyRole).toBool();
-        const bool covered = model.data(idx, SurfacePatchModel::CoveredRole).toBool();
-        QCOMPARE(covered, !ready);
-        if (covered) {
-            coveredRows++;
+        QVERIFY(model.data(idx, SurfacePatchModel::ReadyRole).toBool());
+        QVERIFY(!model.data(idx, SurfacePatchModel::CoveredRole).toBool());
+        const auto heights = model.data(idx, SurfacePatchModel::HeightsRole).value<QList<float>>();
+        QCOMPARE(heights.count(), (SurfaceModel::kGridSize + 1) * (SurfaceModel::kGridSize + 1));
+    }
+}
+
+void SurfacePatchModelTest::_edgeLodDeltasRoleStitchesLodRings()
+{
+    GeoMapCamera camera;
+    GeoScene scene;
+    SurfacePatchModel model;
+    camera.setViewportSize(kViewport);
+    // Tilted view: LOD rings guarantee coarser neighbors across ring boundaries
+    camera.lookAt(kCenter, 0, 45, 2000);
+    attach(model, scene, camera);
+    QCOMPARE_GT(model.rowCount(), 8);
+
+    QVERIFY(model.roleNames().value(SurfacePatchModel::EdgeLodDeltasRole) == QByteArray("edgeLodDeltas"));
+
+    // Every row exposes {N,S,W,E}; the mixed-LOD view must exercise stitching
+    int positiveDeltas = 0;
+    for (int row = 0; row < model.rowCount(); row++) {
+        const auto deltas = model.data(model.index(row), SurfacePatchModel::EdgeLodDeltasRole).value<QList<int>>();
+        QCOMPARE(deltas.count(), 4);
+        for (const int delta : deltas) {
+            QCOMPARE_GE(delta, 0);
+            if (delta > 0) {
+                positiveDeltas++;
+            }
         }
     }
-    QCOMPARE_GT(coveredRows, 0);
+    QCOMPARE_GT(positiveDeltas, 0);
 
-    QTRY_COMPARE_WITH_TIMEOUT(model.pendingCount(), 0, 5000);
-    for (int row = 0; row < model.rowCount(); row++) {
-        QVERIFY(!model.data(model.index(row), SurfacePatchModel::CoveredRole).toBool());
+    // Neighbor churn refreshes the role so delegates re-stitch
+    QSignalSpy dataSpy(&model, &QAbstractItemModel::dataChanged);
+    camera.lookAt(kCenter, 0, 45, 1000);
+    model.drainUpdates();
+    bool deltasRefreshed = false;
+    for (const QList<QVariant>& args : dataSpy) {
+        const auto roles = args.at(2).value<QList<int>>();
+        if (roles.contains(SurfacePatchModel::EdgeLodDeltasRole)) {
+            deltasRefreshed = true;
+            break;
+        }
     }
+    QVERIFY2(deltasRefreshed, "no dataChanged carried EdgeLodDeltasRole during LOD churn");
+}
+
+void SurfacePatchModelTest::_tileKeyAndHeightFieldExposedToDelegates()
+{
+    // The tile key roles (tileX, tileY + the existing zoomLevel) must address
+    // the patch actually rendered at each row, and the model's field is the
+    // live one the row heights were sampled from.
+    GeoMapCamera camera;
+    GeoScene scene;
+    SurfacePatchModel model;
+    setupCamera(camera);
+    attach(model, scene, camera);
+    QCOMPARE_GT(model.rowCount(), 0);
+
+    QVERIFY(model.roleNames().value(SurfacePatchModel::TileXRole) == QByteArray("tileX"));
+    QVERIFY(model.roleNames().value(SurfacePatchModel::TileYRole) == QByteArray("tileY"));
+    QVERIFY(model.heightField() != nullptr);
+
+    for (int row = 0; row < model.rowCount(); row++) {
+        const QModelIndex idx = model.index(row);
+        const TileMath::TileKey key{model.data(idx, SurfacePatchModel::TileXRole).toInt(),
+                                    model.data(idx, SurfacePatchModel::TileYRole).toInt(),
+                                    model.data(idx, SurfacePatchModel::ZoomRole).toInt()};
+        QVERIFY(TileMath::isValidKey(key));
+
+        // The key must address the patch actually rendered there: its tile
+        // rect (scene-relative) matches the row's center and span
+        const double span = TileMath::tileSpanAtZoom(key.zoom);
+        QCOMPARE(model.data(idx, SurfacePatchModel::SpanRole).toDouble(), span);
+        const QPointF minCorner = TileMath::tileMinCorner(key);
+        const QPointF sceneCenter(minCorner.x() + (span / 2.0) - scene.sceneOrigin().x(),
+                                  minCorner.y() + (span / 2.0) - scene.sceneOrigin().y());
+        QCOMPARE(model.data(idx, SurfacePatchModel::CenterXRole).toDouble(), sceneCenter.x());
+        QCOMPARE(model.data(idx, SurfacePatchModel::CenterYRole).toDouble(), sceneCenter.y());
+    }
+
+    // The exposed field is the live one: model heights come from it
+    QTRY_COMPARE_WITH_TIMEOUT(model.pendingCount(), 0, 5000);
+    const QModelIndex first = model.index(0);
+    const TileMath::TileKey firstKey{model.data(first, SurfacePatchModel::TileXRole).toInt(),
+                                     model.data(first, SurfacePatchModel::TileYRole).toInt(),
+                                     model.data(first, SurfacePatchModel::ZoomRole).toInt()};
+    const auto heights = model.data(first, SurfacePatchModel::HeightsRole).value<QList<float>>();
+    QCOMPARE(model.heightField()->samplePatch(firstKey, model.gridSize()), heights);
 }
 
 UT_REGISTER_TEST_LIGHTWEIGHT(SurfacePatchModelTest, TestLabel::Unit)

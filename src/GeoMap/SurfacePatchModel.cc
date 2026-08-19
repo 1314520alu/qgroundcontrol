@@ -1,18 +1,30 @@
 #include "SurfacePatchModel.h"
 
+#include <QtCore/QByteArray>
+#include <QtCore/QDateTime>
 #include <QtCore/QDebug>
+#include <QtCore/QDir>
+#include <QtCore/QFile>
+#include <QtCore/QTimer>
 #include <QtCore/QtMath>
 #include <QtGui/QPainter>
+
 #include <algorithm>
 #include <cmath>
+#include <utility>
 
 #include "GeoMapCamera.h"
 #include "GeoScene.h"
+#include "HeightField.h"
 #include "HeightSource.h"
+#include "QGCLoggingCategory.h"
 #include "SurfaceAnalysis.h"
 #include "SurfaceModel.h"
-#include "TerrainHeightSource.h"
+#include "TerrariumTileFetcher.h"
 #include "TileImageSource.h"
+
+QGC_LOGGING_CATEGORY(GeoMapSurfacePatchModelLog, "GeoMap.SurfacePatchModel")
+QGC_LOGGING_CATEGORY(GeoMapSurfacePatchModelVerboseLog, "GeoMap.SurfacePatchModel.Verbose")
 
 SurfacePatchModel::SurfacePatchModel(QObject* parent) : QAbstractListModel(parent) {}
 
@@ -47,11 +59,35 @@ GeoMapCamera* SurfacePatchModel::_camera() const
     return _scene ? _scene->camera() : nullptr;
 }
 
+void SurfacePatchModel::_scheduleStatsChanged()
+{
+    // Patch events arrive in bursts (up to hundreds/s during churn); one
+    // emit per event-loop pass bounds the QML binding re-evaluations
+    if (_statsNotifyPending) {
+        return;
+    }
+    _statsNotifyPending = true;
+    QTimer::singleShot(0, this, [this] {
+        _statsNotifyPending = false;
+        emit statsChanged();
+    });
+}
+
+#ifdef QGC_UNITTEST_BUILD
+void SurfacePatchModel::drainUpdates()
+{
+    if (_surfaceModel) {
+        _surfaceModel->drainUpdates();
+    }
+}
+#endif
+
 void SurfacePatchModel::setTerrain(bool terrain)
 {
     if (terrain == _terrain) {
         return;
     }
+    qCDebug(GeoMapSurfacePatchModelLog) << "terrain" << _terrain << "->" << terrain;
     _terrain = terrain;
     emit terrainChanged();
     _rebuildSurfaceModel();
@@ -62,6 +98,7 @@ void SurfacePatchModel::setDebugHills(bool debugHills)
     if (debugHills == _debugHills) {
         return;
     }
+    qCDebug(GeoMapSurfacePatchModelLog) << "debugHills" << _debugHills << "->" << debugHills;
     _debugHills = debugHills;
     emit debugHillsChanged();
     _rebuildSurfaceModel();
@@ -72,6 +109,7 @@ void SurfacePatchModel::setMapType(const QString& mapType)
     if (mapType == _mapType) {
         return;
     }
+    qCDebug(GeoMapSurfacePatchModelLog) << "mapType" << _mapType << "->" << mapType;
     _mapType = mapType;
     emit mapTypeChanged();
 
@@ -79,7 +117,7 @@ void SurfacePatchModel::setMapType(const QString& mapType)
     delete _tileSource;
     _tileSource = nullptr;
     if (!_mapType.isEmpty()) {
-        _tileSource = new TileImageSource(_mapType, this);
+        _tileSource = new TileImageSource(_mapType, this, _tileImageNetworkManager);
         connect(_tileSource, &TileImageSource::tileImageReady, this, &SurfacePatchModel::_tileImageReady);
         connect(_tileSource, &TileImageSource::tileImageFailed, this, &SurfacePatchModel::_tileImageFailed);
         for (const TileMath::TileKey& key : std::as_const(_keys)) {
@@ -98,7 +136,12 @@ void SurfacePatchModel::_resetImagery()
     }
     _imageRequestKey.clear();
     _imageRequestByKey.clear();
+    _failedImageKeys.clear();
+    if (_imageRetryTimer) {
+        _imageRetryTimer->stop();
+    }
     _retiredOrder.clear();
+    _fallbackCache.clear();
     if (!_tileImages.isEmpty()) {
         _tileImages.clear();
         if (!_keys.isEmpty()) {
@@ -132,7 +175,31 @@ void SurfacePatchModel::_tileImageReady(int requestId, const QImage& image)
         return;
     }
     _tileImages.insert(key, image);
+    _fallbackCache.remove(key);  // own image supersedes any cached miss
+    qCDebug(GeoMapSurfacePatchModelVerboseLog) << "tile image ready for" << key;
+    _invalidateFallbacks(key);
     _notifyTileImageChanged(key);
+}
+
+void SurfacePatchModel::_invalidateFallbacks(const TileMath::TileKey& tile)
+{
+    // A patch's fallback sources from its direct children and its ancestors
+    // (up to kMaxAncestorFallbackLevels), so a changed tile invalidates its
+    // parent's composite and every cached descendant's crop. Fallbacks read
+    // only delivered images, never other fallbacks, so invalidation never
+    // cascades further.
+    if (tile.zoom > TileMath::kMinZoom) {
+        _fallbackCache.remove(TileMath::TileKey{tile.x >> 1, tile.y >> 1, tile.zoom - 1});
+    }
+    for (auto it = _fallbackCache.begin(); it != _fallbackCache.end();) {
+        const int down = it.key().zoom - tile.zoom;
+        if ((down > 0) && (down <= kMaxAncestorFallbackLevels) && ((it.key().x >> down) == tile.x) &&
+            ((it.key().y >> down) == tile.y)) {
+            it = _fallbackCache.erase(it);
+        } else {
+            ++it;
+        }
+    }
 }
 
 void SurfacePatchModel::_notifyTileImageChanged(const TileMath::TileKey& key)
@@ -144,7 +211,7 @@ void SurfacePatchModel::_notifyTileImageChanged(const TileMath::TileKey& key)
         const TileMath::TileKey& rowKey = _keys.at(row);
         bool affected = (rowKey == key);
         if (!affected && !_tileImages.contains(rowKey)) {
-            if ((key.zoom > 0) && (rowKey.zoom == (key.zoom - 1))) {
+            if ((key.zoom > TileMath::kMinZoom) && (rowKey.zoom == (key.zoom - 1))) {
                 affected = (rowKey.x == (key.x >> 1)) && (rowKey.y == (key.y >> 1));
             } else if (rowKey.zoom > key.zoom) {
                 const int up = rowKey.zoom - key.zoom;
@@ -161,13 +228,44 @@ void SurfacePatchModel::_notifyTileImageChanged(const TileMath::TileKey& key)
 
 void SurfacePatchModel::_tileImageFailed(int requestId)
 {
-    // Leave the image null: the delegate keeps its fallback, and patch churn re-requests
     const auto it = _imageRequestKey.constFind(requestId);
     if (it == _imageRequestKey.constEnd()) {
         return;
     }
-    _imageRequestByKey.remove(it.value());
+    const TileMath::TileKey key = it.value();
+    _imageRequestByKey.remove(key);
     _imageRequestKey.erase(it);
+
+    // The delegate keeps its fallback meanwhile; a resident patch retries on
+    // the paced timer (patch churn cannot be relied on to re-request - a
+    // patch that stays resident would keep the loading fallback forever)
+    if (!_keys.contains(key)) {
+        return;
+    }
+    qCDebug(GeoMapSurfacePatchModelLog) << "tile image failed for" << key << "(retry scheduled)";
+    _failedImageKeys.insert(key);
+    if (!_imageRetryTimer) {
+        _imageRetryTimer = new QTimer(this);
+        _imageRetryTimer->setSingleShot(true);
+        _imageRetryTimer->setInterval(kImageRetryMs);
+        connect(_imageRetryTimer, &QTimer::timeout, this, &SurfacePatchModel::_retryFailedImages);
+    }
+    if (!_imageRetryTimer->isActive()) {
+        _imageRetryTimer->start();
+    }
+}
+
+void SurfacePatchModel::_retryFailedImages()
+{
+    const QSet<TileMath::TileKey> failed = std::exchange(_failedImageKeys, {});
+    for (const TileMath::TileKey& key : failed) {
+        // Re-check residency and in-flight state: churn may have re-requested
+        // or removed the patch since the failure
+        if (!_keys.contains(key) || _tileImages.contains(key) || _imageRequestByKey.contains(key)) {
+            continue;
+        }
+        _requestTileImage(key);
+    }
 }
 
 void SurfacePatchModel::_rebuildSurfaceModel()
@@ -179,19 +277,27 @@ void SurfacePatchModel::_rebuildSurfaceModel()
     _surfaceModel = nullptr;
     delete _heightSource;
     _heightSource = nullptr;
+    delete _heightField;
+    _heightField = nullptr;
 
     GeoMapCamera* const camera = _camera();
     if (camera) {
         if (_debugHills) {
             _heightSource = new DebugHeightSource(this);
         } else if (_terrain) {
-            _heightSource = new TerrainHeightSource(this);
+            _heightSource = new TerrariumTileFetcher(this);
         } else {
             _heightSource = new FlatHeightSource(this);
         }
-        _surfaceModel = new SurfaceModel(camera, _heightSource, this);
+        qCDebug(GeoMapSurfacePatchModelLog) << "rebuilding surface model, height source:"
+                                            << (_debugHills ? "debug hills" : (_terrain ? "terrain" : "flat"));
+        _heightField = new HeightField(this);
+        _heightSource->setHeightField(_heightField);
+        _surfaceModel = new SurfaceModel(camera, _heightSource, _heightField, this);
         connect(_surfaceModel, &SurfaceModel::patchAdded, this, &SurfacePatchModel::_patchAdded);
-        connect(_surfaceModel, &SurfaceModel::patchReady, this, &SurfacePatchModel::_patchReady);
+        connect(_surfaceModel, &SurfaceModel::patchMeshChanged, this, &SurfacePatchModel::_patchReady);
+        connect(_surfaceModel, &SurfaceModel::patchEdgeDeltasChanged, this,
+                &SurfacePatchModel::_patchEdgeDeltasChanged);
         connect(_surfaceModel, &SurfaceModel::patchRemoved, this, &SurfacePatchModel::_patchRemoved);
     }
     endResetModel();
@@ -224,6 +330,145 @@ int SurfacePatchModel::maxZoomLevel() const
         maxZoom = std::max(maxZoom, key.zoom);
     }
     return maxZoom;
+}
+
+void SurfacePatchModel::_startStatsSampling()
+{
+    if (!_statsTimer) {
+        _statsTimer = new QTimer(this);
+        _statsTimer->setInterval(1000);
+        connect(_statsTimer, &QTimer::timeout, this, &SurfacePatchModel::_statsTick);
+    }
+    _statAdds = 0;
+    _statRemoves = 0;
+    _statComposites = 0;
+    if (_surfaceModel) {
+        _surfaceModel->takeUpdateStats();  // discard pre-window accumulation
+    }
+    _statsTimer->start();
+}
+
+void SurfacePatchModel::setStatsEnabled(bool enabled)
+{
+    if (enabled == _statsEnabled) {
+        return;
+    }
+    _statsEnabled = enabled;
+    emit statsEnabledChanged();
+
+    // The sampler is shared with capture recording, which owns it while
+    // capturing: the overlay toggling must not reset or stop a live capture
+    if (_statsEnabled) {
+        if (!_capturing) {
+            _startStatsSampling();
+        }
+    } else if (!_capturing && _statsTimer) {
+        _statsTimer->stop();
+    }
+    _statsText.clear();
+    emit statsTextChanged();
+}
+
+void SurfacePatchModel::_statsTick()
+{
+    const SurfaceModel::UpdateStats stats =
+        _surfaceModel ? _surfaceModel->takeUpdateStats() : SurfaceModel::UpdateStats{};
+    const double avgMs = stats.updates ? (stats.totalUs / 1000.0) / stats.updates : 0.0;
+    const double maxMs = stats.maxUs / 1000.0;
+    _statsText = QStringLiteral("upd/s %1  avg %2 ms  max %3 ms  |  patch +%4 -%5 /s  comp/s %6")
+                     .arg(stats.updates)
+                     .arg(avgMs, 0, 'f', 2)
+                     .arg(maxMs, 0, 'f', 2)
+                     .arg(_statAdds)
+                     .arg(_statRemoves)
+                     .arg(_statComposites);
+    if (_capturing) {
+        _captureWorstMaxMs = std::max(_captureWorstMaxMs, maxMs);
+        _captureWorstAvgMs = std::max(_captureWorstAvgMs, avgMs);
+        GeoMapCamera* const camera = _camera();
+        _captureRows.append(QStringLiteral("%1,%2,%3,%4,%5,%6,%7,%8,%9,%10,%11,%12")
+                                .arg(_captureClock.elapsed() / 1000.0, 0, 'f', 1)
+                                .arg(stats.updates)
+                                .arg(avgMs, 0, 'f', 3)
+                                .arg(maxMs, 0, 'f', 3)
+                                .arg(_statAdds)
+                                .arg(_statRemoves)
+                                .arg(_statComposites)
+                                .arg(patchCount())
+                                .arg(pendingCount())
+                                .arg(maxZoomLevel())
+                                .arg(camera ? camera->distance() : 0.0, 0, 'f', 0)
+                                .arg(camera ? camera->tilt() : 0.0, 0, 'f', 1));
+    }
+    _statAdds = 0;
+    _statRemoves = 0;
+    _statComposites = 0;
+    emit statsTextChanged();
+}
+
+void SurfacePatchModel::startCapture()
+{
+    if (_capturing) {
+        return;
+    }
+    _capturing = true;
+    emit capturingChanged();
+
+    _captureRows.clear();
+    _captureWorstMaxMs = 0.0;
+    _captureWorstAvgMs = 0.0;
+    _captureRows.append(
+        QStringLiteral("time_s,updates,avg_ms,max_ms,patch_adds,patch_removes,composites,patches,pending,max_zoom,cam_"
+                       "dist_m,cam_tilt_deg"));
+    _captureClock.start();
+    // Run the sampler directly rather than via statsEnabled: that property is
+    // QML-bound to the overlay toggle, and writing it here would fight the
+    // binding (and leave the sampler running after the capture ends)
+    _startStatsSampling();
+}
+
+QString SurfacePatchModel::stopCapture()
+{
+    if (!_capturing) {
+        return QString();
+    }
+    _statsTick();  // flush the partial interval: the final settle pass must reach the CSV and worst-case values
+    _capturing = false;
+    emit capturingChanged();
+    if (!_statsEnabled && _statsTimer) {
+        _statsTimer->stop();
+    }
+
+    const QString path = QDir::temp().filePath(
+        QStringLiteral("qgc-geomap-capture-%1.csv").arg(QDateTime::currentDateTime().toString("yyyyMMdd-hhmmss")));
+    QFile file(path);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        qWarning() << "GeoMap capture: cannot write" << path;
+        _statsText = QStringLiteral("capture failed: %1").arg(path);
+        emit statsTextChanged();
+        return QString();
+    }
+    const QByteArray data = _captureRows.join(QLatin1Char('\n')).toUtf8() + '\n';
+    const bool written = (file.write(data) == data.size()) && file.flush();
+    file.close();
+    _captureRows.clear();
+    if (!written) {
+        (void) file.remove();  // never hand back a truncated CSV
+        qWarning() << "GeoMap capture: write failed" << path;
+        _statsText = QStringLiteral("capture failed: %1").arg(path);
+        emit statsTextChanged();
+        return QString();
+    }
+
+    // No log output on success: the overlay shows the path, and UI tests run
+    // with strict log checking. The worst-case summary makes the overlay a
+    // one-glance verdict without reading the CSV.
+    _statsText = QStringLiteral("capture: worst max %1 ms  worst avg %2 ms  ->  %3")
+                     .arg(_captureWorstMaxMs, 0, 'f', 2)
+                     .arg(_captureWorstAvgMs, 0, 'f', 2)
+                     .arg(path);
+    emit statsTextChanged();
+    return path;
 }
 
 void SurfacePatchModel::analyzeSurface() const
@@ -292,6 +537,10 @@ QVariant SurfacePatchModel::data(const QModelIndex& index, int role) const
             return span;
         case ZoomRole:
             return key.zoom;
+        case TileXRole:
+            return key.x;
+        case TileYRole:
+            return key.y;
         case HeightsRole: {
             const auto patch = _surfaceModel->patch(key);
             return patch ? QVariant::fromValue(patch->heights) : QVariant::fromValue(QList<float>());
@@ -304,9 +553,20 @@ QVariant SurfacePatchModel::data(const QModelIndex& index, int role) const
             const auto patch = _surfaceModel->patch(key);
             return patch ? patch->covered : false;
         }
+        case EdgeLodDeltasRole:
+            return QVariant::fromValue(_surfaceModel->edgeLodDeltas(key));
         case TileImageRole: {
             const QImage own = _tileImages.value(key);
-            return own.isNull() ? _fallbackImage(key) : own;
+            if (!own.isNull()) {
+                return own;
+            }
+            const auto cached = _fallbackCache.constFind(key);
+            if (cached != _fallbackCache.constEnd()) {
+                return *cached;
+            }
+            const QImage fallback = _fallbackImage(key);
+            _fallbackCache.insert(key, fallback);
+            return fallback;
         }
         case HasTileImageRole:
             return _tileImages.contains(key) || _fallbackAvailable(key);
@@ -344,6 +604,7 @@ QImage SurfacePatchModel::_fallbackImage(const TileMath::TileKey& key) const
     }
     if (anyChild) {
         constexpr int kCanvas = 256;
+        _statComposites++;
         QImage canvas(kCanvas, kCanvas, QImage::Format_RGBA8888);
         canvas.fill(QColor(0x3a, 0x40, 0x48));  // missing quadrants stay neutral
         QPainter painter(&canvas);
@@ -373,6 +634,7 @@ QImage SurfacePatchModel::_fallbackImage(const TileMath::TileKey& key) const
         const double cellHeight = static_cast<double>(image.height()) / split;
         const int cellX = key.x - (ancestor.x << up);
         const int cellY = key.y - (ancestor.y << up);
+        _statComposites++;
         return image.copy(QRect(qRound(cellX * cellWidth), qRound(cellY * cellHeight), qMax(1, qRound(cellWidth)),
                                 qMax(1, qRound(cellHeight))));
     }
@@ -382,9 +644,18 @@ QImage SurfacePatchModel::_fallbackImage(const TileMath::TileKey& key) const
 QHash<int, QByteArray> SurfacePatchModel::roleNames() const
 {
     return {
-        {CenterXRole, "centerX"}, {SpanRole, "span"},           {CenterYRole, "centerY"},
-        {ZoomRole, "zoomLevel"},  {HeightsRole, "heights"},     {ReadyRole, "ready"},
-        {CoveredRole, "covered"}, {TileImageRole, "tileImage"}, {HasTileImageRole, "hasTileImage"},
+        {CenterXRole, "centerX"},
+        {SpanRole, "span"},
+        {CenterYRole, "centerY"},
+        {ZoomRole, "zoomLevel"},
+        {HeightsRole, "heights"},
+        {ReadyRole, "ready"},
+        {CoveredRole, "covered"},
+        {TileImageRole, "tileImage"},
+        {HasTileImageRole, "hasTileImage"},
+        {EdgeLodDeltasRole, "edgeLodDeltas"},
+        {TileXRole, "tileX"},
+        {TileYRole, "tileY"},
     };
 }
 
@@ -393,6 +664,7 @@ void SurfacePatchModel::_patchAdded(const TileMath::TileKey& key)
     beginInsertRows(QModelIndex(), _keys.count(), _keys.count());
     _keys.append(key);
     endInsertRows();
+    _statAdds++;
     if (_tileSource) {
         if (_tileImages.contains(key)) {
             _retiredOrder.removeOne(key);  // back to live: exempt from eviction again
@@ -400,7 +672,7 @@ void SurfacePatchModel::_patchAdded(const TileMath::TileKey& key)
             _requestTileImage(key);
         }
     }
-    emit statsChanged();
+    _scheduleStatsChanged();
 }
 
 void SurfacePatchModel::_patchReady(const TileMath::TileKey& key)
@@ -412,8 +684,18 @@ void SurfacePatchModel::_patchReady(const TileMath::TileKey& key)
     const QModelIndex idx = index(row);
     emit dataChanged(idx, idx, {HeightsRole, ReadyRole, CoveredRole});
     // A new ready patch can newly cover other pending rows
-    _notifyCoveredMayHaveChanged();
-    emit statsChanged();
+    _notifyCoveredMayHaveChanged(key);
+    _scheduleStatsChanged();
+}
+
+void SurfacePatchModel::_patchEdgeDeltasChanged(const TileMath::TileKey& key)
+{
+    const int row = _keys.indexOf(key);
+    if (row < 0) {
+        return;
+    }
+    const QModelIndex idx = index(row);
+    emit dataChanged(idx, idx, {EdgeLodDeltasRole});
 }
 
 void SurfacePatchModel::_patchRemoved(const TileMath::TileKey& key)
@@ -425,15 +707,20 @@ void SurfacePatchModel::_patchRemoved(const TileMath::TileKey& key)
     beginRemoveRows(QModelIndex(), row, row);
     _keys.removeAt(row);
     endRemoveRows();
+    _statRemoves++;
 
     // Retire the delivered image instead of dropping it: it seeds the
     // fallback for patches that replace this one across LOD changes
     if (_tileImages.contains(key)) {
         _retiredOrder.append(key);
         while (_retiredOrder.count() > kMaxRetiredImages) {
-            _tileImages.remove(_retiredOrder.takeFirst());
+            const TileMath::TileKey evicted = _retiredOrder.takeFirst();
+            _tileImages.remove(evicted);
+            _invalidateFallbacks(evicted);
         }
     }
+    _fallbackCache.remove(key);  // row gone: keep the cache bounded by live rows
+    _failedImageKeys.remove(key);
     const auto requestIt = _imageRequestByKey.constFind(key);
     if (requestIt != _imageRequestByKey.constEnd()) {
         _tileSource->cancelRequest(requestIt.value());
@@ -441,15 +728,25 @@ void SurfacePatchModel::_patchRemoved(const TileMath::TileKey& key)
         _imageRequestByKey.erase(requestIt);
     }
     // A removed ready patch may have been the cover of pending rows
-    _notifyCoveredMayHaveChanged();
-    emit statsChanged();
+    _notifyCoveredMayHaveChanged(key);
+    _scheduleStatsChanged();
 }
 
-void SurfacePatchModel::_notifyCoveredMayHaveChanged()
+void SurfacePatchModel::_notifyCoveredMayHaveChanged(const TileMath::TileKey& changedKey)
 {
-    // Ready rows are never covered, so only pending rows need re-evaluation
+    // Ready rows are never covered, and only rows overlapping the changed
+    // patch can gain/lose their cover. The rect prefilter keeps this O(rows)
+    // per event; unscoped notification was O(rows^2) via the CoveredRole
+    // re-evaluations and dominated passes at high resident counts.
+    const double span = TileMath::tileSpanAtZoom(changedKey.zoom);
+    const QRectF changedRect(TileMath::tileMinCorner(changedKey), QSizeF(span, span));
     for (int row = 0; row < _keys.count(); row++) {
-        const auto patch = _surfaceModel->patch(_keys.at(row));
+        const TileMath::TileKey& rowKey = _keys.at(row);
+        const double rowSpan = TileMath::tileSpanAtZoom(rowKey.zoom);
+        if (!changedRect.intersects(QRectF(TileMath::tileMinCorner(rowKey), QSizeF(rowSpan, rowSpan)))) {
+            continue;
+        }
+        const auto patch = _surfaceModel->patch(rowKey);
         if (patch && !patch->ready) {
             const QModelIndex idx = index(row);
             emit dataChanged(idx, idx, {CoveredRole});

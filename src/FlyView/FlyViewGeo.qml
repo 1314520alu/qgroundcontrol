@@ -58,17 +58,31 @@ Item {
                 anchors.fill: parent
             }
 
-            // Debug overlay: live SurfaceModel stats for manual verification
-            QGCLabel {
-                objectName: "flyViewGeoDebugOverlay"
+            // Bottom-left overlay: dataset attribution (required by the terrain
+            // tiles' terms) plus live SurfaceModel stats for manual verification;
+            // last line adds the perf counters while Stats is on
+            Rectangle {
                 anchors.left: parent.left
                 anchors.bottom: parent.bottom
-                anchors.margins: ScreenTools.defaultFontPixelWidth
-                font.family: ScreenTools.fixedFontFamily
-                text: qsTr("patches: %1  pending: %2  max zoom: %3")
-                          .arg(geoMap.patchCount)
-                          .arg(geoMap.pendingCount)
-                          .arg(geoMap.maxZoomLevel)
+                anchors.margins: ScreenTools.defaultFontPixelWidth / 2
+                width: debugOverlayLabel.implicitWidth + ScreenTools.defaultFontPixelWidth
+                height: debugOverlayLabel.implicitHeight + ScreenTools.defaultFontPixelWidth
+                radius: ScreenTools.defaultFontPixelWidth / 2
+                color: Qt.rgba(0, 0, 0, 0.5)
+
+                QGCLabel {
+                    id: debugOverlayLabel
+                    objectName: "flyViewGeoDebugOverlay"
+                    anchors.centerIn: parent
+                    font.family: ScreenTools.fixedFontFamily
+                    color: "white"
+                    text: qsTr("Terrain: Mapzen/Tilezen Terrain Tiles — SRTM (NASA), 3DEP (USGS), GMTED2010, ETOPO1 (NOAA)")
+                          + "\n" + qsTr("patches: %1  pending: %2  max zoom: %3")
+                              .arg(geoMap.patchCount)
+                              .arg(geoMap.pendingCount)
+                              .arg(geoMap.maxZoomLevel)
+                          + (geoMap.modelStats !== "" ? "\n" + geoMap.modelStats : "")
+                }
             }
 
             Column {
@@ -100,6 +114,21 @@ Item {
                     objectName: "flyViewGeoAnalyzeButton"
                     text: qsTr("Analyze")
                     onClicked: geoMap.analyzeSurface()
+                }
+
+                // Render-statistics overlay toggle (perf diagnostics)
+                QGCButton {
+                    objectName: "flyViewGeoStatsButton"
+                    text: qsTr("Stats")
+                    onClicked: geoMap.renderStats = !geoMap.renderStats
+                }
+
+                // Perf capture: records per-second counters; the CSV path
+                // shows in the debug overlay when stopped
+                QGCButton {
+                    objectName: "flyViewGeoRecordButton"
+                    text: geoMap.perfCapturing ? qsTr("Stop") : qsTr("Record")
+                    onClicked: geoMap.perfCapturing ? geoMap.stopPerfCapture() : geoMap.startPerfCapture()
                 }
             }
         }
