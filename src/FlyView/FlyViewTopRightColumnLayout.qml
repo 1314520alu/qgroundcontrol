@@ -31,4 +31,11 @@ ColumnLayout {
             }
         }
     }
+
+    // Fallback for manual streams (RTSP/UDP) and UniPod when PhotoVideoControl is not up
+    // (e.g. no active vehicle yet). Prefer PhotoVideoControl / onboard UniPod when available.
+    FlyViewLocalVideoControls {
+        Layout.alignment:           Qt.AlignRight
+        hideWhenPhotoVideoVisible:  photoVideoControlLoader.visible
+    }
 }

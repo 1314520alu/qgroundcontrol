@@ -7,6 +7,7 @@ import QtQuick.Dialogs
 import QGroundControl
 import QGroundControl.Controls
 import QGroundControl.FactControls
+import QGroundControl.FlyView
 
 Rectangle {
     id: photoVideoControl
@@ -19,14 +20,47 @@ Rectangle {
     property real _margins: ScreenTools.defaultFontPixelHeight / 2
     property real _smallMargins: ScreenTools.defaultFontPixelWidth / 2
     property var _activeVehicle: globals.activeVehicle
-    property var _cameraManager: _activeVehicle.cameraManager
-    property var _camera: _cameraManager.currentCameraInstance
+    property var _cameraManager: _activeVehicle ? _activeVehicle.cameraManager : null
+    // Prefer a camera that can actually drive PhotoVideoControl. Manual streams (RTSP/UDP)
+    // use SimulatedCameraControl for local VideoManager record; a MAVLink camera without
+    // capture flags must not hide the UI. UniPod MT11 must never fall through to Simulated.
+    property var _camera: {
+        if (!_cameraManager) {
+            return null
+        }
+        var current = _cameraManager.currentCameraInstance
+        if (current && current.modelName === "UniPod MT11") {
+            return current
+        }
+        if (current && current.modelName === "Topotek TQ10N") {
+            return current
+        }
+        if (current && (current.capturesVideo || current.capturesPhotos || current.hasTracking || current.hasVideoStream)) {
+            return current
+        }
+        var cams = _cameraManager.cameras
+        if (cams) {
+            for (var i = 0; i < cams.count; i++) {
+                var c = cams.get(i)
+                if (c && (c.capturesVideo || c.capturesPhotos || c.hasTracking || c.hasVideoStream)) {
+                    return c
+                }
+            }
+        }
+        return current
+    }
     property var _videoSettings: QGroundControl.settingsManager.videoSettings
     property bool _showPhotoVideoControls: _videoSettings ? _videoSettings.showRecControl.rawValue : true
-    property bool _cameraInPhotoMode: _camera.cameraMode === MavlinkCameraControlInterface.CAM_MODE_PHOTO || _camera.cameraMode === MavlinkCameraControlInterface.CAM_MODE_SURVEY
+    property bool _cameraInPhotoMode: _camera && (_camera.cameraMode === MavlinkCameraControlInterface.CAM_MODE_PHOTO || _camera.cameraMode === MavlinkCameraControlInterface.CAM_MODE_SURVEY)
     property bool _cameraInVideoMode: !_cameraInPhotoMode
-    property bool _videoCaptureIdle: _camera.captureVideoState === MavlinkCameraControlInterface.CaptureVideoStateIdle
-    property bool _photoCaptureIdle: _camera.capturePhotosState === MavlinkCameraControlInterface.CapturePhotosStateIdle
+    property bool _videoCaptureIdle: _camera && _camera.captureVideoState === MavlinkCameraControlInterface.CaptureVideoStateIdle
+    property bool _photoCaptureIdle: _camera && _camera.capturePhotosState === MavlinkCameraControlInterface.CapturePhotosStateIdle
+    property var _unipodMediaClient: _cameraManager ? _cameraManager.unipodMediaClient : null
+    // Show whenever MT11 camera is active; enable when HTTP client is ready.
+    // Keep the control above Video so short landscape remotes do not clip it.
+    property bool _showMediaLibrary: _camera && _camera.modelName === "UniPod MT11" && _unipodMediaClient
+    property bool _mediaLibraryReady: _unipodMediaClient && _unipodMediaClient.ready
+    property bool _useTopotekSplitStrip: _camera && (_camera.hasGimbalPad || _camera.modelName === "Topotek TQ10N")
 
     QGCPalette { id: qgcPal; colorGroupEnabled: enabled }
 
@@ -39,10 +73,15 @@ Rectangle {
         anchors.left: parent.left
         spacing: _margins
 
+        TopotekGimbalPad {
+            visible: _useTopotekSplitStrip
+            camera: _camera
+        }
+
         ColumnLayout {
             Layout.fillHeight: true
             spacing: 0
-            visible: _camera.hasZoom
+            visible: _camera && _camera.hasZoom && !_useTopotekSplitStrip
 
             QGCLabel {
                 Layout.alignment: Qt.AlignHCenter
@@ -56,9 +95,9 @@ Rectangle {
                 orientation: Qt.Vertical
                 to: 100
                 from: 0
-                value: _camera.zoomLevel
+                value: _camera ? _camera.zoomLevel : 0
                 live: true
-                onValueChanged: _camera.zoomLevel = value
+                onValueChanged: if (_camera) { _camera.zoomLevel = value }
             }
         }
 
@@ -68,8 +107,8 @@ Rectangle {
             // Camera name
             QGCLabel {
                 Layout.alignment: Qt.AlignHCenter
-                text: _camera.modelName
-                visible: _cameraManager.cameras.length > 1
+                text: _camera ? _camera.modelName : ""
+                visible: _cameraManager && _cameraManager.cameras.count > 1
             }
 
             // Photo/Video Mode Selector
@@ -79,7 +118,7 @@ Rectangle {
                 height: width / 2
                 color: qgcPal.windowShadeLight
                 radius: height * 0.5
-                visible: _camera.hasModes
+                visible: _camera && _camera.hasModes
 
                 //-- Video Mode
                 Rectangle {
@@ -138,160 +177,161 @@ Rectangle {
                 }
             }
 
-            ColumnLayout {
+            // Start/Stop Video button
+            Rectangle {
+                id: videoCaptureButton
                 Layout.alignment: Qt.AlignHCenter
-                spacing: _smallMargins
+                color: videoCaptureButtonPalette.button
+                width: ScreenTools.defaultFontPixelWidth * (_showMediaLibrary ? 5 : 6)
+                height: width
+                radius: width * 0.5
+                border.width: 1
+                border.color: videoCaptureButtonPalette.buttonBorder
+                visible: _camera && ((_camera.hasModes && _cameraInVideoMode) || (!_camera.hasModes && _camera.capturesVideo))
+                enabled: _camera && _camera.captureVideoState !== MavlinkCameraControlInterface.CaptureVideoStateDisabled
 
-                // Start/Stop Video button
+                QGCPalette { id: videoCaptureButtonPalette; colorGroupEnabled: videoCaptureButton.enabled }
+
                 Rectangle {
-                    id: videoCaptureButton
-                    Layout.alignment: Qt.AlignHCenter
-                    color: videoCaptureButtonPalette.button
-                    width: ScreenTools.defaultFontPixelWidth * 6
+                    anchors.centerIn: parent
+                    anchors.alignWhenCentered: false // Prevents anchors.centerIn from snapping to integer coordinates, which can throw off centering.
+                    color: videoCaptureButtonPalette.buttonBorder
+                    width: parent.width * 0.75
                     height: width
                     radius: width * 0.5
+                }
+
+                Rectangle {
+                    anchors.centerIn: parent
+                    anchors.alignWhenCentered: false // Prevents anchors.centerIn from snapping to integer coordinates, which can throw off centering.
+                    width: parent.width * (_isCapturing ? 0.5 : 0.75)
+                    height: width
+                    radius: _isCapturing ? ScreenTools.defaultFontPixelWidth * 0.5 : width * 0.5
+                    color: videoCaptureButtonPalette.videoCaptureButtonColor
                     border.width: 1
                     border.color: videoCaptureButtonPalette.buttonBorder
-                    visible: (_camera.hasModes && _cameraInVideoMode) || (!_camera.hasModes && _camera.capturesVideo)
-                    enabled: _camera.captureVideoState !== MavlinkCameraControlInterface.CaptureVideoStateDisabled
 
-                    QGCPalette { id: videoCaptureButtonPalette; colorGroupEnabled: videoCaptureButton.enabled }
-
-                    Rectangle {
-                        anchors.centerIn: parent
-                        anchors.alignWhenCentered: false // Prevents anchors.centerIn from snapping to integer coordinates, which can throw off centering.
-                        color: videoCaptureButtonPalette.buttonBorder
-                        width: parent.width * 0.75
-                        height: width
-                        radius: width * 0.5
-                    }
-
-                    Rectangle {
-                        anchors.centerIn: parent
-                        anchors.alignWhenCentered: false // Prevents anchors.centerIn from snapping to integer coordinates, which can throw off centering.
-                        width: parent.width * (_isCapturing ? 0.5 : 0.75)
-                        height: width
-                        radius: _isCapturing ? ScreenTools.defaultFontPixelWidth * 0.5 : width * 0.5
-                        color: videoCaptureButtonPalette.videoCaptureButtonColor
-                        border.width: 1
-                        border.color: videoCaptureButtonPalette.buttonBorder
-
-                        property bool _isCapturing: _camera.captureVideoState === MavlinkCameraControlInterface.CaptureVideoStateCapturing
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: _camera.toggleVideoRecording()
-                    }
+                    property bool _isCapturing: _camera && _camera.captureVideoState === MavlinkCameraControlInterface.CaptureVideoStateCapturing
                 }
 
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: if (_camera) { _camera.toggleVideoRecording() }
+                }
+            }
+
+            QGCLabel {
+                Layout.alignment: Qt.AlignHCenter
+                text: qsTr("Video")
+                font.pointSize: ScreenTools.smallFontPointSize
+                visible: videoCaptureButton.visible && photoCaptureButton.visible && !_showMediaLibrary
+            }
+
+            // Record time
+            Rectangle {
+                Layout.alignment: Qt.AlignHCenter
+                color: _videoCaptureIdle ? "transparent" : videoCaptureButtonPalette.videoCaptureButtonColor
+                Layout.preferredWidth: videoRecordTime.width + (_smallMargins * 2)
+                Layout.preferredHeight: videoRecordTime.height
+                radius: _smallMargins
+                // Hide idle timer on UniPod — short landscape needs room for Browse + settings
+                visible: videoCaptureButton.visible && (!_showMediaLibrary || !_videoCaptureIdle)
+
+                // Video record time
                 QGCLabel {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: qsTr("Video")
-                    font.pointSize: ScreenTools.smallFontPointSize
-                    visible: videoCaptureButton.visible && photoCaptureButton.visible
+                    id: videoRecordTime
+                    anchors.leftMargin: _smallMargins
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    text: _videoCaptureIdle ? "00:00:00" : (_camera ? _camera.recordTimeStr : "00:00:00")
                 }
+            }
 
-                // Record time
+            Item {
+                Layout.alignment: Qt.AlignHCenter
+                width: 1
+                height: 1
+                visible: videoCaptureButton.visible && photoCaptureButton.visible && !_showMediaLibrary
+            }
+
+            // Take Photo button
+            Rectangle {
+                id: photoCaptureButton
+                Layout.alignment: Qt.AlignHCenter
+                color: photoCaptureButtonPalette.button
+                width: ScreenTools.defaultFontPixelWidth * (_showMediaLibrary ? 5 : 6)
+                height: width
+                radius: width * 0.5
+                border.width: 1
+                border.color: photoCaptureButtonPalette.buttonBorder
+                visible: _camera && ((_camera.hasModes && _cameraInPhotoMode) || (!_camera.hasModes && (_camera.hasVideoStream || _camera.capturesPhotos)))
+                enabled: _camera && _camera.capturePhotosState !== MavlinkCameraControlInterface.CapturePhotosStateDisabled
+
+                QGCPalette { id: photoCaptureButtonPalette; colorGroupEnabled: photoCaptureButton.enabled }
+
                 Rectangle {
-                    Layout.alignment: Qt.AlignHCenter
-                    color: _videoCaptureIdle ? "transparent" : videoCaptureButtonPalette.videoCaptureButtonColor
-                    Layout.preferredWidth: videoRecordTime.width + (_smallMargins * 2)
-                    Layout.preferredHeight: videoRecordTime.height
-                    radius: _smallMargins
-                    visible: videoCaptureButton.visible
-
-                    // Video record time
-                    QGCLabel {
-                        id: videoRecordTime
-                        anchors.leftMargin: _smallMargins
-                        anchors.left: parent.left
-                        anchors.top: parent.top
-                        text: _videoCaptureIdle ? "00:00:00" : _camera.recordTimeStr
-                    }
-                }
-
-                Item {
-                    Layout.alignment: Qt.AlignHCenter
-                    width: 1
-                    height: 1
-                    visible: videoCaptureButton.visible && photoCaptureButton.visible
-                }
-
-                // Take Photo button
-                Rectangle {
-                    id: photoCaptureButton
-                    Layout.alignment: Qt.AlignHCenter
-                    color: photoCaptureButtonPalette.button
-                    width: ScreenTools.defaultFontPixelWidth * 6
+                    anchors.centerIn: parent
+                    anchors.alignWhenCentered: false // Prevents anchors.centerIn from snapping to integer coordinates, which can throw off centering.
+                    color: photoCaptureButtonPalette.buttonBorder
+                    width: parent.width * 0.75
                     height: width
                     radius: width * 0.5
+                }
+
+                Rectangle {
+                    anchors.centerIn: parent
+                    anchors.alignWhenCentered: false // Prevents anchors.centerIn from snapping to integer coordinates, which can throw off centering.
+                    width: parent.width * (_isCapturing ? 0.5 : 0.75)
+                    height: width
+                    radius: _isCapturing ? ScreenTools.defaultFontPixelWidth * 0.5 : width * 0.5
+                    color: photoCaptureButtonPalette.photoCaptureButtonColor
                     border.width: 1
                     border.color: photoCaptureButtonPalette.buttonBorder
-                    visible: (_camera.hasModes && _cameraInPhotoMode) || (!_camera.hasModes && (_camera.hasVideoStream || _camera.capturesPhotos))
-                    enabled: _camera.capturePhotosState !== MavlinkCameraControlInterface.CapturePhotosStateDisabled
 
-                    QGCPalette { id: photoCaptureButtonPalette; colorGroupEnabled: photoCaptureButton.enabled }
+                    property bool _isCapturing: _camera.capturePhotosState === MavlinkCameraControlInterface.CapturePhotosStateCapturingSinglePhoto ||
+                                                    _camera.capturePhotosState === MavlinkCameraControlInterface.CapturePhotosStateCapturingMultiplePhotos
+                }
 
-                    Rectangle {
-                        anchors.centerIn: parent
-                        anchors.alignWhenCentered: false // Prevents anchors.centerIn from snapping to integer coordinates, which can throw off centering.
-                        color: photoCaptureButtonPalette.buttonBorder
-                        width: parent.width * 0.75
-                        height: width
-                        radius: width * 0.5
-                    }
-
-                    Rectangle {
-                        anchors.centerIn: parent
-                        anchors.alignWhenCentered: false // Prevents anchors.centerIn from snapping to integer coordinates, which can throw off centering.
-                        width: parent.width * (_isCapturing ? 0.5 : 0.75)
-                        height: width
-                        radius: _isCapturing ? ScreenTools.defaultFontPixelWidth * 0.5 : width * 0.5
-                        color: photoCaptureButtonPalette.photoCaptureButtonColor
-                        border.width: 1
-                        border.color: photoCaptureButtonPalette.buttonBorder
-
-                        property bool _isCapturing: _camera.capturePhotosState === MavlinkCameraControlInterface.CapturePhotosStateCapturingSinglePhoto ||
-                                                        _camera.capturePhotosState === MavlinkCameraControlInterface.CapturePhotosStateCapturingMultiplePhotos
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            if (_camera.capturePhotosState === MavlinkCameraControlInterface.CapturePhotosStateCapturingMultiplePhotos) {
-                                _camera.stopTakePhoto()
-                            } else if (_camera.capturePhotosState === MavlinkCameraControlInterface.CapturePhotosStateIdle) {
-                                _camera.takePhoto()
-                            }
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        if (_camera.capturePhotosState === MavlinkCameraControlInterface.CapturePhotosStateCapturingMultiplePhotos) {
+                            _camera.stopTakePhoto()
+                        } else if (_camera.capturePhotosState === MavlinkCameraControlInterface.CapturePhotosStateIdle) {
+                            _camera.takePhoto()
                         }
                     }
                 }
+            }
+
+            QGCLabel {
+                Layout.alignment: Qt.AlignHCenter
+                text: qsTr("Photo")
+                font.pointSize: ScreenTools.smallFontPointSize
+                visible: videoCaptureButton.visible && photoCaptureButton.visible && !_showMediaLibrary
+            }
+
+            TopotekZoomHoldButtons {
+                Layout.alignment: Qt.AlignHCenter
+                visible: _useTopotekSplitStrip
+                camera: _camera
+            }
+
+            // Capture count (not useful for UniPod onboard TF — Browse is beside column)
+            Rectangle {
+                Layout.alignment: Qt.AlignHCenter
+                color: _photoCaptureIdle ? "transparent" : photoCaptureButtonPalette.photoCaptureButtonColor
+                Layout.preferredWidth: photoCaptureCount.width + (_smallMargins * 2)
+                Layout.preferredHeight: photoCaptureCount.height
+                radius: _smallMargins
+                visible: photoCaptureButton.visible && !_showMediaLibrary
 
                 QGCLabel {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: qsTr("Photo")
-                    font.pointSize: ScreenTools.smallFontPointSize
-                    visible: videoCaptureButton.visible && photoCaptureButton.visible
-                }
-
-                // Capture count
-                Rectangle {
-                    Layout.alignment: Qt.AlignHCenter
-                    color: _photoCaptureIdle ? "transparent" : photoCaptureButtonPalette.photoCaptureButtonColor
-                    Layout.preferredWidth: photoCaptureCount.width + (_smallMargins * 2)
-                    Layout.preferredHeight: photoCaptureCount.height
-                    radius: _smallMargins
-                    visible: photoCaptureButton.visible
-
-                    // Photo capture count
-                    QGCLabel {
-                        id: photoCaptureCount
-                        anchors.leftMargin: _smallMargins
-                        anchors.left: parent.left
-                        anchors.top: parent.top
-                        text: _activeVehicle ? ('00000' + _activeVehicle.cameraTriggerPoints.count).slice(-5) : "00000"
-                    }
+                    id: photoCaptureCount
+                    anchors.leftMargin: _smallMargins
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    text: _activeVehicle ? ('00000' + _activeVehicle.cameraTriggerPoints.count).slice(-5) : "00000"
                 }
             }
 
@@ -360,19 +400,45 @@ Rectangle {
                 }
             }
 
-            QGCColoredImage {
+            // Browse above settings — same column width as capture buttons (no side-by-side overflow)
+            ColumnLayout {
                 Layout.alignment: Qt.AlignHCenter
-                source: "/res/gear-black.svg"
-                mipmap: true
-                Layout.preferredHeight: ScreenTools.defaultFontPixelHeight * 1.5
-                Layout.preferredWidth: Layout.preferredHeight
-                sourceSize.height: Layout.preferredHeight
-                color: qgcPal.text
-                fillMode: Image.PreserveAspectFit
+                spacing: _smallMargins
 
-                QGCMouseArea {
-                    fillItem: parent
-                    onClicked: settingsDialogFactory.open()
+                QGCColoredImage {
+                    Layout.alignment: Qt.AlignHCenter
+                    visible: _showMediaLibrary
+                    enabled: _mediaLibraryReady
+                    opacity: _mediaLibraryReady ? 1.0 : 0.45
+                    source: "/res/SaveToDisk.svg"
+                    mipmap: true
+                    Layout.preferredHeight: Math.max(ScreenTools.minTouchPixels * 0.55, ScreenTools.defaultFontPixelHeight * 1.5)
+                    Layout.preferredWidth: Layout.preferredHeight
+                    sourceSize.height: Layout.preferredHeight
+                    color: qgcPal.text
+                    fillMode: Image.PreserveAspectFit
+
+                    QGCMouseArea {
+                        fillItem: parent
+                        enabled: _mediaLibraryReady
+                        onClicked: mediaGalleryFactory.open({ mediaClient: _unipodMediaClient })
+                    }
+                }
+
+                QGCColoredImage {
+                    Layout.alignment: Qt.AlignHCenter
+                    source: "/res/gear-black.svg"
+                    mipmap: true
+                    Layout.preferredHeight: Math.max(ScreenTools.minTouchPixels * 0.55, ScreenTools.defaultFontPixelHeight * 1.5)
+                    Layout.preferredWidth: Layout.preferredHeight
+                    sourceSize.height: Layout.preferredHeight
+                    color: qgcPal.text
+                    fillMode: Image.PreserveAspectFit
+
+                    QGCMouseArea {
+                        fillItem: parent
+                        onClicked: settingsDialogFactory.open()
+                    }
                 }
             }
         }
@@ -381,6 +447,17 @@ Rectangle {
             id: settingsDialogFactory
 
             dialogComponent: settingsDialogComponent
+        }
+
+        QGCPopupDialogFactory {
+            id: mediaGalleryFactory
+            dialogComponent: mediaGalleryComponent
+        }
+
+        Component {
+            id: mediaGalleryComponent
+            UnipodMt11MediaGallery {
+            }
         }
 
         Component {

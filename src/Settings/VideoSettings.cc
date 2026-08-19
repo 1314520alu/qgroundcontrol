@@ -24,15 +24,12 @@ DECLARE_SETTINGGROUP(Video, "Video")
     videoSourceList.append(videoSourceUDPH265);
     videoSourceList.append(videoSourceTCP);
     videoSourceList.append(videoSourceMPEGTS);
-    videoSourceList.append(videoSource3DRSolo);
-    videoSourceList.append(videoSourceParrotDiscovery);
-    videoSourceList.append(videoSourceYuneecMantisG);
+    // 3DR Solo / Parrot / Yuneec / Herelink omitted: unused on SIYI/Skydroid handheld GCS in CN market.
+    videoSourceList.append(videoSourceUnipodMT11);
+    videoSourceList.append(videoSourceSiyiR1M);
+    videoSourceList.append(videoSourceSiyiA8Mini);
+    videoSourceList.append(videoSourceTopotekTq10N);
 
-#ifdef QGC_HERELINK_AIRUNIT_VIDEO
-    videoSourceList.append(videoSourceHerelinkAirUnit);
-#else
-    videoSourceList.append(videoSourceHerelinkHotspot);
-#endif
     QStringList uvcDevices = UVCReceiver::getDeviceNameList();
     for (const QString& device : uvcDevices) {
         videoSourceList.append(device);
@@ -271,11 +268,36 @@ bool VideoSettings::streamConfigured(void)
         qCDebug(VideoSettingsLog) << "Stream configured for Herelink Hotspot";
         return true;
     }
+    //-- UniPod MT11 / SIYI R1M / A8 Mini use a fixed RTSP URL from the payload manual
+    if (vSource == videoSourceUnipodMT11) {
+        qCDebug(VideoSettingsLog) << "Stream configured for UniPod MT11";
+        return true;
+    }
+    if (vSource == videoSourceSiyiR1M) {
+        qCDebug(VideoSettingsLog) << "Stream configured for SIYI R1M";
+        return true;
+    }
+    if (vSource == videoSourceSiyiA8Mini) {
+        qCDebug(VideoSettingsLog) << "Stream configured for SIYI A8 Mini";
+        return true;
+    }
+    if (vSource == videoSourceTopotekTq10N) {
+        qCDebug(VideoSettingsLog) << "Stream configured for Topotek TQ10N";
+        return true;
+    }
     if (UVCReceiver::enabled() && UVCReceiver::deviceExists(vSource)) {
         qCDebug(VideoSettingsLog) << "Stream configured for UVC";
         return true;
     }
     return false;
+}
+
+bool VideoSettings::usesSiyiRadioEthernet(const QString &source)
+{
+    return (source == QLatin1String(videoSourceUnipodMT11))
+        || (source == QLatin1String(videoSourceSiyiR1M))
+        || (source == QLatin1String(videoSourceSiyiA8Mini))
+        || (source == QLatin1String(videoSourceTopotekTq10N));
 }
 
 void VideoSettings::_configChanged(QVariant)

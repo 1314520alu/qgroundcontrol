@@ -35,6 +35,20 @@ public:
     // QFontMetrics::descent for default font
     Q_INVOKABLE static double defaultFontDescent(int pointSize);
 
+    /// Android Build.MODEL (empty on non-Android).
+    Q_INVOKABLE static QString androidProductModel();
+    /// True if the given Android package is installed (always false on non-Android).
+    Q_INVOKABLE static bool androidPackageInstalled(const QString &packageName);
+    /// Best-effort remote GCS preset name matching LinkConfigurationManager tiles, or empty.
+    Q_INVOKABLE static QString detectRemoteControllerPreset();
+
+    /// Kick SIYI radio ethernet (eth0 / 192.168.144.x) bring-up on Android remotes. No-op elsewhere.
+    Q_INVOKABLE static void ensureSiyiRadioEthernet();
+    /// True when a local IPv4 on 192.168.144.x is present.
+    Q_INVOKABLE static bool isSiyiRadioEthernetReady();
+    /// Local 192.168.144.x address, or empty.
+    Q_INVOKABLE static QString siyiRadioEthernetAddress();
+
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
     static bool isMobile() { return true;  }
     static bool fakeMobile() { return false; }

@@ -1,0 +1,86 @@
+{
+  "meta": {
+    "product": "Topotek TQ10N",
+    "vendor": "Topotek / 拓扑联创",
+    "sdk_version": "V1.1.3",
+    "sdk_date": "2025-05-13",
+    "source_sdk_pdf": "pdf/Topotek-Udp-Uart-Protocol-V1.1.3-EN.pdf",
+    "source_python": "pythonSampleCode/pythonSampleCode/TopotekUdpControlDemo.py",
+    "download_page": "https://www.topotek.cn",
+    "default_ip": "192.168.144.108",
+    "udp_port": "9003",
+    "local_port": "9004",
+    "rtsp_primary": "rtsp://192.168.144.108:554/stream=0",
+    "rtsp_secondary": "rtsp://192.168.144.108:554/stream=1",
+    "frame_header": "#TP",
+    "crc": "sum(bytes before CRC) & 0xFF, 2 ASCII hex uppercase",
+    "network_src_addr": "P",
+    "phase": "1"
+  },
+  "transports": [
+    {
+      "name": "UDP control (network)",
+      "media": "udp",
+      "host": "192.168.144.108",
+      "port": 9003,
+      "baud": null,
+      "notes": "GCS binds local :9004; pod listens :9003"
+    },
+    {
+      "name": "UART control",
+      "media": "serial",
+      "host": null,
+      "port": null,
+      "baud": 115200,
+      "notes": "Source U, dest D — not used in QGC Phase-1"
+    }
+  ],
+  "frame_fields": [
+    {"name": "frame_header", "offset": 0, "size_bytes": 3, "endian": null, "description": "#TP fixed header"},
+    {"name": "src_addr", "offset": 3, "size_bytes": 1, "endian": null, "description": "P=network, U=UART"},
+    {"name": "dst_addr", "offset": 4, "size_bytes": 1, "endian": null, "description": "D=camera, G=gimbal, M=zoom"},
+    {"name": "length", "offset": 5, "size_bytes": 1, "endian": null, "description": "Fixed ASCII '2' for #TP"},
+    {"name": "ctrl", "offset": 6, "size_bytes": 1, "endian": null, "description": "w=write, r=read"},
+    {"name": "ident", "offset": 7, "size_bytes": 3, "endian": null, "description": "3-char command ID"},
+    {"name": "data", "offset": 10, "size_bytes": 0, "endian": null, "description": "Variable ASCII payload"},
+    {"name": "crc", "offset": -2, "size_bytes": 2, "endian": null, "description": "2-byte ASCII hex checksum"}
+  ],
+  "commands": [
+    {"cmd_id": 1, "cmd_hex": "CAP", "name": "拍照", "name_en": "Take Photo", "category": "camera", "direction": "request", "need_ack": 1, "notes": "P→D w CAP data 0", "description": "Trigger still capture to TF card"},
+    {"cmd_id": 2, "cmd_hex": "REC", "name": "录像控制", "name_en": "Record Control", "category": "camera", "direction": "request", "need_ack": 1, "notes": "w: 0A=toggle; r: query state", "description": "Start/stop/toggle or query recording"},
+    {"cmd_id": 3, "cmd_hex": "ZMC", "name": "变焦", "name_en": "Zoom Motor Control", "category": "camera", "direction": "request", "need_ack": 1, "notes": "P→M: 01=out 02=in 00=stop", "description": "Hold +/- zoom; release sends stop"},
+    {"cmd_id": 4, "cmd_hex": "PTZ", "name": "云台速度", "name_en": "PTZ Speed", "category": "gimbal", "direction": "request", "need_ack": 1, "notes": "P→G: 01-04 dir, 05 home, 00 stop", "description": "Speed-mode gimbal; hold direction, release stop"}
+  ],
+  "command_fields": [
+    {"cmd_id": 1, "direction": "send", "seq": 1, "name": "data", "ctype": "ASCII", "description": "0 trigger"},
+    {"cmd_id": 2, "direction": "send", "seq": 1, "name": "data", "ctype": "ASCII", "description": "0A toggle / 0 query"},
+    {"cmd_id": 3, "direction": "send", "seq": 1, "name": "data", "ctype": "ASCII", "description": "01 out, 02 in, 00 stop"},
+    {"cmd_id": 4, "direction": "send", "seq": 1, "name": "data", "ctype": "ASCII", "description": "01 up 02 down 03 left 04 right 05 home 00 stop"}
+  ],
+  "enums": [
+    {"enum_name": "ZMC", "value": 0, "label": "stop", "notes": "00"},
+    {"enum_name": "ZMC", "value": 1, "label": "zoom_out", "notes": "01"},
+    {"enum_name": "ZMC", "value": 2, "label": "zoom_in", "notes": "02"},
+    {"enum_name": "PTZ", "value": 0, "label": "stop", "notes": "00"},
+    {"enum_name": "PTZ", "value": 1, "label": "up", "notes": "01"},
+    {"enum_name": "PTZ", "value": 2, "label": "down", "notes": "02"},
+    {"enum_name": "PTZ", "value": 3, "label": "left", "notes": "03"},
+    {"enum_name": "PTZ", "value": 4, "label": "right", "notes": "04"},
+    {"enum_name": "PTZ", "value": 5, "label": "home", "notes": "05"},
+    {"enum_name": "REC_state", "value": 0, "label": "stopped", "notes": null},
+    {"enum_name": "REC_state", "value": 1, "label": "recording", "notes": null}
+  ],
+  "examples": [
+    {"cmd_id": 1, "title": "Photo (network P→D)", "hex_packet": "23 54 50 50 44 32 77 43 41 50 30 30 38", "notes": "ASCII #TPPD2wCAP008"},
+    {"cmd_id": 2, "title": "Record toggle", "hex_packet": "23 54 50 50 44 32 77 52 45 43 30 41 34 46", "notes": "ASCII #TPPD2wREC0A4F"},
+    {"cmd_id": 2, "title": "Record query", "hex_packet": "23 54 50 50 44 32 72 52 45 43 30 30 39", "notes": "ASCII #TPPD2rREC009"},
+    {"cmd_id": 3, "title": "Zoom stop", "hex_packet": "23 54 50 50 4D 32 77 5A 4D 43 30 30 35 37", "notes": "ASCII #TPPM2wZMC0057"},
+    {"cmd_id": 4, "title": "PTZ stop", "hex_packet": "23 54 50 50 47 32 77 50 54 5A 30 30 36 35", "notes": "ASCII #TPPG2wPTZ0065"},
+    {"cmd_id": 4, "title": "PTZ home", "hex_packet": "23 54 50 50 47 32 77 50 54 5A 30 35 36 41", "notes": "ASCII #TPPG2wPTZ056A"}
+  ],
+  "media_endpoints": [
+    {"kind": "rtsp_main", "uri": "rtsp://192.168.144.108:554/stream=0", "notes": "1080p main stream (QGC preset)"},
+    {"kind": "rtsp_sub", "uri": "rtsp://192.168.144.108:554/stream=1", "notes": "Sub stream"},
+    {"kind": "udp_control", "uri": "udp://192.168.144.108:9003", "notes": "ASCII #TP protocol"}
+  ]
+}

@@ -43,6 +43,9 @@ class VideoManager : public QObject
     Q_PROPERTY(QSize    videoSize               READ videoSize                                  NOTIFY videoSizeChanged)
     Q_PROPERTY(QString  imageFile               READ imageFile                                  NOTIFY imageFileChanged)
     Q_PROPERTY(QString  uvcVideoSourceID        READ uvcVideoSourceID                           NOTIFY uvcVideoSourceIDChanged)
+    Q_PROPERTY(QString  decoderName             READ decoderName                                NOTIFY decoderInfoChanged)
+    Q_PROPERTY(bool     decoderIsHardware       READ decoderIsHardware                          NOTIFY decoderInfoChanged)
+    Q_PROPERTY(QString  decoderSummary          READ decoderSummary                             NOTIFY decoderInfoChanged)
 
     friend class VideoManagerInitTest;
 
@@ -68,6 +71,9 @@ public:
     bool hasThermal() const;
     bool hasVideo() const;
     bool isStreamSource() const;
+    /// True when Application Settings video source is a manual stream (RTSP/UDP/UniPod/SIYI R1M/…),
+    /// not merely an auto-configured MAVLink camera stream.
+    bool isManualStreamSource() const;
     bool isUvc() const;
     bool recording() const { return _recording; }
     bool streaming() const { return _streaming; }
@@ -78,6 +84,9 @@ public:
     QSize videoSize() const { return _videoSize; }
     QString imageFile() const { return _imageFile; }
     QString uvcVideoSourceID() const { return _uvcVideoSourceID; }
+    QString decoderName() const { return _decoderName; }
+    bool decoderIsHardware() const { return _decoderIsHardware; }
+    QString decoderSummary() const;
     void setfullScreen(bool on);
 
 signals:
@@ -95,6 +104,7 @@ signals:
     void streamingChanged();
     void uvcVideoSourceIDChanged();
     void videoSizeChanged();
+    void decoderInfoChanged();
 
 private slots:
     void _communicationLostChanged(bool communicationLost);
@@ -123,6 +133,11 @@ private:
     void _restartVideo(VideoReceiver *receiver);
     void _startReceiver(VideoReceiver *receiver);
     void _stopReceiver(VideoReceiver *receiver);
+    void _armUnipodEthernetGate();
+    void _disarmUnipodEthernetGate();
+    void _checkUnipodEthernetGate();
+    void _updateDecoderInfo(VideoReceiver *receiver);
+    void _maybeWarnSoftwareDecoder();
     static void _cleanupOldVideos();
 
     QList<VideoReceiver*> _videoReceivers;
@@ -130,6 +145,8 @@ private:
     VideoSettings *_videoSettings = nullptr;
     QQuickWindow *_mainWindow = nullptr;
     Vehicle *_activeVehicle = nullptr;
+    QTimer *_unipodEthernetGateTimer = nullptr;
+    int _unipodEthernetGateTicks = 0;
 
     std::atomic<InitState> _initState = InitState::NotStarted;
     // Orders _backendInitFuture publication against cross-thread waiters.
@@ -145,6 +162,9 @@ private:
     QSize _videoSize;
     QString _imageFile;
     QString _uvcVideoSourceID;
+    QString _decoderName;
+    bool _decoderIsHardware = false;
+    bool _softwareDecoderWarned = false;
 
 #ifdef QGC_UNITTEST_BUILD
     std::function<void()> _createVideoReceiversForTest;

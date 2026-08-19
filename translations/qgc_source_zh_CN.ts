@@ -5789,6 +5789,14 @@ VTOL</translation>
         <translation>照片</translation>
     </message>
     <message>
+        <source>Media</source>
+        <translation>浏览</translation>
+    </message>
+    <message>
+        <source>Browse</source>
+        <translation>浏览</translation>
+    </message>
+    <message>
         <source>Reset</source>
         <translation>重置</translation>
     </message>
@@ -9154,6 +9162,93 @@ Click &apos;Ok&apos; to upload the Plan anyway.</source>
     </message>
 </context>
 <context>
+    <name>FlyViewLocalVideoControls</name>
+    <message>
+        <source>Video</source>
+        <translation>视频</translation>
+    </message>
+    <message>
+        <source>Photo</source>
+        <translation>照片</translation>
+    </message>
+    <message>
+        <source>Browse</source>
+        <translation>浏览</translation>
+    </message>
+    <message>
+        <source>REC</source>
+        <translation>录像</translation>
+    </message>
+</context>
+<context>
+    <name>UnipodMt11MediaGallery</name>
+    <message>
+        <source>Media Library</source>
+        <translation>媒体库</translation>
+    </message>
+    <message>
+        <source>Photo</source>
+        <translation>照片</translation>
+    </message>
+    <message>
+        <source>Video</source>
+        <translation>视频</translation>
+    </message>
+    <message>
+        <source>Retry</source>
+        <translation>重试</translation>
+    </message>
+    <message>
+        <source>Loading…</source>
+        <translation>加载中…</translation>
+    </message>
+    <message>
+        <source>No media files</source>
+        <translation>暂无媒体文件</translation>
+    </message>
+    <message>
+        <source>Back</source>
+        <translation>返回</translation>
+    </message>
+    <message>
+        <source>Download</source>
+        <translation>下载</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <source>Saved to %1</source>
+        <translation>已保存到 %1</translation>
+    </message>
+    <message>
+        <source>Unable to play video. You can download it instead.
+%1</source>
+        <translation>无法播放视频，可改为下载。
+%1</translation>
+    </message>
+    <message>
+        <source>Playback</source>
+        <translation>播放</translation>
+    </message>
+</context>
+<context>
+    <name>UnipodMt11MediaClient</name>
+    <message>
+        <source>Camera media web server unreachable at %1. RTSP may still work; confirm MT11 HTTP media service on port %2.</source>
+        <translation>无法连接云台媒体 Web 服务 %1。图传仍可能正常；请确认 MT11 HTTP 媒体服务（端口 %2）已开启。</translation>
+    </message>
+    <message>
+        <source>Cannot reach camera web server (%1): %2</source>
+        <translation>无法访问云台 Web 服务（%1）：%2</translation>
+    </message>
+    <message>
+        <source>Failed to parse directories</source>
+        <translation>解析媒体目录失败</translation>
+    </message>
+</context>
+<context>
     <name>StructureScanEditor</name>
     <message>
         <source>Grid</source>
@@ -11882,8 +11977,29 @@ Blue Robotics的设备设计使用水来润滑，并非可以空转。但是可�
         <translation>Herelink AirUnit</translation>
     </message>
     <message>
+        <source>UniPod MT11</source>
+        <translation>UniPod MT11</translation>
+    </message>
+    <message>
+        <source>SIYI R1M</source>
+        <translation>SIYI R1M</translation>
+    </message>
+    <message>
+        <source>SIYI A8 Mini</source>
+        <translation>思翼 A8 Mini</translation>
+    </message>
+    <message>
+        <location filename="src/Settings/VideoSettings.cc"/>
+        <source>Topotek TQ10N</source>
+        <translation>拓扑联创 TQ10N</translation>
+    </message>
+    <message>
         <source>Mavlink camera stream is automatically configured</source>
         <translation>Mavlink 相机流已自动配置</translation>
+    </message>
+    <message>
+        <source>RTSP address is configured automatically</source>
+        <translation>RTSP 地址已自动配置</translation>
     </message>
 </context>
 <context>
@@ -18374,6 +18490,18 @@ Do you wish to proceed?</source>
     <message>
         <source>Invalid video format defined.</source>
         <translation>无效的视频格式定义。</translation>
+    </message>
+    <message>
+        <source>Video is using a software decoder (%1). Latency will be higher than hardware decode. Set Force video decoder to Default or Force hardware decoder, or check the air-unit encode format.</source>
+        <translation>视频正在使用软件解码器（%1）。延迟会高于硬件解码。请将「强制视频解码器优先级」设为默认或强制硬件解码器，或检查机载编码格式。</translation>
+    </message>
+    <message>
+        <source>HW · %1</source>
+        <translation>硬件 · %1</translation>
+    </message>
+    <message>
+        <source>SW · %1</source>
+        <translation>软件 · %1</translation>
     </message>
 </context>
 <context>

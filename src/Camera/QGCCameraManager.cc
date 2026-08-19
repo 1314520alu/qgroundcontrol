@@ -9,7 +9,16 @@
 #include "QGCLoggingCategory.h"
 #include "QGCVideoStreamInfo.h"
 #include "SimulatedCameraControl.h"
+#include "UnipodMt11CameraControl.h"
+#include "UnipodMt11Client.h"
+#include "UnipodMt11MediaClient.h"
+#include "TopotekTq10CameraControl.h"
+#include "TopotekTq10Client.h"
 #include "Vehicle.h"
+#include "VideoManager.h"
+#include "VideoSettings.h"
+#include "SettingsManager.h"
+#include "Fact.h"
 
 #include <cmath>
 #include "GimbalControllerSettings.h"
@@ -24,6 +33,32 @@ namespace {
     constexpr int kHeartbeatTickMs = 500;
     constexpr int kSilentTimeoutMs = 5000;
     constexpr int kMaxRetryCount = 10;
+    constexpr int kUnipodStartRetryMs = 1000;
+    constexpr int kUnipodStartSlowRetryMs = 5000;
+    constexpr int kUnipodStartRetryMaxTicks = 60;
+    constexpr int kTopotekStartRetryMs = 1000;
+    constexpr int kTopotekStartSlowRetryMs = 5000;
+    constexpr int kTopotekStartRetryMaxTicks = 60;
+
+    bool isUnipodVideoSource()
+    {
+        SettingsManager *settingsManager = SettingsManager::instance();
+        if (!settingsManager || !settingsManager->videoSettings() || !settingsManager->videoSettings()->videoSource()) {
+            return false;
+        }
+        return settingsManager->videoSettings()->videoSource()->rawValue().toString()
+               == QLatin1String(VideoSettings::videoSourceUnipodMT11);
+    }
+
+    bool isTopotekVideoSource()
+    {
+        SettingsManager *settingsManager = SettingsManager::instance();
+        if (!settingsManager || !settingsManager->videoSettings() || !settingsManager->videoSettings()->videoSource()) {
+            return false;
+        }
+        return settingsManager->videoSettings()->videoSource()->rawValue().toString()
+               == QLatin1String(VideoSettings::videoSourceTopotekTq10N);
+    }
 }
 
 QVariantList QGCCameraManager::_cameraList;
@@ -76,6 +111,11 @@ QGCCameraManager::QGCCameraManager(Vehicle *vehicle)
     : QObject(vehicle)
     , _vehicle(vehicle)
     , _simulatedCameraControl(new SimulatedCameraControl(vehicle, this))
+    , _unipodClient(new UnipodMt11Client(this))
+    , _unipodCameraControl(new UnipodMt11CameraControl(vehicle, _unipodClient, this))
+    , _unipodMediaClient(new UnipodMt11MediaClient(this))
+    , _topotekClient(new TopotekTq10Client(this))
+    , _topotekCameraControl(new TopotekTq10CameraControl(vehicle, _topotekClient, this))
 {
     qCDebug(CameraManagerLog) << this;
 
@@ -83,9 +123,11 @@ QGCCameraManager::QGCCameraManager(Vehicle *vehicle)
 
     _addCameraControlToLists(_simulatedCameraControl);
 
-    (void) connect(_vehicle, &Vehicle::initialConnectComplete, this, &QGCCameraManager::_initialConnectCompleted, Qt::UniqueConnection);
+    if (_vehicle) {
+        (void) connect(_vehicle, &Vehicle::initialConnectComplete, this, &QGCCameraManager::_initialConnectCompleted, Qt::UniqueConnection);
+        (void) connect(_vehicle, &Vehicle::mavlinkMessageReceived, this, &QGCCameraManager::_mavlinkMessageReceived);
+    }
     (void) connect(MultiVehicleManager::instance(), &MultiVehicleManager::parameterReadyVehicleAvailableChanged, this, &QGCCameraManager::_vehicleReady);
-    (void) connect(_vehicle, &Vehicle::mavlinkMessageReceived, this, &QGCCameraManager::_mavlinkMessageReceived);
     (void) connect(&_camerasLostHeartbeatTimer, &QTimer::timeout, this, &QGCCameraManager::_checkForLostCameras);
 
     _camerasLostHeartbeatTimer.setSingleShot(false);
@@ -93,6 +135,53 @@ QGCCameraManager::QGCCameraManager(Vehicle *vehicle)
     _lastFocusChange.start();
     _lastCameraChange.start();
     _camerasLostHeartbeatTimer.start(kHeartbeatTickMs);
+
+    _unipodStartRetryTimer.setInterval(kUnipodStartRetryMs);
+    (void) connect(&_unipodStartRetryTimer, &QTimer::timeout, this, &QGCCameraManager::_onUnipodStartRetry);
+
+    _topotekStartRetryTimer.setInterval(kTopotekStartRetryMs);
+    (void) connect(&_topotekStartRetryTimer, &QTimer::timeout, this, &QGCCameraManager::_onTopotekStartRetry);
+
+    // After ethernet-loss stop(), the client may stay _active so setActive(true) is a no-op.
+    // Re-run sync to call start() again and re-arm the retry window.
+    (void) connect(_unipodClient, &UnipodMt11Client::readyChanged, this, [this]() {
+        emit currentCameraChanged();
+        if (_unipodMediaClient) {
+            _unipodMediaClient->setReady(_unipodClient->isReady());
+        }
+        _syncUnipodCamera();
+    });
+
+    (void) connect(_topotekClient, &TopotekTq10Client::readyChanged, this, [this]() {
+        emit currentCameraChanged();
+        _syncTopotekCamera();
+    });
+
+    // Manual streams (RTSP/UDP) record via SimulatedCameraControl; keep it available
+    // even after a MAVLink camera appears, and re-select it when the current camera can't capture.
+    // UniPod MT11 must not fall through to that Simulated DIGICAM / local GST path.
+    if (Fact *videoSource = SettingsManager::instance()->videoSettings()->videoSource()) {
+        (void) connect(videoSource, &Fact::rawValueChanged, this, [this](const QVariant &) {
+            _syncUnipodCamera();
+            _syncTopotekCamera();
+            _ensureSimulatedCameraForLocalRecord();
+        });
+    }
+    if (VideoManager *videoManager = VideoManager::instance()) {
+        (void) connect(videoManager, &VideoManager::hasVideoChanged, this, [this]() {
+            _syncUnipodCamera();
+            _syncTopotekCamera();
+        });
+        (void) connect(videoManager, &VideoManager::decodingChanged, this, [this]() {
+            _syncUnipodCamera();
+            _syncTopotekCamera();
+        });
+    }
+    QTimer::singleShot(0, this, [this]() {
+        _syncUnipodCamera();
+        _syncTopotekCamera();
+        _ensureSimulatedCameraForLocalRecord();
+    });
 }
 
 void QGCCameraManager::_initialConnectCompleted()
@@ -115,6 +204,7 @@ QGCCameraManager::~QGCCameraManager()
 
     // Stop the main heartbeat timer
     _camerasLostHeartbeatTimer.stop();
+    _unipodStartRetryTimer.stop();
 
     qCDebug(CameraManagerLog) << this;
 }
@@ -143,7 +233,7 @@ void QGCCameraManager::_vehicleReady(bool ready)
     if (!ready) {
         return;
     }
-    if (MultiVehicleManager::instance()->activeVehicle() != _vehicle) {
+    if (!_vehicle || (MultiVehicleManager::instance()->activeVehicle() != _vehicle)) {
         return;
     }
 
@@ -248,6 +338,17 @@ void QGCCameraManager::_handleHeartbeat(const mavlink_message_t &message)
 
 MavlinkCameraControlInterface *QGCCameraManager::currentCameraInstance()
 {
+    // While UniPod MT11 is the selected video source, always expose UniPod control so
+    // PhotoVideoControl does not fall through to Simulated DIGICAM / local GST. Buttons
+    // stay Disabled via capture*State until the UDP client is ready.
+    if (_unipodCameraControl && isUnipodVideoSource()) {
+        return _unipodCameraControl;
+    }
+
+    if (_topotekCameraControl && isTopotekVideoSource()) {
+        return _topotekCameraControl;
+    }
+
     if ((_currentCameraIndex < _cameras.count()) && !_cameras.isEmpty()) {
         MavlinkCameraControlInterface *pCamera = qobject_cast<MavlinkCameraControlInterface*>(_cameras[_currentCameraIndex]);
         return pCamera;
@@ -300,7 +401,7 @@ void QGCCameraManager::_addCameraControlToLists(MavlinkCameraControlInterface *c
     if (qobject_cast<SimulatedCameraControl*>(cameraControl)) {
         qCDebug(CameraManagerLog) << "Adding simulated camera to list";
     } else {
-        qCDebug(CameraManagerLog) << "Adding real camera to list - simulated camera will be removed if present";
+        qCDebug(CameraManagerLog) << "Adding real camera to list";
     }
 
     _cameras.append(cameraControl);
@@ -308,13 +409,216 @@ void QGCCameraManager::_addCameraControlToLists(MavlinkCameraControlInterface *c
     emit camerasChanged();
     emit cameraLabelsChanged();
 
-    // If simulated camera is in list, remove it when a real camera appears
+    // Drop the simulated camera when a real MAVLink camera appears — unless QGC is using a
+    // manual stream source (RTSP/UDP/UniPod/…). Local VideoManager record/screenshot depends on
+    // SimulatedCameraControl; removing it leaves PhotoVideoControl empty even with showRecControl on.
     if ((_cameras.count() == 2) && (_cameras[0] == _simulatedCameraControl)) {
-        (void) _cameras.removeAt(0);
-        (void) _cameraLabels.removeAt(0);
+        const bool keepSimulatedForManualStream =
+            VideoManager::instance() && VideoManager::instance()->isManualStreamSource();
+        if (keepSimulatedForManualStream) {
+            qCInfo(CameraManagerLog)
+                << "Keeping simulated camera alongside real camera (manual video stream active)";
+        } else {
+            qCDebug(CameraManagerLog) << "Removing simulated camera after real camera appeared";
+            (void) _cameras.removeAt(0);
+            (void) _cameraLabels.removeAt(0);
+            emit camerasChanged();
+            emit cameraLabelsChanged();
+            emit currentCameraChanged();
+        }
+    }
+
+    _ensureSimulatedCameraForLocalRecord();
+}
+
+void QGCCameraManager::_ensureSimulatedCameraForLocalRecord()
+{
+    if (!_simulatedCameraControl) {
+        return;
+    }
+    // UniPod MT11 / Topotek TQ10N onboard capture must own the strip; do not re-select Simulated.
+    if (isUnipodVideoSource() || isTopotekVideoSource()) {
+        return;
+    }
+    if (!VideoManager::instance() || !VideoManager::instance()->isManualStreamSource()) {
+        return;
+    }
+
+    int simIdx = _cameras.indexOf(_simulatedCameraControl.data());
+    if (simIdx < 0) {
+        qCInfo(CameraManagerLog) << "Re-adding simulated camera for manual stream local record UI";
+        _cameras.insert(0, _simulatedCameraControl);
+        _cameraLabels.insert(0, _simulatedCameraControl->modelName());
         emit camerasChanged();
         emit cameraLabelsChanged();
+        simIdx = 0;
+        if (_currentCameraIndex >= 0) {
+            _currentCameraIndex += 1;
+        }
+    }
+
+    MavlinkCameraControlInterface *cur = currentCameraInstance();
+    const bool curCanShowControls = cur && (cur->capturesVideo() || cur->capturesPhotos() || cur->hasTracking() ||
+                                            cur->hasVideoStream());
+    if (!curCanShowControls && (simIdx >= 0) && (_currentCameraIndex != simIdx)) {
+        qCInfo(CameraManagerLog) << "Selecting simulated camera for PhotoVideoControl (current camera has no capture UI)";
+        setCurrentCamera(simIdx);
+    }
+}
+
+void QGCCameraManager::_syncUnipodCamera()
+{
+    if (!_unipodClient) {
+        return;
+    }
+
+    VideoSettings *videoSettings = SettingsManager::instance() ? SettingsManager::instance()->videoSettings() : nullptr;
+    if (!videoSettings || !videoSettings->videoSource()) {
+        return;
+    }
+
+    const QString source = videoSettings->videoSource()->rawValue().toString();
+    const bool wantUnipod = (source == VideoSettings::videoSourceUnipodMT11);
+
+    if (wantUnipod) {
+        _unipodClient->setActive(true);
+        // setActive(true) is a no-op if already active; after ethernet-loss stop() the
+        // client stays _active and must be start()'d again.
+        _unipodClient->start();
+        if (_unipodMediaClient) {
+            _unipodMediaClient->setReady(_unipodClient->isReady());
+        }
+        if (!_unipodClient->isReady()) {
+            if (!_unipodStartRetryTimer.isActive()) {
+                _unipodStartRetryTicks = 0;
+                _unipodStartRetryTimer.setInterval(kUnipodStartRetryMs);
+                _unipodStartRetryTimer.start();
+            } else if (_unipodStartRetryTimer.interval() != kUnipodStartRetryMs) {
+                // Video/ethernet came up after the slow-retry window — resume 1s attempts.
+                qCInfo(CameraManagerLog) << "UniPod start retry resuming at 1s";
+                _unipodStartRetryTicks = 0;
+                _unipodStartRetryTimer.setInterval(kUnipodStartRetryMs);
+            }
+        } else {
+            _unipodStartRetryTimer.stop();
+            _unipodStartRetryTimer.setInterval(kUnipodStartRetryMs);
+            _unipodStartRetryTicks = 0;
+        }
+    } else {
+        _unipodStartRetryTimer.stop();
+        _unipodStartRetryTimer.setInterval(kUnipodStartRetryMs);
+        _unipodStartRetryTicks = 0;
+        _unipodClient->setActive(false);
+        _unipodClient->stop();
+        if (_unipodMediaClient) {
+            _unipodMediaClient->setReady(false);
+        }
+    }
+
+    emit currentCameraChanged();
+}
+
+void QGCCameraManager::_onUnipodStartRetry()
+{
+    if (!isUnipodVideoSource()) {
+        _unipodStartRetryTimer.stop();
+        _unipodStartRetryTimer.setInterval(kUnipodStartRetryMs);
+        _unipodStartRetryTicks = 0;
+        return;
+    }
+
+    ++_unipodStartRetryTicks;
+
+    if (_unipodClient) {
+        _unipodClient->start();
+    }
+
+    if (_unipodClient && _unipodClient->isReady()) {
+        if (_unipodMediaClient) {
+            _unipodMediaClient->setReady(true);
+        }
+        _unipodStartRetryTimer.stop();
+        _unipodStartRetryTimer.setInterval(kUnipodStartRetryMs);
+        _unipodStartRetryTicks = 0;
         emit currentCameraChanged();
+        return;
+    }
+
+    if (_unipodStartRetryTicks == kUnipodStartRetryMaxTicks) {
+        qCWarning(CameraManagerLog) << "UniPod camera start retry slowing to 5s (will keep trying)";
+        _unipodStartRetryTimer.setInterval(kUnipodStartSlowRetryMs);
+    }
+}
+
+void QGCCameraManager::_syncTopotekCamera()
+{
+    if (!_topotekClient) {
+        return;
+    }
+
+    VideoSettings *videoSettings = SettingsManager::instance() ? SettingsManager::instance()->videoSettings() : nullptr;
+    if (!videoSettings || !videoSettings->videoSource()) {
+        return;
+    }
+
+    const QString source = videoSettings->videoSource()->rawValue().toString();
+    const bool wantTopotek = (source == VideoSettings::videoSourceTopotekTq10N);
+
+    if (wantTopotek) {
+        _topotekClient->setActive(true);
+        _topotekClient->start();
+        if (!_topotekClient->isReady()) {
+            if (!_topotekStartRetryTimer.isActive()) {
+                _topotekStartRetryTicks = 0;
+                _topotekStartRetryTimer.setInterval(kTopotekStartRetryMs);
+                _topotekStartRetryTimer.start();
+            } else if (_topotekStartRetryTimer.interval() != kTopotekStartRetryMs) {
+                qCInfo(CameraManagerLog) << "Topotek start retry resuming at 1s";
+                _topotekStartRetryTicks = 0;
+                _topotekStartRetryTimer.setInterval(kTopotekStartRetryMs);
+            }
+        } else {
+            _topotekStartRetryTimer.stop();
+            _topotekStartRetryTimer.setInterval(kTopotekStartRetryMs);
+            _topotekStartRetryTicks = 0;
+        }
+    } else {
+        _topotekStartRetryTimer.stop();
+        _topotekStartRetryTimer.setInterval(kTopotekStartRetryMs);
+        _topotekStartRetryTicks = 0;
+        _topotekClient->setActive(false);
+        _topotekClient->stop();
+    }
+
+    emit currentCameraChanged();
+}
+
+void QGCCameraManager::_onTopotekStartRetry()
+{
+    if (!isTopotekVideoSource()) {
+        _topotekStartRetryTimer.stop();
+        _topotekStartRetryTimer.setInterval(kTopotekStartRetryMs);
+        _topotekStartRetryTicks = 0;
+        return;
+    }
+
+    ++_topotekStartRetryTicks;
+
+    if (_topotekClient) {
+        _topotekClient->start();
+    }
+
+    if (_topotekClient && _topotekClient->isReady()) {
+        _topotekStartRetryTimer.stop();
+        _topotekStartRetryTimer.setInterval(kTopotekStartRetryMs);
+        _topotekStartRetryTicks = 0;
+        emit currentCameraChanged();
+        return;
+    }
+
+    if (_topotekStartRetryTicks == kTopotekStartRetryMaxTicks) {
+        qCWarning(CameraManagerLog) << "Topotek camera start retry slowing to 5s (will keep trying)";
+        _topotekStartRetryTimer.setInterval(kTopotekStartSlowRetryMs);
     }
 }
 

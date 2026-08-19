@@ -6,6 +6,7 @@
         "autoStreamConfig": "QGroundControl.videoManager.autoStreamConfigured",
         "sourceDisabled": "videoSource === QGroundControl.settingsManager.videoSettings.disabledVideoSource",
         "isStreamSource": "QGroundControl.videoManager.isStreamSource",
+        "isPresetRtspSource": "videoSource === QGroundControl.settingsManager.videoSettings.unipodMT11VideoSource || videoSource === QGroundControl.settingsManager.videoSettings.siyiR1MVideoSource || videoSource === QGroundControl.settingsManager.videoSettings.siyiA8MiniVideoSource || videoSource === QGroundControl.settingsManager.videoSettings.topotekTq10NVideoSource",
         "rtpLatencyVisible": "!QGroundControl.settingsManager.videoSettings.lowLatencyMode.rawValue"
     },
     "groups": [
@@ -13,7 +14,7 @@
             "heading": "Video Source",
             "keywords": ["video source", "camera", "stream"],
             "enableWhen": "!autoStreamConfig",
-            "headingDescription": "autoStreamConfig ? qsTr(\"Mavlink camera stream is automatically configured\") : \"\"",
+            "headingDescription": "autoStreamConfig ? qsTr(\"Mavlink camera stream is automatically configured\") : (isPresetRtspSource ? qsTr(\"RTSP address is configured automatically\") : \"\")",
             "controls": [
                 {
                     "setting": "videoSettings.videoSource",
@@ -24,7 +25,7 @@
         {
             "heading": "Connection",
             "keywords": ["rtsp", "tcp", "udp", "mpegts", "video url", "stream url"],
-            "showWhen": "!sourceDisabled && !autoStreamConfig",
+            "showWhen": "!sourceDisabled && !autoStreamConfig && !isPresetRtspSource",
             "controls": [
                 {
                     "setting": "videoSettings.rtspUrl",
@@ -74,6 +75,12 @@
                 },
                 {
                     "setting": "videoSettings.forceVideoDecoder"
+                },
+                {
+                    "control": "info",
+                    "label": "Active decoder",
+                    "value": "QGroundControl.videoManager.decoderSummary",
+                    "showWhen": "QGroundControl.videoManager.decoding"
                 }
             ]
         },

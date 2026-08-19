@@ -1,0 +1,90 @@
+{
+  "meta": {
+    "product": "Topotek TQ10N",
+    "vendor": "Topotek / 拓扑联创",
+    "model": "TQ10N",
+    "series": "MINI 10× optical zoom",
+    "protocol_version": "V1.1.3",
+    "download_oss": "https://usaimages.oss-us-west-1.aliyuncs.com/14512/",
+    "qgc_video_source": "Topotek TQ10N"
+  },
+  "documents": [
+    {
+      "doc_key": "protocol_en",
+      "title": "UDP & UART Protocol",
+      "version": "V1.1.3",
+      "lang": "en",
+      "date": "2025-05-13",
+      "filename": "pdf/Topotek-Udp-Uart-Protocol-V1.1.3-EN.pdf",
+      "source_url": "https://usaimages.oss-us-west-1.aliyuncs.com/14512/UDP.pdf",
+      "notes": "Authoritative SDK frame format and Class D/G/M commands"
+    },
+    {
+      "doc_key": "qgc_rtsp",
+      "title": "QGC / VLC / PotPlayer RTSP Guide",
+      "version": null,
+      "lang": "en",
+      "date": null,
+      "filename": "pdf/QGC-VLC-POTPLAYER.docx",
+      "source_url": "https://usaimages.oss-us-west-1.aliyuncs.com/14512/QGC_VLC_POTPLAYER.docx",
+      "notes": "Official RTSP example 192.168.144.108:554/stream=0"
+    },
+    {
+      "doc_key": "wiring",
+      "title": "Wiring Instruction",
+      "version": null,
+      "lang": "en",
+      "date": null,
+      "filename": "pdf/TOPOTEK-Wiring-Instruction.docx",
+      "source_url": "https://usaimages.oss-us-west-1.aliyuncs.com/14512/TOPOTEK_Wiring_Instruction.docx",
+      "notes": null
+    },
+    {
+      "doc_key": "connection_mini",
+      "title": "Connection Manual MINI Series (10P)",
+      "version": null,
+      "lang": "en",
+      "date": null,
+      "filename": "pdf/TOPOTEK-Connection-Manual-MINI-10P.docx",
+      "source_url": "https://usaimages.oss-us-west-1.aliyuncs.com/14512/TOPOTEK_Connection_Manual_MINI_Series_(10P_Terminal).docx",
+      "notes": "TQ10N wiring / power / network"
+    }
+  ],
+  "endpoints": [
+    {"kind": "rtsp_main", "uri": "rtsp://192.168.144.108:554/stream=0", "notes": "Primary 1080p — QGC preset"},
+    {"kind": "rtsp_sub", "uri": "rtsp://192.168.144.108:554/stream=1", "notes": "Lower bitrate sub stream"},
+    {"kind": "udp_control", "uri": "192.168.144.108:9003", "notes": "Pod listen port"},
+    {"kind": "udp_local", "uri": ":9004", "notes": "GCS bind port (official Python demo)"},
+    {"kind": "default_ip", "uri": "192.168.144.108", "notes": "Factory default on SIYI radio ethernet segment"}
+  ],
+  "specs": [
+    {"category": "光学", "name": "变焦", "value": "10× optical zoom", "notes": "TQ10N product line"},
+    {"category": "网络", "name": "默认 IP", "value": "192.168.144.108", "notes": "Same /24 as SIYI radio ethernet"},
+    {"category": "视频", "name": "主码流 RTSP", "value": "rtsp://192.168.144.108:554/stream=0", "notes": "1080p"},
+    {"category": "视频", "name": "副码流 RTSP", "value": "rtsp://192.168.144.108:554/stream=1", "notes": null},
+    {"category": "控制", "name": "UDP 端口", "value": "9003 / local 9004", "notes": "ASCII #TP protocol"},
+    {"category": "存储", "name": "录像/拍照", "value": "TF 卡 onboard", "notes": "Phase-1: no SMB gallery in QGC"}
+  ],
+  "faq": [
+    {
+      "q_no": 1,
+      "question": "QGC 视频源选什么？",
+      "answer": "设置 → 视频 → Topotek TQ10N。RTSP 自动填入 rtsp://192.168.144.108:554/stream=0，并等待 192.168.144.x 以太网就绪（与 SIYI 遥控器网段相同）。"
+    },
+    {
+      "q_no": 2,
+      "question": "无飞机时能否拍照录像？",
+      "answer": "可以。Fly View 本地控制条在 Topotek TQ10N 源下通过 UDP 控制 TF 卡 onboard 拍照/录像，不走本地 GStreamer 录制。"
+    },
+    {
+      "q_no": 3,
+      "question": "变焦如何操作？",
+      "answer": "按住 +/− 变焦，松手自动发送 ZMC stop (00)。"
+    },
+    {
+      "q_no": 4,
+      "question": "云台如何操作？",
+      "answer": "按住十字盘方向键发送 PTZ 速度命令，松手发 PTZ stop (00)；单击中心键回中 (05)。"
+    }
+  ]
+}

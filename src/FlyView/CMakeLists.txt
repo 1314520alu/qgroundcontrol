@@ -31,7 +31,12 @@ qt_add_qml_module(FlyViewModule
         FlyViewInstrumentPanel.qml
         FlyViewGripperButton.qml
         FlyViewGripperDropPanel.qml
+        FlyViewLocalVideoControls.qml
         FlyViewMap.qml
+        TopotekGimbalPad.qml
+        TopotekGimbalPadButton.qml
+        TopotekZoomHoldButtons.qml
+        TopotekZoomHoldButton.qml
         FlyViewMissionCompleteDialog.qml
         FlyViewPreFlightChecklistPopup.qml
         FlyViewToolStrip.qml
@@ -69,6 +74,7 @@ qt_add_qml_module(FlyViewModule
         SubChecklist.qml
         TelemetryValuesBar.qml
         TerrainProgress.qml
+        UnipodMt11MediaGallery.qml
         VirtualJoystick.qml
         VTOLChecklist.qml
     NO_PLUGIN
@@ -82,6 +88,9 @@ qt_add_resources(FlyViewModule flyview_resources
         "${CMAKE_SOURCE_DIR}/resources/land.svg"
         "${CMAKE_SOURCE_DIR}/resources/NoVideoBackground.jpg"
         "${CMAKE_SOURCE_DIR}/resources/pause-mission.svg"
+        "${CMAKE_SOURCE_DIR}/resources/audio/camera_shutter.wav"
+        "${CMAKE_SOURCE_DIR}/resources/audio/record_start.wav"
+        "${CMAKE_SOURCE_DIR}/resources/audio/record_stop.wav"
 )
 
 qt_add_resources(FlyViewModule flyview_qmlimages

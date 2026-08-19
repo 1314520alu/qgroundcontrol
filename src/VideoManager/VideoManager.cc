@@ -16,6 +16,7 @@
 #include "VideoSettings.h"
 #include "UVCReceiver.h"
 #include "VideoBackend.h"
+#include "ScreenToolsController.h"
 
 #include <algorithm>
 #include <climits>
@@ -422,6 +423,45 @@ double VideoManager::aspectRatio() const
     return _videoSettings->aspectRatio()->rawValue().toDouble();
 }
 
+QString VideoManager::decoderSummary() const
+{
+    if (_decoderName.isEmpty()) {
+        return {};
+    }
+    return (_decoderIsHardware ? tr("HW · %1") : tr("SW · %1")).arg(_decoderName);
+}
+
+void VideoManager::_updateDecoderInfo(VideoReceiver *receiver)
+{
+    if (!receiver || receiver->isThermal()) {
+        return;
+    }
+
+    const QString name = receiver->decoderName();
+    const bool isHardware = receiver->decoderIsHardware();
+    if (name == _decoderName && isHardware == _decoderIsHardware) {
+        return;
+    }
+
+    _decoderName = name;
+    _decoderIsHardware = isHardware;
+    qCDebug(VideoManagerLog) << "Active decoder" << decoderSummary();
+    emit decoderInfoChanged();
+}
+
+void VideoManager::_maybeWarnSoftwareDecoder()
+{
+    if (_softwareDecoderWarned || !_decoding || _decoderName.isEmpty() || _decoderIsHardware) {
+        return;
+    }
+
+    _softwareDecoderWarned = true;
+    QGC::showAppMessage(tr(
+        "Video is using a software decoder (%1). Latency will be higher than hardware decode. "
+        "Set Force video decoder to Default or Force hardware decoder, or check the air-unit encode format.")
+                            .arg(_decoderName));
+}
+
 double VideoManager::thermalAspectRatio() const
 {
     for (VideoReceiver *receiver : _videoReceivers) {
@@ -507,9 +547,34 @@ bool VideoManager::isStreamSource() const
         VideoSettings::videoSourceYuneecMantisG,
         VideoSettings::videoSourceHerelinkAirUnit,
         VideoSettings::videoSourceHerelinkHotspot,
+        VideoSettings::videoSourceUnipodMT11,
+        VideoSettings::videoSourceSiyiR1M,
+        VideoSettings::videoSourceSiyiA8Mini,
+        VideoSettings::videoSourceTopotekTq10N,
     };
     const QString videoSource = _videoSettings->videoSource()->rawValue().toString();
     return (videoSourceList.contains(videoSource) || autoStreamConfigured());
+}
+
+bool VideoManager::isManualStreamSource() const
+{
+    static const QStringList manualSources = {
+        VideoSettings::videoSourceUDPH264,
+        VideoSettings::videoSourceUDPH265,
+        VideoSettings::videoSourceRTSP,
+        VideoSettings::videoSourceTCP,
+        VideoSettings::videoSourceMPEGTS,
+        VideoSettings::videoSource3DRSolo,
+        VideoSettings::videoSourceParrotDiscovery,
+        VideoSettings::videoSourceYuneecMantisG,
+        VideoSettings::videoSourceHerelinkAirUnit,
+        VideoSettings::videoSourceHerelinkHotspot,
+        VideoSettings::videoSourceUnipodMT11,
+        VideoSettings::videoSourceSiyiR1M,
+        VideoSettings::videoSourceSiyiA8Mini,
+        VideoSettings::videoSourceTopotekTq10N,
+    };
+    return manualSources.contains(_videoSettings->videoSource()->rawValue().toString());
 }
 
 void VideoManager::_videoSourceChanged()
@@ -540,8 +605,16 @@ void VideoManager::_videoSourceChanged()
         emit isAutoStreamChanged();
 
         if (hasVideo()) {
-            _restartAllVideos();
+            const QString source = _videoSettings->videoSource()->rawValue().toString();
+            if (VideoSettings::usesSiyiRadioEthernet(source)) {
+                // Wait for 192.168.144.x before starting RTSP — avoids stacked 8s timeouts while eth0 comes up.
+                _armUnipodEthernetGate();
+            } else {
+                _disarmUnipodEthernetGate();
+                _restartAllVideos();
+            }
         } else {
+            _disarmUnipodEthernetGate();
             stopVideo();
         }
 
@@ -713,6 +786,32 @@ bool VideoManager::_updateSettings(VideoReceiver *receiver)
         settingsChanged |= _updateVideoUri(receiver, QStringLiteral("rtsp://192.168.0.10:8554/H264Video"));
     } else if (source == VideoSettings::videoSourceHerelinkHotspot) {
         settingsChanged |= _updateVideoUri(receiver, QStringLiteral("rtsp://192.168.43.1:8554/fpv_stream"));
+    } else if (source == VideoSettings::videoSourceUnipodMT11) {
+        // MT11 RTSP is on 192.168.144.25 — ensure SIYI radio ethernet is up first.
+        ScreenToolsController::ensureSiyiRadioEthernet();
+        settingsChanged |= _updateVideoUri(receiver, QString::fromLatin1(VideoSettings::unipodMT11RtspUrl));
+        // Keep the editable RTSP field in sync for visibility if the user switches to generic RTSP later.
+        if (_videoSettings->rtspUrl()->rawValue().toString() != QLatin1String(VideoSettings::unipodMT11RtspUrl)) {
+            _videoSettings->rtspUrl()->setRawValue(QString::fromLatin1(VideoSettings::unipodMT11RtspUrl));
+        }
+    } else if (source == VideoSettings::videoSourceSiyiR1M) {
+        ScreenToolsController::ensureSiyiRadioEthernet();
+        settingsChanged |= _updateVideoUri(receiver, QString::fromLatin1(VideoSettings::siyiR1MRtspUrl));
+        if (_videoSettings->rtspUrl()->rawValue().toString() != QLatin1String(VideoSettings::siyiR1MRtspUrl)) {
+            _videoSettings->rtspUrl()->setRawValue(QString::fromLatin1(VideoSettings::siyiR1MRtspUrl));
+        }
+    } else if (source == VideoSettings::videoSourceSiyiA8Mini) {
+        ScreenToolsController::ensureSiyiRadioEthernet();
+        settingsChanged |= _updateVideoUri(receiver, QString::fromLatin1(VideoSettings::siyiA8MiniRtspUrl));
+        if (_videoSettings->rtspUrl()->rawValue().toString() != QLatin1String(VideoSettings::siyiA8MiniRtspUrl)) {
+            _videoSettings->rtspUrl()->setRawValue(QString::fromLatin1(VideoSettings::siyiA8MiniRtspUrl));
+        }
+    } else if (source == VideoSettings::videoSourceTopotekTq10N) {
+        ScreenToolsController::ensureSiyiRadioEthernet();
+        settingsChanged |= _updateVideoUri(receiver, QString::fromLatin1(VideoSettings::topotekTq10NRtspUrl));
+        if (_videoSettings->rtspUrl()->rawValue().toString() != QLatin1String(VideoSettings::topotekTq10NRtspUrl)) {
+            _videoSettings->rtspUrl()->setRawValue(QString::fromLatin1(VideoSettings::topotekTq10NRtspUrl));
+        }
     } else if ((source == VideoSettings::videoDisabled) || (source == VideoSettings::videoSourceNoVideo)) {
         settingsChanged |= _updateVideoUri(receiver, QString());
     } else {
@@ -805,6 +904,65 @@ void VideoManager::_restartVideo(VideoReceiver *receiver)
     }
 }
 
+void VideoManager::_armUnipodEthernetGate()
+{
+    ScreenToolsController::ensureSiyiRadioEthernet();
+
+    if (ScreenToolsController::isSiyiRadioEthernetReady()) {
+        qCDebug(VideoManagerLog) << "SIYI radio ethernet ready:" << ScreenToolsController::siyiRadioEthernetAddress();
+        _disarmUnipodEthernetGate();
+        _restartAllVideos();
+        return;
+    }
+
+    qCDebug(VideoManagerLog) << "Waiting for 192.168.144.x before RTSP start";
+    stopVideo();
+
+    if (!_unipodEthernetGateTimer) {
+        _unipodEthernetGateTimer = new QTimer(this);
+        _unipodEthernetGateTimer->setInterval(500);
+        (void) connect(_unipodEthernetGateTimer, &QTimer::timeout, this, &VideoManager::_checkUnipodEthernetGate);
+    }
+    _unipodEthernetGateTicks = 0;
+    if (!_unipodEthernetGateTimer->isActive()) {
+        _unipodEthernetGateTimer->start();
+    }
+}
+
+void VideoManager::_disarmUnipodEthernetGate()
+{
+    if (_unipodEthernetGateTimer) {
+        _unipodEthernetGateTimer->stop();
+    }
+    _unipodEthernetGateTicks = 0;
+}
+
+void VideoManager::_checkUnipodEthernetGate()
+{
+    const QString source = _videoSettings->videoSource()->rawValue().toString();
+    if (!VideoSettings::usesSiyiRadioEthernet(source)) {
+        _disarmUnipodEthernetGate();
+        return;
+    }
+
+    ++_unipodEthernetGateTicks;
+    if (ScreenToolsController::isSiyiRadioEthernetReady()) {
+        qCDebug(VideoManagerLog) << "SIYI radio ethernet ready after"
+                                 << (_unipodEthernetGateTicks * 500) << "ms:"
+                                 << ScreenToolsController::siyiRadioEthernetAddress();
+        _disarmUnipodEthernetGate();
+        _restartAllVideos();
+        return;
+    }
+
+    // ~30s max wait, then try RTSP anyway (link may still come up mid-stream).
+    if (_unipodEthernetGateTicks >= 60) {
+        qCWarning(VideoManagerLog) << "SIYI radio ethernet wait timed out; starting RTSP anyway";
+        _disarmUnipodEthernetGate();
+        _restartAllVideos();
+    }
+}
+
 void VideoManager::_stopReceiver(VideoReceiver *receiver)
 {
     if (!receiver) {
@@ -842,7 +1000,9 @@ void VideoManager::_startReceiver(VideoReceiver *receiver)
     }
 
     const QString source = _videoSettings->videoSource()->rawValue().toString();
-    const uint32_t timeout = ((source == VideoSettings::videoSourceRTSP) ? _videoSettings->rtspTimeout()->rawValue().toUInt() : 3);
+    const uint32_t timeout = ((source == VideoSettings::videoSourceRTSP || VideoSettings::usesSiyiRadioEthernet(source))
+                                  ? _videoSettings->rtspTimeout()->rawValue().toUInt()
+                                  : 3);
 
     receiver->start(timeout);
 }
@@ -924,6 +1084,18 @@ void VideoManager::_initVideoReceiver(VideoReceiver *receiver, QQuickWindow *win
         if (!receiver->isThermal()) {
             _decoding = active;
             emit decodingChanged();
+            if (!active) {
+                _updateDecoderInfo(receiver);
+            } else {
+                _maybeWarnSoftwareDecoder();
+            }
+        }
+    });
+
+    (void) connect(receiver, &VideoReceiver::decoderStatsChanged, this, [this, receiver]() {
+        if (!receiver->isThermal()) {
+            _updateDecoderInfo(receiver);
+            _maybeWarnSoftwareDecoder();
         }
     });
 

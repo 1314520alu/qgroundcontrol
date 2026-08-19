@@ -20,6 +20,11 @@ class MavlinkCameraControlInterface;
 class QGCCameraManagerTest;
 class QGCVideoStreamInfo;
 class SimulatedCameraControl;
+class UnipodMt11CameraControl;
+class UnipodMt11Client;
+class UnipodMt11MediaClient;
+class TopotekTq10CameraControl;
+class TopotekTq10Client;
 
 /// \brief Camera Manager
 ///
@@ -36,6 +41,8 @@ class QGCCameraManager : public QObject
     Q_PROPERTY(MavlinkCameraControlInterface* currentCameraInstance READ currentCameraInstance NOTIFY currentCameraChanged)
     Q_PROPERTY(int currentCamera READ currentCamera WRITE setCurrentCamera NOTIFY currentCameraChanged)
     Q_PROPERTY(int currentZoomLevel READ currentZoomLevel NOTIFY currentZoomLevelChanged)
+    Q_PROPERTY(UnipodMt11MediaClient* unipodMediaClient READ unipodMediaClient CONSTANT)
+    Q_MOC_INCLUDE("UnipodMt11MediaClient.h")
 
 #ifdef QGC_UNITTEST_BUILD
     friend class QGCCameraManagerTest;
@@ -78,6 +85,7 @@ public:
     QStringList cameraLabels() const { return _cameraLabels; }
     int currentCamera() const { return _currentCameraIndex; }
     MavlinkCameraControlInterface* currentCameraInstance();
+    UnipodMt11MediaClient* unipodMediaClient() const { return _unipodMediaClient; }
     void setCurrentCamera(int sel);
     QGCVideoStreamInfo* currentStreamInstance();
     QGCVideoStreamInfo* thermalStreamInstance();
@@ -125,6 +133,8 @@ protected slots:
 private slots:
     void _initialConnectCompleted();
     void _setCurrentZoomLevel(int level);
+    void _onUnipodStartRetry();
+    void _onTopotekStartRetry();
 
 private:
     MavlinkCameraControlInterface* _findCamera(int id);
@@ -141,10 +151,22 @@ private:
     void _handleBatteryStatus(const mavlink_message_t& message);
     void _handleTrackingImageStatus(const mavlink_message_t& message);
     void _addCameraControlToLists(MavlinkCameraControlInterface* cameraControl);
+    void _ensureSimulatedCameraForLocalRecord();
+    void _syncUnipodCamera();
+    void _syncTopotekCamera();
     void _handleCameraFovStatus(const mavlink_message_t& message);
 
     Vehicle* _vehicle;              ///< Raw pointer is safe: QGCCameraManager is a QObject child of Vehicle, so Vehicle always outlives us
     QPointer<SimulatedCameraControl> _simulatedCameraControl;
+    UnipodMt11Client *_unipodClient = nullptr;
+    UnipodMt11CameraControl *_unipodCameraControl = nullptr;
+    UnipodMt11MediaClient *_unipodMediaClient = nullptr;
+    TopotekTq10Client *_topotekClient = nullptr;
+    TopotekTq10CameraControl *_topotekCameraControl = nullptr;
+    QTimer _unipodStartRetryTimer;
+    QTimer _topotekStartRetryTimer;
+    int _unipodStartRetryTicks = 0;
+    int _topotekStartRetryTicks = 0;
     QPointer<Joystick> _activeJoystick;
     bool _vehicleReadyState = false;
     int _currentTask = 0;

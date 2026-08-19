@@ -17,6 +17,20 @@ target_sources(${CMAKE_PROJECT_NAME}
         QGCVideoStreamInfo.h
         SimulatedCameraControl.cc
         SimulatedCameraControl.h
+        UnipodMt11CameraControl.cc
+        UnipodMt11CameraControl.h
+        UnipodMt11Client.cc
+        UnipodMt11Client.h
+        UnipodMt11MediaClient.cc
+        UnipodMt11MediaClient.h
+        UnipodMt11Protocol.cc
+        UnipodMt11Protocol.h
+        TopotekTq10CameraControl.cc
+        TopotekTq10CameraControl.h
+        TopotekTq10Client.cc
+        TopotekTq10Client.h
+        TopotekTq10Protocol.cc
+        TopotekTq10Protocol.h
         VehicleCameraControl.cc
         VehicleCameraControl.h
 )
