@@ -462,12 +462,10 @@ ApplicationWindow {
                 anchors.bottom:     parent.bottom
                 spacing:            ScreenTools.defaultFontPixelWidth
 
-                QGCToolBarButton {
+                BrandAvatarButton {
                     id: qgcButton
                     objectName: "toolbar_qgcLogo"
                     height: parent.height
-                    icon.source: "/res/QGCLogoFull.svg"
-                    logo: true
                     onClicked: mainWindow.showToolSelectDialog()
                 }
 

@@ -20,6 +20,7 @@ Item {
 
     readonly property bool _is3DMode:       QGCViewer3DManager.displayMode === QGCViewer3DManager.View3D
     readonly property bool _keepSceneAlive: QGroundControl.settingsManager.viewer3DSettings.keepSceneAlive.rawValue
+    readonly property bool _hudStyle:       QGroundControl.settingsManager.flyViewSettings.flyViewUiStyle.rawValue === 1
 
     // These should only be used by MainRootWindow
     property var planController:    _planController
@@ -94,7 +95,8 @@ Item {
             anchors.left:           parent.left
             anchors.bottom:         parent.bottom
             anchors.margins:        _toolsMargin
-            item1IsFullSettingsKey: "MainFlyWindowIsMap"
+            item1IsFullSettingsKey: _hudStyle ? "HudMainFlyWindowIsMap" : "MainFlyWindowIsMap"
+            item1IsFullDefault:     !_hudStyle
             item1:                  mapControl
             item2:                  QGroundControl.videoManager.hasVideo ? videoControl : null
             show:                   QGroundControl.videoManager.hasVideo && !QGroundControl.videoManager.fullScreen &&

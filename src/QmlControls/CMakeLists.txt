@@ -94,6 +94,7 @@ qt_add_qml_module(QGroundControlControlsModule
         APMSubMotorDisplay.qml
         AutotuneUI.qml
         AxisMonitor.qml
+        BrandAvatarButton.qml
         ClickableColor.qml
         ConfigButton.qml
         ConfigSection.qml

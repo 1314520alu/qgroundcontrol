@@ -1,5 +1,6 @@
 #include "QGCCorePlugin.h"
 #include "AppSettings.h"
+#include "FlyViewSettings.h"
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
 #include "MavlinkSettings.h"
 #endif
@@ -170,6 +171,15 @@ void QGCCorePlugin::adjustSettingMetaData(const QString &settingsGroup, FactMeta
 #endif
             return;
         }
+    }
+
+    if (settingsGroup == FlyViewSettings::settingsGroup && metaData.name() == FlyViewSettings::flyViewUiStyleName) {
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+        metaData.setRawDefaultValue(1);
+#else
+        metaData.setRawDefaultValue(0);
+#endif
+        return;
     }
 }
 

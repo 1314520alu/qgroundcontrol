@@ -94,6 +94,14 @@ FlightMap {
     NumberAnimation on animatedLatitude { id: animateLat; from: _animatedLatitudeStart; to: _animatedLatitudeStop; duration: 1000 }
     NumberAnimation on animatedLongitude { id: animateLong; from: _animatedLongitudeStart; to: _animatedLongitudeStop; duration: 1000 }
 
+    function centerOnVehicle() {
+        if (!_activeVehicleCoordinate.isValid) {
+            return
+        }
+        _disableVehicleTracking = false
+        animatedMapRecenter(_root.center, _activeVehicleCoordinate)
+    }
+
     function animatedMapRecenter(fromCoord, toCoord) {
         _animatedLatitudeStart = fromCoord.latitude
         _animatedLongitudeStart = fromCoord.longitude

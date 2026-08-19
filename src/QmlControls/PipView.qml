@@ -13,6 +13,7 @@ Item {
     property var    item1:                  null    // Required
     property var    item2:                  null    // Optional, may come and go
     property string item1IsFullSettingsKey          // Settings key to save whether item1 was saved in full mode
+    property bool   item1IsFullDefault:     true
     property bool   show:                   true
 
     readonly property string _pipExpandedSettingsKey: "IsPIPVisible"
@@ -33,6 +34,11 @@ Item {
     }
 
     onItem2Changed: _initForItems()
+    onItem1IsFullSettingsKeyChanged: {
+        if (_componentComplete) {
+            _initForItems()
+        }
+    }
 
     function showWindow() {
         window.width = _root.width
@@ -41,7 +47,7 @@ Item {
     }
 
     function _initForItems() {
-        var item1IsFull = QGroundControl.loadBoolGlobalSetting(item1IsFullSettingsKey, true)
+        var item1IsFull = QGroundControl.loadBoolGlobalSetting(item1IsFullSettingsKey, item1IsFullDefault)
         if (item1 && item2) {
             item1.pipState.state = item1IsFull ? item1.pipState.fullState : item1.pipState.pipState
             item2.pipState.state = item1IsFull ? item2.pipState.pipState : item2.pipState.fullState

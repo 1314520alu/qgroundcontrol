@@ -136,6 +136,16 @@
             "default": true,
             "label": "Enable automatic mission start/resume popups",
             "keywords": "mission popup"
+        },
+        {
+            "name": "flyViewUiStyle",
+            "shortDesc": "Select Fly View layout: Classic or HUD.",
+            "type": "uint32",
+            "enumStrings": "经典,抬头显示",
+            "enumValues": "0,1",
+            "default": 0,
+            "label": "飞行界面风格",
+            "keywords": "layout,hud,classic,fly view,style,风格,经典,抬头"
         }
     ]
 }
