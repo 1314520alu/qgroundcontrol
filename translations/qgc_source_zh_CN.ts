@@ -9181,6 +9181,53 @@ Click &apos;Ok&apos; to upload the Plan anyway.</source>
     </message>
 </context>
 <context>
+    <name>FlyViewPayloadOverlay</name>
+    <message>
+        <source>Gimbal</source>
+        <translation>云台</translation>
+    </message>
+    <message>
+        <source>Lens</source>
+        <translation>镜头</translation>
+    </message>
+    <message>
+        <source>Range</source>
+        <translation>测距</translation>
+    </message>
+    <message>
+        <source>Recognize</source>
+        <translation>开启识别</translation>
+    </message>
+    <message>
+        <source>Follow</source>
+        <translation>跟随飞行</translation>
+    </message>
+    <message>
+        <source>AUTO</source>
+        <translation>AUTO</translation>
+    </message>
+    <message>
+        <source>Photo</source>
+        <translation>拍照</translation>
+    </message>
+    <message>
+        <source>Video</source>
+        <translation>录像</translation>
+    </message>
+    <message>
+        <source>Zoom</source>
+        <translation>变倍</translation>
+    </message>
+    <message>
+        <source>Focus</source>
+        <translation>变焦</translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation>保存</translation>
+    </message>
+</context>
+<context>
     <name>UnipodMt11MediaGallery</name>
     <message>
         <source>Media Library</source>
