@@ -9,4 +9,5 @@ class CameraPayloadCapabilitiesTest : public UnitTest
 private slots:
     void testSimulatedDefaultsFalse();
     void testTopotekHasGimbalPad();
+    void testUnipodMediaLibraryFollowsReady();
 };

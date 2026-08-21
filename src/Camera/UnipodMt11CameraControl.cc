@@ -1,19 +1,19 @@
-#include <QtCore/QTime>
-
 #include "UnipodMt11CameraControl.h"
+
+#include <QtCore/QTime>
 
 #include "AppMessages.h"
 #include "QGCLoggingCategory.h"
 #include "UnipodMt11Client.h"
+#include "UnipodMt11MediaClient.h"
 #include "UnipodMt11Protocol.h"
 #include "Vehicle.h"
 #include "VideoManager.h"
 
 QGC_LOGGING_CATEGORY(UnipodMt11CameraControlLog, "Camera.UnipodMt11CameraControl")
 
-UnipodMt11CameraControl::UnipodMt11CameraControl(Vehicle *vehicle, UnipodMt11Client *client, QObject *parent)
-    : MavlinkCameraControlInterface(vehicle, parent)
-    , _client(client)
+UnipodMt11CameraControl::UnipodMt11CameraControl(Vehicle* vehicle, UnipodMt11Client* client, QObject* parent)
+    : MavlinkCameraControlInterface(vehicle, parent), _client(client)
 {
     qCDebug(UnipodMt11CameraControlLog) << this;
 
@@ -33,11 +33,12 @@ UnipodMt11CameraControl::UnipodMt11CameraControl(Vehicle *vehicle, UnipodMt11Cli
     });
     (void) connect(_client, &UnipodMt11Client::recordStaChanged, this, &UnipodMt11CameraControl::_onRecordStaChanged);
     (void) connect(_client, &UnipodMt11Client::funcFeedback, this, &UnipodMt11CameraControl::_onFuncFeedback);
-    (void) connect(_client, &UnipodMt11Client::sendFailed, this, [](const QString &reason) {
-        QGC::showAppMessage(reason);
-    });
-    (void) connect(this, &UnipodMt11CameraControl::photoCaptureStatusChanged, this, &UnipodMt11CameraControl::captureVideoStateChanged);
-    (void) connect(this, &UnipodMt11CameraControl::photoCaptureStatusChanged, this, &UnipodMt11CameraControl::capturePhotosStateChanged);
+    (void) connect(_client, &UnipodMt11Client::sendFailed, this,
+                   [](const QString& reason) { QGC::showAppMessage(reason); });
+    (void) connect(this, &UnipodMt11CameraControl::photoCaptureStatusChanged, this,
+                   &UnipodMt11CameraControl::captureVideoStateChanged);
+    (void) connect(this, &UnipodMt11CameraControl::photoCaptureStatusChanged, this,
+                   &UnipodMt11CameraControl::capturePhotosStateChanged);
 
     _videoRecordTimeUpdateTimer.setInterval(1000);
     (void) connect(&_videoRecordTimeUpdateTimer, &QTimer::timeout, this, &UnipodMt11CameraControl::recordTimeChanged);
@@ -91,19 +92,19 @@ void UnipodMt11CameraControl::_onFuncFeedback(quint8 infoType)
     using UnipodMt11Protocol::FuncFeedback;
 
     switch (static_cast<FuncFeedback>(infoType)) {
-    case FuncFeedback::PhotoFailNoCard:
-        QGC::showAppMessage(tr("UniPod MT11: photo failed — no storage card"));
-        break;
-    case FuncFeedback::PhotoFail:
-        QGC::showAppMessage(tr("UniPod MT11: photo failed"));
-        break;
-    case FuncFeedback::RecordStart:
-    case FuncFeedback::RecordEnd:
-        emit captureVideoStateChanged();
-        emit recordTimeChanged();
-        break;
-    default:
-        break;
+        case FuncFeedback::PhotoFailNoCard:
+            QGC::showAppMessage(tr("UniPod MT11: photo failed — no storage card"));
+            break;
+        case FuncFeedback::PhotoFail:
+            QGC::showAppMessage(tr("UniPod MT11: photo failed"));
+            break;
+        case FuncFeedback::RecordStart:
+        case FuncFeedback::RecordEnd:
+            emit captureVideoStateChanged();
+            emit recordTimeChanged();
+            break;
+        default:
+            break;
     }
 }
 
@@ -122,15 +123,15 @@ void UnipodMt11CameraControl::setCameraMode(CameraMode cameraMode)
     }
 
     switch (cameraMode) {
-    case CAM_MODE_VIDEO:
-        setCameraModeVideo();
-        break;
-    case CAM_MODE_PHOTO:
-        setCameraModePhoto();
-        break;
-    default:
-        qCWarning(UnipodMt11CameraControlLog) << "Invalid mode" << cameraMode;
-        break;
+        case CAM_MODE_VIDEO:
+            setCameraModeVideo();
+            break;
+        case CAM_MODE_PHOTO:
+            setCameraModePhoto();
+            break;
+        default:
+            qCWarning(UnipodMt11CameraControlLog) << "Invalid mode" << cameraMode;
+            break;
     }
 }
 
@@ -298,4 +299,24 @@ void UnipodMt11CameraControl::setPhotoCaptureMode(MavlinkCameraControlInterface:
         _photoCaptureMode = photoCaptureMode;
         emit photoCaptureModeChanged();
     }
+}
+
+void UnipodMt11CameraControl::setMediaClient(UnipodMt11MediaClient* client)
+{
+    if (_mediaClient == client) {
+        return;
+    }
+    if (_mediaClient) {
+        disconnect(_mediaClient, nullptr, this, nullptr);
+    }
+    _mediaClient = client;
+    if (_mediaClient) {
+        connect(_mediaClient, &UnipodMt11MediaClient::readyChanged, this, &UnipodMt11CameraControl::infoChanged);
+    }
+    emit infoChanged();
+}
+
+bool UnipodMt11CameraControl::hasMediaLibrary() const
+{
+    return _mediaClient && _mediaClient->isReady();
 }
