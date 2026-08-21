@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 
+import QGroundControl
 import QGroundControl.Controls
 
 /// Hold +/- zoom or focus buttons for Topotek TQ10N (ZMC in/out, release stop).
