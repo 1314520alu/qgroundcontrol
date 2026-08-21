@@ -13,7 +13,6 @@ class Vehicle;
 class TopotekTq10CameraControl : public MavlinkCameraControlInterface
 {
     Q_OBJECT
-    Q_PROPERTY(bool hasGimbalPad READ hasGimbalPad CONSTANT)
 
 public:
     explicit TopotekTq10CameraControl(Vehicle *vehicle, TopotekTq10Client *client, QObject *parent = nullptr);
@@ -129,7 +128,7 @@ public:
     void handleVideoStreamInformation(const mavlink_video_stream_information_t & /*videoStreamInformation*/) override {}
     void handleVideoStreamStatus(const mavlink_video_stream_status_t & /*videoStreamStatus*/) override {}
 
-    bool hasGimbalPad() const { return true; }
+    bool hasGimbalPad() const override { return true; }
 
     Q_INVOKABLE void ptzStart(int direction);
     Q_INVOKABLE void ptzStop();

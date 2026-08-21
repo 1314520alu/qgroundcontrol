@@ -43,6 +43,12 @@ class MavlinkCameraControlInterface : public FactGroup
     Q_PROPERTY(bool                 hasFocus                READ hasFocus                                           NOTIFY infoChanged)
     Q_PROPERTY(bool                 hasVideoStream          READ hasVideoStream                                     NOTIFY infoChanged)
     Q_PROPERTY(bool                 hasTracking             READ hasTracking                                        NOTIFY infoChanged)
+    Q_PROPERTY(bool                 hasGimbalPad            READ hasGimbalPad                                       NOTIFY infoChanged)
+    Q_PROPERTY(bool                 hasLensSwitch           READ hasLensSwitch                                      NOTIFY infoChanged)
+    Q_PROPERTY(bool                 hasLaserRange           READ hasLaserRange                                      NOTIFY infoChanged)
+    Q_PROPERTY(bool                 hasAiRecognition        READ hasAiRecognition                                   NOTIFY infoChanged)
+    Q_PROPERTY(bool                 hasFollowFlight         READ hasFollowFlight                                    NOTIFY infoChanged)
+    Q_PROPERTY(bool                 hasMediaLibrary         READ hasMediaLibrary                                    NOTIFY infoChanged)
     Q_PROPERTY(bool                 supportsTrackingPoint   READ supportsTrackingPoint                              NOTIFY infoChanged)
     Q_PROPERTY(bool                 supportsTrackingRect    READ supportsTrackingRect                               NOTIFY infoChanged)
     Q_PROPERTY(bool                 photosInVideoMode       READ photosInVideoMode                                  NOTIFY infoChanged)
@@ -182,6 +188,12 @@ public:
     virtual bool hasZoom() const = 0;
     virtual bool hasFocus() const = 0;
     virtual bool hasTracking() const = 0;
+    virtual bool hasGimbalPad() const { return false; }
+    virtual bool hasLensSwitch() const { return false; }
+    virtual bool hasLaserRange() const { return false; }
+    virtual bool hasAiRecognition() const { return false; }
+    virtual bool hasFollowFlight() const { return false; }
+    virtual bool hasMediaLibrary() const { return false; }
     virtual bool supportsTrackingPoint() const = 0;
     virtual bool supportsTrackingRect() const = 0;
     virtual bool hasVideoStream() const = 0;
