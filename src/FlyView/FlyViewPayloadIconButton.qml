@@ -54,6 +54,7 @@ Item {
     MouseArea {
         id: pressArea
         anchors.fill: parent
+        enabled: root.enabled
         onClicked: root.clicked()
     }
 }

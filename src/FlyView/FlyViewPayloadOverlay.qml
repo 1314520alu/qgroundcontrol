@@ -62,10 +62,17 @@ Item {
         || _camera.hasZoom
         || _camera.hasFocus
         || _camera.hasMediaLibrary)
+    // Overlay does not host tracking-rect chrome or photo/video mode switch.
+    readonly property bool _compactOnlyExtras: _camera && (
+        (_camera.hasTracking && !_camera.hasAiRecognition) || _camera.hasModes)
+    property var _videoSettings: QGroundControl.settingsManager.videoSettings
+    property bool _showRecControl: _videoSettings ? _videoSettings.showRecControl.rawValue : true
     readonly property bool overlayActive: visible && (_hasLeft || _hasRight)
 
     visible: QGroundControl.videoManager.hasVideo && _videoIsMain && (_hasLeft || _hasRight)
              && !QGroundControl.videoManager.fullScreen
+             && _showRecControl
+             && !_compactOnlyExtras
 
     on_CameraChanged: expand = FlyViewPayloadOverlay.Expand.None
 
@@ -195,6 +202,7 @@ Item {
             iconSource: "/qmlimages/camera_photo.svg"
             label: qsTr("Photo")
             selected: false
+            enabled: root._camera && root._camera.capturePhotosState !== MavlinkCameraControlInterface.CapturePhotosStateDisabled
             onClicked: {
                 if (root._camera) {
                     root._camera.takePhoto()
@@ -205,8 +213,10 @@ Item {
         FlyViewPayloadIconButton {
             visible: root._camera && root._camera.capturesVideo
             iconSource: "/qmlimages/camera_video.svg"
-            label: qsTr("Video")
-            selected: false
+            label: (root._camera && root._camera.captureVideoState === MavlinkCameraControlInterface.CaptureVideoStateCapturing)
+                   ? root._camera.recordTimeStr : qsTr("Video")
+            selected: root._camera && root._camera.captureVideoState === MavlinkCameraControlInterface.CaptureVideoStateCapturing
+            enabled: root._camera && root._camera.captureVideoState !== MavlinkCameraControlInterface.CaptureVideoStateDisabled
             onClicked: {
                 if (root._camera) {
                     root._camera.toggleVideoRecording()
