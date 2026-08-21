@@ -17,6 +17,7 @@ Rectangle {
     property var _activeVehicle: globals.activeVehicle
     /// Set by parent when PhotoVideoControl is already showing the same UI.
     property bool hideWhenPhotoVideoVisible: false
+    property bool hideWhenPayloadOverlay: false
     property bool _isUnipodSource: _videoSettings && (_videoSettings.videoSource.rawValue === _videoSettings.unipodMT11VideoSource)
     property bool _isTopotekSource: _videoSettings && (_videoSettings.videoSource.rawValue === _videoSettings.topotekTq10NVideoSource)
     property var _cameraManager: _activeVehicle ? _activeVehicle.cameraManager : null
@@ -45,6 +46,7 @@ Rectangle {
     property bool _show: _videoSettings && _videoSettings.showRecControl.rawValue
                          && (_videoManager.hasVideo || _isUnipodSource || _isTopotekSource)
                          && !hideWhenPhotoVideoVisible
+                         && !hideWhenPayloadOverlay
     property bool _recording: _onboardCam
                               ? (_onboardCam.captureVideoState === MavlinkCameraControlInterface.CaptureVideoStateCapturing)
                               : _videoManager.recording

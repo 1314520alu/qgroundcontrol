@@ -15,8 +15,9 @@ Rectangle {
     height: mainLayout.height + (_smallMargins * 2)
     color: Qt.rgba(qgcPal.window.r, qgcPal.window.g, qgcPal.window.b, 0.5)
     radius: _margins
-    visible: _showPhotoVideoControls && _camera && (_camera.capturesVideo || _camera.capturesPhotos || _camera.hasTracking || _camera.hasVideoStream)
+    visible: !hideWhenPayloadOverlay && _showPhotoVideoControls && _camera && (_camera.capturesVideo || _camera.capturesPhotos || _camera.hasTracking || _camera.hasVideoStream)
 
+    property bool hideWhenPayloadOverlay: false
     property real _margins: ScreenTools.defaultFontPixelHeight / 2
     property real _smallMargins: ScreenTools.defaultFontPixelWidth / 2
     property var _activeVehicle: globals.activeVehicle

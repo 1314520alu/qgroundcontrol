@@ -7,6 +7,10 @@ import QGroundControl.FlyView
 import QGroundControl.FlightMap
 
 ColumnLayout {
+    id: root
+
+    property bool hideWhenPayloadOverlay: false
+
     spacing: ScreenTools.defaultFontPixelHeight / 2
 
     TerrainProgress {
@@ -28,6 +32,7 @@ ColumnLayout {
             id: photoVideoControlComponent
 
             PhotoVideoControl {
+                hideWhenPayloadOverlay: root.hideWhenPayloadOverlay
             }
         }
     }
@@ -37,5 +42,6 @@ ColumnLayout {
     FlyViewLocalVideoControls {
         Layout.alignment:           Qt.AlignRight
         hideWhenPhotoVideoVisible:  photoVideoControlLoader.visible
+        hideWhenPayloadOverlay:     root.hideWhenPayloadOverlay
     }
 }

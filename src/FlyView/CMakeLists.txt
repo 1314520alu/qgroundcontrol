@@ -33,6 +33,7 @@ qt_add_qml_module(
               FlyViewGripperDropPanel.qml
               FlyViewLocalVideoControls.qml
               FlyViewPayloadIconButton.qml
+              FlyViewPayloadOverlay.qml
               FlyViewPayloadSideBar.qml
               FlyViewMap.qml
               TopotekGimbalPad.qml

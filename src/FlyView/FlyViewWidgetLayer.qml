@@ -58,6 +58,7 @@ Item {
         anchors.top:            parent.top
         anchors.right:          parent.right
         maximumHeight:          parent.height - (bottomRightRowLayout.height + _margins * 4)
+        hideWhenPayloadOverlay: payloadOverlay.overlayActive
 
         property real topEdgeRightInset:    height + _layoutMargin
         property real rightEdgeTopInset:    width + _layoutMargin
@@ -70,6 +71,7 @@ Item {
         anchors.right:      parent.right
         spacing:            _layoutSpacing
         visible:           !topRightPanel.visible
+        hideWhenPayloadOverlay: payloadOverlay.overlayActive
 
         property real topEdgeRightInset:    childrenRect.height + _layoutMargin
         property real rightEdgeTopInset:    width + _layoutMargin
@@ -144,6 +146,14 @@ Item {
                 virtualJoystickMultiTouch.item.calibration = false
             }
         }
+    }
+
+    FlyViewPayloadOverlay {
+        id:                     payloadOverlay
+        anchors.fill:           parent
+        mapControl:             _root.mapControl
+        toolStripWidth:         toolStrip.visible ? toolStrip.width : 0
+        z:                      QGroundControl.zOrderWidgets
     }
 
     FlyViewToolStrip {

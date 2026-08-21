@@ -16,6 +16,7 @@ Rectangle {
     visible:        !QGroundControl.videoManager.fullScreen && _multipleVehicles && _settingEnableMVPanel
     clip:           true
 
+    property bool hideWhenPayloadOverlay:   false
     property bool _settingEnableMVPanel:    QGroundControl.settingsManager.appSettings.enableMultiVehiclePanel.value
     property bool  _multipleVehicles:       QGroundControl.multiVehicleManager.vehicles.count > 1
     property var   vehicles:                QGroundControl.multiVehicleManager.vehicles
@@ -210,6 +211,7 @@ Rectangle {
                             id: photoVideoControlComponent
 
                             PhotoVideoControl {
+                                hideWhenPayloadOverlay: topRightPanel.hideWhenPayloadOverlay
                             }
                         }
                     }
