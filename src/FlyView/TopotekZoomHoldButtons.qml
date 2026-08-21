@@ -3,11 +3,12 @@ import QtQuick.Layouts
 
 import QGroundControl.Controls
 
-/// Hold +/- zoom buttons for Topotek TQ10N (ZMC in/out, release stop).
+/// Hold +/- zoom or focus buttons for Topotek TQ10N (ZMC in/out, release stop).
 ColumnLayout {
     id: root
 
     property var camera
+    property bool useFocus: false
     property real buttonSize: Math.max(ScreenTools.minTouchPixels, ScreenTools.defaultFontPixelWidth * 3.2)
 
     spacing: ScreenTools.defaultFontPixelWidth / 2
@@ -18,13 +19,19 @@ ColumnLayout {
         Layout.alignment: Qt.AlignHCenter
         label: "+"
         enabled: root.camera
-        onPressed: if (root.camera) { root.camera.startZoom(1) }
-        onReleased: if (root.camera) { root.camera.stopZoom() }
+        onPressed: {
+            if (!root.camera) { return }
+            if (root.useFocus) { root.camera.startFocus(1) } else { root.camera.startZoom(1) }
+        }
+        onReleased: {
+            if (!root.camera) { return }
+            if (root.useFocus) { root.camera.stopFocus() } else { root.camera.stopZoom() }
+        }
     }
 
     QGCLabel {
         Layout.alignment: Qt.AlignHCenter
-        text: qsTr("Zoom")
+        text: root.useFocus ? qsTr("Focus") : qsTr("Zoom")
         font.pointSize: ScreenTools.smallFontPointSize
     }
 
@@ -32,7 +39,13 @@ ColumnLayout {
         Layout.alignment: Qt.AlignHCenter
         label: "\u2212"
         enabled: root.camera
-        onPressed: if (root.camera) { root.camera.startZoom(-1) }
-        onReleased: if (root.camera) { root.camera.stopZoom() }
+        onPressed: {
+            if (!root.camera) { return }
+            if (root.useFocus) { root.camera.startFocus(-1) } else { root.camera.startZoom(-1) }
+        }
+        onReleased: {
+            if (!root.camera) { return }
+            if (root.useFocus) { root.camera.stopFocus() } else { root.camera.stopZoom() }
+        }
     }
 }

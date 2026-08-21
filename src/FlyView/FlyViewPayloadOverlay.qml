@@ -2,6 +2,7 @@ import QtQuick
 
 import QGroundControl
 import QGroundControl.Controls
+import QGroundControl.FactControls
 import QGroundControl.FlyView
 
 Item {
@@ -17,6 +18,7 @@ Item {
 
     property var _activeVehicle: globals.activeVehicle
     property var _cameraManager: _activeVehicle ? _activeVehicle.cameraManager : null
+    property var _unipodMediaClient: _cameraManager ? _cameraManager.unipodMediaClient : null
     // Prefer a camera that can actually drive PhotoVideoControl. Manual streams (RTSP/UDP)
     // use SimulatedCameraControl for local VideoManager record; a MAVLink camera without
     // capture flags must not hide the UI. UniPod MT11 must never fall through to Simulated.
@@ -136,6 +138,40 @@ Item {
         anchors.bottom: parent.bottom
         anchors.bottomMargin: root.bottomReserve
         z: 1
+
+        TopotekGimbalPad {
+            anchors.left: parent.left
+            anchors.top: parent.top
+            visible: root.expand === FlyViewPayloadOverlay.Expand.Gimbal
+                     && root._camera && root._camera.hasGimbalPad
+            camera: root._camera
+        }
+
+        TopotekZoomHoldButtons {
+            anchors.right: parent.right
+            anchors.top: parent.top
+            visible: root.expand === FlyViewPayloadOverlay.Expand.Zoom
+            camera: root._camera
+            useFocus: false
+        }
+
+        TopotekZoomHoldButtons {
+            anchors.right: parent.right
+            anchors.top: parent.top
+            visible: root.expand === FlyViewPayloadOverlay.Expand.Focus
+            camera: root._camera
+            useFocus: true
+        }
+
+        FactComboBox {
+            anchors.right: parent.right
+            anchors.top: parent.top
+            visible: root.expand === FlyViewPayloadOverlay.Expand.Auto
+                     && root._camera && root._camera.exposureMode
+            fact: root._camera ? root._camera.exposureMode : null
+            indexModel: false
+            sizeToContents: true
+        }
     }
 
     FlyViewPayloadSideBar {
@@ -200,7 +236,21 @@ Item {
             label: qsTr("Save")
             selected: false
             onClicked: {
+                if (root._unipodMediaClient) {
+                    mediaGalleryFactory.open({ mediaClient: root._unipodMediaClient })
+                }
             }
+        }
+    }
+
+    QGCPopupDialogFactory {
+        id: mediaGalleryFactory
+        dialogComponent: mediaGalleryComponent
+    }
+
+    Component {
+        id: mediaGalleryComponent
+        UnipodMt11MediaGallery {
         }
     }
 }
