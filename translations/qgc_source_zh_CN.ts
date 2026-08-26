@@ -9226,6 +9226,42 @@ Click &apos;Ok&apos; to upload the Plan anyway.</source>
         <source>Save</source>
         <translation>保存</translation>
     </message>
+    <message>
+        <source>Zoom / IR</source>
+        <translation>变焦/热成像</translation>
+    </message>
+    <message>
+        <source>IR / Zoom</source>
+        <translation>热成像/变焦</translation>
+    </message>
+    <message>
+        <source>PIP / IR</source>
+        <translation>画中画/热成像</translation>
+    </message>
+    <message>
+        <source>Laser On</source>
+        <translation>激光开</translation>
+    </message>
+    <message>
+        <source>Laser Off</source>
+        <translation>激光关</translation>
+    </message>
+    <message>
+        <source>AI On</source>
+        <translation>识别开</translation>
+    </message>
+    <message>
+        <source>AI Off</source>
+        <translation>识别关</translation>
+    </message>
+    <message>
+        <source>Follow flight — protocol pending</source>
+        <translation>跟随飞行 — 协议待接入</translation>
+    </message>
+    <message>
+        <source>AUTO exposure — protocol pending</source>
+        <translation>AUTO 曝光 — 协议待接入</translation>
+    </message>
 </context>
 <context>
     <name>UnipodMt11MediaGallery</name>

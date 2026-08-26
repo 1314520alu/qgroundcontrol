@@ -55,7 +55,7 @@
             "name": "apmHiddenFlightModesMultiRotor",
             "shortDesc": "Comma separated list of hidden flight modes for MultiRotor",
             "type": "string",
-            "default": "Acro,Circle,Drift,Sport,Flip,Brake,Throw,Guided,Guided No GPS,Flow Hold,ZigZag,Turtle,Autotune,SystemID,AutoRotate",
+            "default": "Acro,Circle,Drift,Sport,Flip,Brake,Throw,Guided,Guided No GPS,Flow Hold,ZigZag,Turtle,Autotune,SystemID,AutoRotate,Position Hold,Avoid ADSB,Smart RTL,Follow",
             "label": "Comma separated list of hidden flight modes for MultiRotor"
         },
         {

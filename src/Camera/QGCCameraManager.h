@@ -20,6 +20,7 @@ class MavlinkCameraControlInterface;
 class QGCCameraManagerTest;
 class QGCVideoStreamInfo;
 class SimulatedCameraControl;
+class SiyiA8MiniCameraControl;
 class UnipodMt11CameraControl;
 class UnipodMt11Client;
 class UnipodMt11MediaClient;
@@ -38,7 +39,8 @@ class QGCCameraManager : public QObject
 
     Q_PROPERTY(QmlObjectListModel* cameras READ cameras NOTIFY camerasChanged)
     Q_PROPERTY(QStringList cameraLabels READ cameraLabels NOTIFY cameraLabelsChanged)
-    Q_PROPERTY(MavlinkCameraControlInterface* currentCameraInstance READ currentCameraInstance NOTIFY currentCameraChanged)
+    Q_PROPERTY(
+        MavlinkCameraControlInterface* currentCameraInstance READ currentCameraInstance NOTIFY currentCameraChanged)
     Q_PROPERTY(int currentCamera READ currentCamera WRITE setCurrentCamera NOTIFY currentCameraChanged)
     Q_PROPERTY(int currentZoomLevel READ currentZoomLevel NOTIFY currentZoomLevelChanged)
     Q_PROPERTY(UnipodMt11MediaClient* unipodMediaClient READ unipodMediaClient CONSTANT)
@@ -52,7 +54,8 @@ public:
     explicit QGCCameraManager(Vehicle* vehicle);
     ~QGCCameraManager();
 
-    struct CameraStruct {
+    struct CameraStruct
+    {
         CameraStruct(QGCCameraManager* manager_, uint8_t compID_, Vehicle* vehicle_);
         ~CameraStruct();
 
@@ -61,7 +64,8 @@ public:
         int retryCount = 0;
         QElapsedTimer lastHeartbeat;
         QTimer backoffTimer;
-        Vehicle* vehicle;           ///< Raw pointer is safe: CameraStruct is owned by QGCCameraManager which is a child of Vehicle
+        Vehicle*
+            vehicle;  ///< Raw pointer is safe: CameraStruct is owned by QGCCameraManager which is a child of Vehicle
         QPointer<QGCCameraManager> manager;
 
     private:
@@ -72,7 +76,8 @@ public:
     /// callbacks. Owned by the manager and kept alive for its full lifetime so a
     /// callback firing after the CameraStruct was deleted (lost camera) never
     /// dereferences freed memory (issue #13251).
-    struct CameraInfoRequestContext {
+    struct CameraInfoRequestContext
+    {
         QPointer<QGCCameraManager> manager;
         uint8_t compID = 0;
     };
@@ -81,11 +86,17 @@ public:
     CameraInfoRequestContext* cameraInfoContext(uint8_t compId);
 
     QmlObjectListModel* cameras() { return &_cameras; }
+
     const QmlObjectListModel* cameras() const { return &_cameras; }
+
     QStringList cameraLabels() const { return _cameraLabels; }
+
     int currentCamera() const { return _currentCameraIndex; }
+
     MavlinkCameraControlInterface* currentCameraInstance();
+
     UnipodMt11MediaClient* unipodMediaClient() const { return _unipodMediaClient; }
+
     void setCurrentCamera(int sel);
     QGCVideoStreamInfo* currentStreamInstance();
     QGCVideoStreamInfo* thermalStreamInstance();
@@ -94,7 +105,10 @@ public:
 
     Vehicle* vehicle() const { return _vehicle; }
 
-    CameraStruct* findCameraStruct(uint8_t compId) const { return _cameraInfoRequest.value(QString::number(compId), nullptr); }
+    CameraStruct* findCameraStruct(uint8_t compId) const
+    {
+        return _cameraInfoRequest.value(QString::number(compId), nullptr);
+    }
 
     int currentZoomLevel() const;
     double aspectForComp(int compId) const;
@@ -152,17 +166,19 @@ private:
     void _handleTrackingImageStatus(const mavlink_message_t& message);
     void _addCameraControlToLists(MavlinkCameraControlInterface* cameraControl);
     void _ensureSimulatedCameraForLocalRecord();
-    void _syncUnipodCamera();
+    void _syncSiyiUdpCamera();
     void _syncTopotekCamera();
     void _handleCameraFovStatus(const mavlink_message_t& message);
 
-    Vehicle* _vehicle;              ///< Raw pointer is safe: QGCCameraManager is a QObject child of Vehicle, so Vehicle always outlives us
+    Vehicle* _vehicle;  ///< Raw pointer is safe: QGCCameraManager is a QObject child of Vehicle, so Vehicle always
+                        ///< outlives us
     QPointer<SimulatedCameraControl> _simulatedCameraControl;
-    UnipodMt11Client *_unipodClient = nullptr;
-    UnipodMt11CameraControl *_unipodCameraControl = nullptr;
-    UnipodMt11MediaClient *_unipodMediaClient = nullptr;
-    TopotekTq10Client *_topotekClient = nullptr;
-    TopotekTq10CameraControl *_topotekCameraControl = nullptr;
+    UnipodMt11Client* _unipodClient = nullptr;
+    UnipodMt11CameraControl* _unipodCameraControl = nullptr;
+    SiyiA8MiniCameraControl* _siyiA8CameraControl = nullptr;
+    UnipodMt11MediaClient* _unipodMediaClient = nullptr;
+    TopotekTq10Client* _topotekClient = nullptr;
+    TopotekTq10CameraControl* _topotekCameraControl = nullptr;
     QTimer _unipodStartRetryTimer;
     QTimer _topotekStartRetryTimer;
     int _unipodStartRetryTicks = 0;

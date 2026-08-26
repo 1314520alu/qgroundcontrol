@@ -1,9 +1,6 @@
 #include "ScreenToolsController.h"
-#include "QGCApplication.h"
-#include "QGCLoggingCategory.h"
-#include "SettingsManager.h"
-#include "AppSettings.h"
 
+#include <QtCore/QtMath>
 #include <QtGui/QCursor>
 #include <QtGui/QFontDatabase>
 #include <QtGui/QFontMetrics>
@@ -11,7 +8,10 @@
 #include <QtGui/QInputDevice>
 #include <QtGui/QScreen>
 
-#include <QtCore/QtMath>
+#include "AppSettings.h"
+#include "QGCApplication.h"
+#include "QGCLoggingCategory.h"
+#include "SettingsManager.h"
 
 #if defined(Q_OS_ANDROID)
 #include <QtCore/QJniEnvironment>
@@ -25,8 +25,7 @@
 
 QGC_LOGGING_CATEGORY(ScreenToolsControllerLog, "QMLControls.ScreenToolsController")
 
-ScreenToolsController::ScreenToolsController(QObject *parent)
-    : QObject(parent)
+ScreenToolsController::ScreenToolsController(QObject* parent) : QObject(parent)
 {
     // qCDebug(ScreenToolsControllerLog) << Q_FUNC_INFO << this;
 }
@@ -48,7 +47,7 @@ int ScreenToolsController::mouseY()
 
 bool ScreenToolsController::hasTouch()
 {
-    for (const auto &inputDevice: QInputDevice::devices()) {
+    for (const auto& inputDevice : QInputDevice::devices()) {
         if (inputDevice->type() == QInputDevice::DeviceType::TouchScreen) {
             return true;
         }
@@ -105,7 +104,7 @@ QString ScreenToolsController::androidProductModel()
 #endif
 }
 
-bool ScreenToolsController::androidPackageInstalled(const QString &packageName)
+bool ScreenToolsController::androidPackageInstalled(const QString& packageName)
 {
 #if defined(Q_OS_ANDROID)
     if (packageName.isEmpty()) {
@@ -117,17 +116,16 @@ bool ScreenToolsController::androidPackageInstalled(const QString &packageName)
         return false;
     }
 
-    const QJniObject packageManager = context.callObjectMethod("getPackageManager", "()Landroid/content/pm/PackageManager;");
+    const QJniObject packageManager =
+        context.callObjectMethod("getPackageManager", "()Landroid/content/pm/PackageManager;");
     if (!packageManager.isValid()) {
         return false;
     }
 
     const QJniObject jPackageName = QJniObject::fromString(packageName);
-    const QJniObject packageInfo = packageManager.callObjectMethod(
-        "getPackageInfo",
-        "(Ljava/lang/String;I)Landroid/content/pm/PackageInfo;",
-        jPackageName.object<jstring>(),
-        jint(0));
+    const QJniObject packageInfo =
+        packageManager.callObjectMethod("getPackageInfo", "(Ljava/lang/String;I)Landroid/content/pm/PackageInfo;",
+                                        jPackageName.object<jstring>(), jint(0));
 
     QJniEnvironment env;
     if (env->ExceptionCheck()) {
@@ -149,20 +147,20 @@ QString ScreenToolsController::detectRemoteControllerPreset()
 #else
     const QString model = androidProductModel().toLower();
 
-    const bool hasSiyi = androidPackageInstalled(QStringLiteral("com.siyi.udpservice"))
-                         || androidPackageInstalled(QStringLiteral("biz.siyi.remotecontrol"));
+    const bool hasSiyi = androidPackageInstalled(QStringLiteral("com.siyi.udpservice")) ||
+                         androidPackageInstalled(QStringLiteral("biz.siyi.remotecontrol"));
     // G20 ships Device Tool / rcservice / rc_daemon; older images may use rcsdk/server/fly/fpv.
-    const bool hasSkydroid = androidPackageInstalled(QStringLiteral("com.skydroid.rcsdk"))
-                             || androidPackageInstalled(QStringLiteral("com.skydroid.server"))
-                             || androidPackageInstalled(QStringLiteral("com.skydroid.skydroidfly"))
-                             || androidPackageInstalled(QStringLiteral("com.skydroid.fpv"))
-                             || androidPackageInstalled(QStringLiteral("com.skydroid.rcservice"))
-                             || androidPackageInstalled(QStringLiteral("com.skydroid.devicetool"))
-                             || androidPackageInstalled(QStringLiteral("com.skydroid.rc_daemon"))
-                             || model.contains(QStringLiteral("skydroid"));
+    const bool hasSkydroid = androidPackageInstalled(QStringLiteral("com.skydroid.rcsdk")) ||
+                             androidPackageInstalled(QStringLiteral("com.skydroid.server")) ||
+                             androidPackageInstalled(QStringLiteral("com.skydroid.skydroidfly")) ||
+                             androidPackageInstalled(QStringLiteral("com.skydroid.fpv")) ||
+                             androidPackageInstalled(QStringLiteral("com.skydroid.rcservice")) ||
+                             androidPackageInstalled(QStringLiteral("com.skydroid.devicetool")) ||
+                             androidPackageInstalled(QStringLiteral("com.skydroid.rc_daemon")) ||
+                             model.contains(QStringLiteral("skydroid"));
 
-    const auto modelContains = [&model](const QStringList &keys) {
-        for (const QString &key : keys) {
+    const auto modelContains = [&model](const QStringList& keys) {
+        for (const QString& key : keys) {
             if (model.contains(key)) {
                 return true;
             }
@@ -198,19 +196,20 @@ QString ScreenToolsController::detectRemoteControllerPreset()
     }
 
     qreal diagonalInches = 0;
-    if (QScreen *const screen = QGuiApplication::primaryScreen()) {
+    if (QScreen* const screen = QGuiApplication::primaryScreen()) {
         const QSizeF mm = screen->physicalSize();
         diagonalInches = qSqrt(mm.width() * mm.width() + mm.height() * mm.height()) / 25.4;
     }
 
     if (hasSkydroid) {
         // Build.MODEL is often a board string (e.g. "Bengal for arm64") with no G20/H16 token.
-        // G/H series all use the same on-device UDP bridge (14551 ↔ 127.0.0.1:14552).
+        // G/H series use the same radio-ethernet MAVLink path (listen 14550 ↔ 192.168.144.101:14550).
         if (diagonalInches >= 9.0) {
             qCDebug(ScreenToolsControllerLog) << "Skydroid ~10\" class; model:" << model << "diag:" << diagonalInches;
             return QStringLiteral("云卓 H30");
         }
-        qCDebug(ScreenToolsControllerLog) << "Skydroid 7\"-class G-series; model:" << model << "diag:" << diagonalInches;
+        qCDebug(ScreenToolsControllerLog)
+            << "Skydroid 7\"-class G-series; model:" << model << "diag:" << diagonalInches;
         return QStringLiteral("云卓 G20");
     }
 
@@ -227,13 +226,42 @@ QString ScreenToolsController::detectRemoteControllerPreset()
 #endif
 }
 
+int ScreenToolsController::recommendedUiScalePercentForPreset(const QString& presetName)
+{
+    if (presetName.isEmpty()) {
+        return 0;
+    }
+
+    // 10" class: same 1920-wide pixel grid as 7" units, but more physical height.
+    if ((presetName == QLatin1String("UniRC 10 Pro")) || (presetName == QStringLiteral("云卓 H30")) ||
+        (presetName == QStringLiteral("云卓 H16"))) {
+        return 100;
+    }
+
+    // 5.5" MK15: shortest landscape; shrink so Fly View stays in the first viewport.
+    if (presetName == QLatin1String("MK15")) {
+        return 80;
+    }
+
+    // 7" class: height is the bottleneck.
+    if ((presetName == QLatin1String("UniRC 7")) || (presetName == QLatin1String("MK32")) ||
+        (presetName == QStringLiteral("云卓 G20")) || (presetName == QStringLiteral("云卓 G16"))) {
+        return 90;
+    }
+
+    return 0;
+}
+
+int ScreenToolsController::recommendedUiScalePercent()
+{
+    return recommendedUiScalePercentForPreset(detectRemoteControllerPreset());
+}
+
 void ScreenToolsController::ensureSiyiRadioEthernet()
 {
 #if defined(Q_OS_ANDROID)
-    QJniObject::callStaticMethod<void>(
-        "org/mavlink/qgroundcontrol/QGCSiyiEthernetHelper",
-        "ensureRadioEthernet",
-        "()V");
+    QJniObject::callStaticMethod<void>("org/mavlink/qgroundcontrol/QGCSiyiEthernetHelper", "ensureRadioEthernet",
+                                       "()V");
     QJniEnvironment env;
     if (env->ExceptionCheck()) {
         env->ExceptionClear();
@@ -245,10 +273,8 @@ void ScreenToolsController::ensureSiyiRadioEthernet()
 bool ScreenToolsController::isSiyiRadioEthernetReady()
 {
 #if defined(Q_OS_ANDROID)
-    const jboolean ready = QJniObject::callStaticMethod<jboolean>(
-        "org/mavlink/qgroundcontrol/QGCSiyiEthernetHelper",
-        "isRadioEthernetReady",
-        "()Z");
+    const jboolean ready = QJniObject::callStaticMethod<jboolean>("org/mavlink/qgroundcontrol/QGCSiyiEthernetHelper",
+                                                                  "isRadioEthernetReady", "()Z");
     QJniEnvironment env;
     if (env->ExceptionCheck()) {
         env->ExceptionClear();
@@ -263,10 +289,8 @@ bool ScreenToolsController::isSiyiRadioEthernetReady()
 QString ScreenToolsController::siyiRadioEthernetAddress()
 {
 #if defined(Q_OS_ANDROID)
-    const QJniObject address = QJniObject::callStaticObjectMethod(
-        "org/mavlink/qgroundcontrol/QGCSiyiEthernetHelper",
-        "radioEthernetAddress",
-        "()Ljava/lang/String;");
+    const QJniObject address = QJniObject::callStaticObjectMethod("org/mavlink/qgroundcontrol/QGCSiyiEthernetHelper",
+                                                                  "radioEthernetAddress", "()Ljava/lang/String;");
     QJniEnvironment env;
     if (env->ExceptionCheck()) {
         env->ExceptionClear();

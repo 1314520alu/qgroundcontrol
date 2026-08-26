@@ -2,6 +2,7 @@
 
 #include <QtCore/QFile>
 #include <QtCore/QUrl>
+
 #include <gst/gst.h>
 #include <gst/rtsp/gstrtsptransport.h>
 
@@ -285,26 +286,48 @@ GstElement* buildRtspSource(const QString& uri, const QUrl& sourceUrl, const Con
 
     QUrl cleanUrl(sourceUrl);
     cleanUrl.setUserInfo(QString());
-    const QByteArray cleanLocation = cleanUrl.toEncoded();
+    // Prefer the original URI bytes when possible — QUrl can alter uncommon RTSP paths.
+    const QByteArray cleanLocation = uri.toUtf8().contains('@') ? cleanUrl.toEncoded() : uri.toUtf8();
 
-    // protocols mask enables TCP-interleaved fallback when UDP is blocked; without it
-    // firewalled networks hang until tcp-timeout instead of negotiating TCP.
-    constexpr GstRTSPLowerTrans kRtspProtocols =
-        static_cast<GstRTSPLowerTrans>(GST_RTSP_LOWER_TRANS_UDP | GST_RTSP_LOWER_TRANS_TCP);
+    // Force TCP interleaved when:
+    // - scheme is rtspt://, or
+    // - host is on radio ethernet 192.168.144.x (Skydroid H30 / SIYI remotes are dual-homed;
+    //   UDP RTP often never returns and GStreamer reports Could not read/write to resource).
+    const QString host = sourceUrl.host();
+    const bool radioEthernetHost = host.startsWith(QLatin1String("192.168.144."));
+    const bool forceTcp =
+        (sourceUrl.scheme().compare(QLatin1String("rtspt"), Qt::CaseInsensitive) == 0) || radioEthernetHost;
+    const GstRTSPLowerTrans kRtspProtocols =
+        forceTcp ? GST_RTSP_LOWER_TRANS_TCP
+                 : static_cast<GstRTSPLowerTrans>(GST_RTSP_LOWER_TRANS_UDP | GST_RTSP_LOWER_TRANS_TCP);
+
+    // Cheap OEM RTSP servers (Topotek "rtsp server 4.0") often mishandle RTCP on interleaved TCP.
+    const gboolean doRtcp = forceTcp ? FALSE : TRUE;
 
     // do-retransmission forwards to rtspsrc's internal rtpjitterbuffer (added 1.6);
     // drop-on-latency=TRUE unless jitterBuffer==Buffered (opt out of bounded playout).
     const gboolean dropOnLatency = (config.jitterBuffer == JitterBuffer::Buffered) ? FALSE : TRUE;
-    g_object_set(source, "location", cleanLocation.constData(), "latency", latencyMs, "do-rtcp", TRUE,
+    g_object_set(source, "location", cleanLocation.constData(), "latency", latencyMs, "do-rtcp", doRtcp,
                  "do-retransmission", config.doRetransmission ? TRUE : FALSE, "tcp-timeout", kRtspTcpTimeoutUs,
-                 "udp-reconnect", TRUE, "drop-on-latency", dropOnLatency, "retry", kRtspRetry, "protocols",
-                 kRtspProtocols, nullptr);
+                 "udp-reconnect", forceTcp ? FALSE : TRUE, "drop-on-latency", dropOnLatency, "retry", kRtspRetry,
+                 "protocols", kRtspProtocols, nullptr);
+
+    // Topotek / other OEM RTSP servers concatenate control paths as strings (like VLC/ffmpeg).
+    // GstUri joining of Content-Base ".../stream=0" + "realvideo" or "*" can produce a SETUP URL
+    // the server rejects by closing the TCP connection (EOF → Could not read/write to resource).
+    // Property available since GStreamer 1.24.7; ignore if missing on older hosts.
+    if (g_object_class_find_property(G_OBJECT_GET_CLASS(source), "force-non-compliant-url")) {
+        g_object_set(source, "force-non-compliant-url", TRUE, nullptr);
+    }
+
+    qCDebug(GstSourceFactoryLog) << "rtspsrc location=" << QString::fromUtf8(cleanLocation) << "forceTcp=" << forceTcp
+                                 << "doRtcp=" << static_cast<bool>(doRtcp);
 
     const QString rtspUser = sourceUrl.userName(QUrl::FullyDecoded);
     const QString rtspPassword = sourceUrl.password(QUrl::FullyDecoded);
     if (!rtspUser.isEmpty()) {
-        g_object_set(source, "user-id", rtspUser.toUtf8().constData(), "user-pw",
-                     rtspPassword.toUtf8().constData(), nullptr);
+        g_object_set(source, "user-id", rtspUser.toUtf8().constData(), "user-pw", rtspPassword.toUtf8().constData(),
+                     nullptr);
     }
     return source;
 }
@@ -313,7 +336,8 @@ GstElement* buildTcpSource(const QUrl& sourceUrl)
 {
     const int port = sourceUrl.port();
     if (!validPort(port)) {
-        qCCritical(GstSourceFactoryLog) << "Invalid TCP port" << port << "in" << sourceUrl.toDisplayString(QUrl::RemoveUserInfo);
+        qCCritical(GstSourceFactoryLog) << "Invalid TCP port" << port << "in"
+                                        << sourceUrl.toDisplayString(QUrl::RemoveUserInfo);
         return nullptr;
     }
     const QString host = sourceUrl.host();
@@ -336,7 +360,8 @@ GstElement* buildUdpSource(const QUrl& sourceUrl, bool isUdpH264, bool isUdpH265
 {
     const int port = sourceUrl.port();
     if (!validPort(port)) {
-        qCCritical(GstSourceFactoryLog) << "Invalid UDP port" << port << "in" << sourceUrl.toDisplayString(QUrl::RemoveUserInfo);
+        qCCritical(GstSourceFactoryLog) << "Invalid UDP port" << port << "in"
+                                        << sourceUrl.toDisplayString(QUrl::RemoveUserInfo);
         return nullptr;
     }
 
@@ -505,7 +530,8 @@ GstElement* create(const QString& uri, const Config& config)
     const bool isTcpMPEGTS = (scheme == QLatin1String("tcp"));
 
     if (!isRtsp && !isUdpH264 && !isUdpH265 && !isUdpMPEGTS && !isTcpMPEGTS) {
-        qCWarning(GstSourceFactoryLog) << "Unsupported URI scheme:" << scheme << "in" << sourceUrl.toDisplayString(QUrl::RemoveUserInfo);
+        qCWarning(GstSourceFactoryLog) << "Unsupported URI scheme:" << scheme << "in"
+                                       << sourceUrl.toDisplayString(QUrl::RemoveUserInfo);
         return nullptr;
     }
 
@@ -538,8 +564,8 @@ GstElement* create(const QString& uri, const Config& config)
 
         parser = gst_element_factory_make(isUdpH265 ? "h265parse" : "parsebin", "parser");
         if (!parser) {
-            qCCritical(GstSourceFactoryLog) << "gst_element_factory_make("
-                                            << (isUdpH265 ? "'h265parse'" : "'parsebin'") << ") failed";
+            qCCritical(GstSourceFactoryLog)
+                << "gst_element_factory_make(" << (isUdpH265 ? "'h265parse'" : "'parsebin'") << ") failed";
             break;
         }
 

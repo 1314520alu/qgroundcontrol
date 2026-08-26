@@ -4,13 +4,13 @@
 
 官网下载页：
 
-- 中文：https://siyi.biz/zh/product/tri-axis-single-camera-gimbal/a8-mini/download/
-- 英文：https://siyi.biz/en/product/tri-axis-single-camera-gimbal/a8-mini/download/
+- 中文：<https://siyi.biz/zh/product/tri-axis-single-camera-gimbal/a8-mini/download/>
+- 英文：<https://siyi.biz/en/product/tri-axis-single-camera-gimbal/a8-mini/download/>
 
 ## 官方 PDF
 
 | 文件 | 版本 / 说明 |
-|------|-------------|
+| --- | --- |
 | [SIYI-A8-Mini-User-Manual-V1.10-CN.pdf](SIYI-A8-Mini-User-Manual-V1.10-CN.pdf) | 用户手册中文 V1.10（2026-07-02） |
 | [SIYI-A8-Mini-User-Manual-V1.10-EN.pdf](SIYI-A8-Mini-User-Manual-V1.10-EN.pdf) | 用户手册英文 V1.10 |
 | [SIYI-Gimbal-Camera-External-SDK-Protocol-V0.1.1-CN.pdf](SIYI-Gimbal-Camera-External-SDK-Protocol-V0.1.1-CN.pdf) | 云台相机外部 SDK 协议中文 V0.1.1 |
@@ -21,7 +21,7 @@
 默认依赖思翼图数传网段 `192.168.144.x`（与 MK15/MK32 / UniRC 一致）。
 
 | 用途 | 地址 |
-|------|------|
+| --- | --- |
 | 相机默认 IP | `192.168.144.25` |
 | SDK UDP | `192.168.144.25:37260` |
 | SDK TCP | `192.168.144.25:37260`（需 TCP 心跳 `0x00`） |
@@ -36,6 +36,8 @@
 帧格式：`55 66` 头 + CMD + DATA_LEN + SEQ + CMD_ID + DATA + CRC16（低字节在前）。拍照/录像等见 CMD `0x0C`；姿态 `0x0D`/`0x0E`；转向 `0x07`；回中 `0x08`。
 
 > 说明：本仓库已有 UniPod MT11 对接也走 `192.168.144.25:37260` 同类帧；A8 Mini 为思翼原生协议机型（硬件 ID `0x73`），开发时以本目录 SDK PDF 为准。
+
+UniGCS 浮层能力表（产品功能 vs 本轮按钮）：[../payload-capabilities/](../payload-capabilities/)。
 
 ## 建议开发阅读顺序
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <QtCore/QString>
+#include <QtCore/QStringList>
 #include <QtQmlIntegration/QtQmlIntegration>
 
 #include "SettingsGroup.h"
@@ -26,4 +28,7 @@ public:
     DEFINE_SETTINGFACT(apmHiddenFlightModesSub)
     DEFINE_SETTINGFACT(apmHiddenFlightModesAirship)
     DEFINE_SETTINGFACT(requireModeChangeConfirmation)
+
+    /// Matches English hidden-list names against Chinese (or mixed) toolbar labels.
+    Q_INVOKABLE bool isFlightModeHidden(const QString& displayedName, const QStringList& hiddenNames) const;
 };

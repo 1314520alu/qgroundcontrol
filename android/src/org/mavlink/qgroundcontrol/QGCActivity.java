@@ -31,6 +31,8 @@ public class QGCActivity extends QtActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        // Qt creates UDP in super.onCreate(); unbind first so 192.168.144.x MAVLink is not dropped.
+        QGCSiyiEthernetHelper.unbindProcessFromNetwork(this);
         super.onCreate(savedInstanceState);
         m_instance = this;
 
@@ -42,7 +44,7 @@ public class QGCActivity extends QtActivity {
         QGCSDLManager.initialize(this);
         m_storagePermissionController = new QGCStoragePermissionController(this);
 
-        // SIYI UniRC remotes: start ensuring eth0 / 192.168.144.x for RTSP (UniPod) as early as possible.
+        // Handheld remotes: restore OEM ethernet (eth0) if the Settings toggle was turned off.
         QGCSiyiEthernetHelper.ensureRadioEthernet();
     }
 
@@ -70,6 +72,9 @@ public class QGCActivity extends QtActivity {
                 nativeStoragePermissionsResult(granted);
             }
         }
+
+        // Re-check the OEM Ethernet switch after returning to the app (it is sometimes toggled off).
+        QGCSiyiEthernetHelper.ensureRadioEthernet();
     }
 
     @Override
@@ -153,7 +158,7 @@ public class QGCActivity extends QtActivity {
             if (cursor != null && cursor.moveToFirst()) {
                 final int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
                 if (nameIndex >= 0) {
-                    displayName = cursor.getString(nameIndex);                    
+                    displayName = cursor.getString(nameIndex);
                     displayName = sanitizeFilename(displayName);
                 }
             }

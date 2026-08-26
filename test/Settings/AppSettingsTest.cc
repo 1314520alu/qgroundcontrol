@@ -17,27 +17,32 @@ void AppSettingsTest::_offlineEditingFirmwareClassEnumFiltered()
     _verifyFirmwareClassEnumFiltered(SettingsManager::instance()->appSettings()->offlineEditingFirmwareClass());
 }
 
-void AppSettingsTest::_verifyFirmwareClassEnumFiltered(Fact *fact)
+void AppSettingsTest::_verifyFirmwareClassEnumFiltered(Fact* fact)
 {
-    const QList<QGCMAVLink::FirmwareClass_t> supportedClasses = FirmwarePluginManager::instance()->supportedFirmwareClasses();
+    const QList<QGCMAVLink::FirmwareClass_t> supportedClasses =
+        FirmwarePluginManager::instance()->supportedFirmwareClasses();
 
     const QVariantList enumValues = fact->enumValues();
     QCOMPARE(fact->enumStrings().count(), enumValues.count());
     QVERIFY(!enumValues.isEmpty());
 
-    for (const QVariant &enumValue : enumValues) {
+    for (const QVariant& enumValue : enumValues) {
         const auto firmwareClass = static_cast<QGCMAVLink::FirmwareClass_t>(enumValue.toUInt());
         QVERIFY2(supportedClasses.contains(firmwareClass),
-                 qPrintable(QStringLiteral("%1 enum offers unsupported firmware class %2").arg(fact->name()).arg(enumValue.toUInt())));
+                 qPrintable(QStringLiteral("%1 enum offers unsupported firmware class %2")
+                                .arg(fact->name())
+                                .arg(enumValue.toUInt())));
     }
 
     QVERIFY2(supportedClasses.contains(static_cast<QGCMAVLink::FirmwareClass_t>(fact->rawValue().toUInt())),
-             qPrintable(QStringLiteral("%1 value is an unsupported firmware class %2").arg(fact->name()).arg(fact->rawValue().toUInt())));
+             qPrintable(QStringLiteral("%1 value is an unsupported firmware class %2")
+                            .arg(fact->name())
+                            .arg(fact->rawValue().toUInt())));
 }
 
 void AppSettingsTest::_vehicleSetupVisibleComponentsDefault()
 {
-    AppSettings *const appSettings = SettingsManager::instance()->appSettings();
+    AppSettings* const appSettings = SettingsManager::instance()->appSettings();
     QVERIFY(appSettings);
 
     appSettings->resetVehicleSetupVisibleComponents();
@@ -45,9 +50,11 @@ void AppSettingsTest::_vehicleSetupVisibleComponentsDefault()
     const QStringList expected = QString::fromLatin1(AppSettings::vehicleSetupVisibleComponentsDefault)
                                      .split(QLatin1Char(','), Qt::SkipEmptyParts);
     QCOMPARE(appSettings->vehicleSetupVisibleIdList(), expected);
-    QVERIFY(appSettings->isVehicleSetupComponentVisible(QStringLiteral("radio")));
+    QVERIFY(appSettings->isVehicleSetupComponentVisible(QStringLiteral("sensors")));
     QVERIFY(appSettings->isVehicleSetupComponentVisible(QStringLiteral("esc")));
     QVERIFY(appSettings->isVehicleSetupComponentVisible(QStringLiteral("escTelemetry")));
+    QVERIFY(!appSettings->isVehicleSetupComponentVisible(QStringLiteral("frame")));
+    QVERIFY(!appSettings->isVehicleSetupComponentVisible(QStringLiteral("radio")));
     QVERIFY(!appSettings->isVehicleSetupComponentVisible(QStringLiteral("joystick")));
     QVERIFY(!appSettings->isVehicleSetupComponentVisible(QStringLiteral("notARealId")));
     QCOMPARE(appSettings->vehicleSetupComponentSortKey(QStringLiteral("frame")), 0);
@@ -60,14 +67,18 @@ void AppSettingsTest::_vehicleSetupVisibleComponentsDefault()
 
 void AppSettingsTest::_vehicleSetupVisibleComponentsToggleAndReset()
 {
-    AppSettings *const appSettings = SettingsManager::instance()->appSettings();
+    AppSettings* const appSettings = SettingsManager::instance()->appSettings();
     QVERIFY(appSettings);
 
     appSettings->resetVehicleSetupVisibleComponents();
-    QVERIFY(appSettings->isVehicleSetupComponentVisible(QStringLiteral("radio")));
-
-    appSettings->setVehicleSetupComponentVisible(QStringLiteral("radio"), false);
+    QVERIFY(appSettings->isVehicleSetupComponentVisible(QStringLiteral("sensors")));
     QVERIFY(!appSettings->isVehicleSetupComponentVisible(QStringLiteral("radio")));
+
+    appSettings->setVehicleSetupComponentVisible(QStringLiteral("sensors"), false);
+    QVERIFY(!appSettings->isVehicleSetupComponentVisible(QStringLiteral("sensors")));
+
+    appSettings->setVehicleSetupComponentVisible(QStringLiteral("radio"), true);
+    QVERIFY(appSettings->isVehicleSetupComponentVisible(QStringLiteral("radio")));
 
     appSettings->setVehicleSetupComponentVisible(QStringLiteral("joystick"), true);
     QVERIFY(appSettings->isVehicleSetupComponentVisible(QStringLiteral("joystick")));
@@ -76,7 +87,9 @@ void AppSettingsTest::_vehicleSetupVisibleComponentsToggleAndReset()
     QVERIFY(!appSettings->isVehicleSetupComponentVisible(QStringLiteral("notARealId")));
 
     appSettings->resetVehicleSetupVisibleComponents();
-    QVERIFY(appSettings->isVehicleSetupComponentVisible(QStringLiteral("radio")));
+    QVERIFY(appSettings->isVehicleSetupComponentVisible(QStringLiteral("sensors")));
+    QVERIFY(!appSettings->isVehicleSetupComponentVisible(QStringLiteral("frame")));
+    QVERIFY(!appSettings->isVehicleSetupComponentVisible(QStringLiteral("radio")));
     QVERIFY(!appSettings->isVehicleSetupComponentVisible(QStringLiteral("joystick")));
     QCOMPARE(appSettings->vehicleSetupVisibleComponents()->rawValue().toString(),
              QString::fromLatin1(AppSettings::vehicleSetupVisibleComponentsDefault));
@@ -84,7 +97,7 @@ void AppSettingsTest::_vehicleSetupVisibleComponentsToggleAndReset()
 
 void AppSettingsTest::_vehicleSetupResolveComponentId()
 {
-    AppSettings *const appSettings = SettingsManager::instance()->appSettings();
+    AppSettings* const appSettings = SettingsManager::instance()->appSettings();
     QVERIFY(appSettings);
 
     QCOMPARE(appSettings->resolveVehicleSetupComponentId(
@@ -100,8 +113,7 @@ void AppSettingsTest::_vehicleSetupResolveComponentId()
                  QString()),
              QStringLiteral("tuningAdvanced"));
     QCOMPARE(appSettings->resolveVehicleSetupComponentId(
-                 QStringLiteral("qrc:/qml/QGroundControl/AutoPilotPlugins/PX4/ActuatorComponent.qml"),
-                 QString()),
+                 QStringLiteral("qrc:/qml/QGroundControl/AutoPilotPlugins/PX4/ActuatorComponent.qml"), QString()),
              QStringLiteral("motors"));
     QCOMPARE(appSettings->resolveVehicleSetupComponentId(
                  QStringLiteral("qrc:/qml/QGroundControl/AutoPilotPlugins/APM/APMESCTelemetryComponent.qml"),
@@ -112,7 +124,6 @@ void AppSettingsTest::_vehicleSetupResolveComponentId()
                  QStringLiteral("qrc:/qml/QGroundControl/AutoPilotPlugins/APM/APMESCComponentSummary.qml")),
              QStringLiteral("esc"));
     QCOMPARE(appSettings->resolveVehicleSetupComponentId(
-                 QStringLiteral("qrc:/qml/QGroundControl/AutoPilotPlugins/PX4/SyslinkComponent.qml"),
-                 QString()),
+                 QStringLiteral("qrc:/qml/QGroundControl/AutoPilotPlugins/PX4/SyslinkComponent.qml"), QString()),
              QString());
 }

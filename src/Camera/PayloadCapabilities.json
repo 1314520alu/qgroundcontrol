@@ -1,0 +1,105 @@
+{
+  "meta": {
+    "schema_version": 1,
+    "description": "Cross-product UniGCS overlay capability catalog. features = product truth; overlay_phase1 = buttons shown this release (now product-full where true).",
+    "source": "docs/manuals/payload-capabilities"
+  },
+  "cameras": [
+    {
+      "id": "unipod-mt11",
+      "vendor": "Reebot",
+      "model_name": "UniPod MT11",
+      "video_source": "UniPod MT11",
+      "rtsp": "rtsp://192.168.144.25:8554/video1",
+      "control_host": "192.168.144.25",
+      "control_port": 37260,
+      "hw_id": "8A",
+      "features": {
+        "gimbal": true,
+        "lens": true,
+        "laser": true,
+        "ai": true,
+        "follow": true,
+        "exposure_auto": true,
+        "photo": true,
+        "video": true,
+        "zoom": true,
+        "focus": true,
+        "media_library": true
+      },
+      "overlay_phase1": [
+        "gimbal",
+        "lens",
+        "laser",
+        "ai",
+        "follow",
+        "exposure_auto",
+        "photo",
+        "video",
+        "zoom",
+        "focus",
+        "media_library"
+      ]
+    },
+    {
+      "id": "siyi-a8-mini",
+      "vendor": "SIYI",
+      "model_name": "SIYI A8 Mini",
+      "video_source": "SIYI A8 Mini",
+      "rtsp": "rtsp://192.168.144.25:8554/main.264",
+      "control_host": "192.168.144.25",
+      "control_port": 37260,
+      "hw_id": "0x73",
+      "features": {
+        "gimbal": true,
+        "lens": false,
+        "laser": false,
+        "ai": "optional",
+        "follow": "optional",
+        "exposure_auto": true,
+        "photo": true,
+        "video": true,
+        "zoom": true,
+        "focus": false,
+        "media_library": false
+      },
+      "overlay_phase1": [
+        "gimbal",
+        "exposure_auto",
+        "photo",
+        "video",
+        "zoom"
+      ]
+    },
+    {
+      "id": "topotek-tq10n",
+      "vendor": "Topotek",
+      "model_name": "Topotek TQ10N",
+      "video_source": "Topotek TQ10N",
+      "rtsp": "rtsp://192.168.144.108:554/stream=0",
+      "control_host": "192.168.144.108",
+      "control_port": 9003,
+      "hw_id": null,
+      "features": {
+        "gimbal": true,
+        "lens": false,
+        "laser": false,
+        "ai": false,
+        "follow": false,
+        "exposure_auto": true,
+        "photo": true,
+        "video": true,
+        "zoom": true,
+        "focus": false,
+        "media_library": false
+      },
+      "overlay_phase1": [
+        "gimbal",
+        "exposure_auto",
+        "photo",
+        "video",
+        "zoom"
+      ]
+    }
+  ]
+}

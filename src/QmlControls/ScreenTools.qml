@@ -120,6 +120,26 @@ Item {
 
     readonly property string normalFontFamily:      ScreenToolsController.normalFontFamily
     readonly property string fixedFontFamily:       ScreenToolsController.fixedFontFamily
+
+    property bool _applyingRemoteUiScale: false
+
+    function applyRemoteUiScaleForPreset(presetName) {
+        if (!QGroundControl.settingsManager.appSettings.uiScaleFollowRemote.rawValue) {
+            return
+        }
+        var fact = QGroundControl.settingsManager.appSettings.uiScalePercent
+        var rec = ScreenToolsController.recommendedUiScalePercentForPreset(presetName)
+        if (rec < fact.min || rec > fact.max) {
+            return
+        }
+        if (fact.value === rec) {
+            return
+        }
+        _applyingRemoteUiScale = true
+        fact.value = rec
+        _applyingRemoteUiScale = false
+    }
+
     /* This mostly works but for some reason, reflowWidths() in SetupView doesn't change size.
        I've disabled (in release builds) until I figure out why. Changes require a restart for now.
     */
@@ -128,6 +148,18 @@ Item {
         function onValueChanged() {
             var pct = QGroundControl.settingsManager.appSettings.uiScalePercent.value
             _setBasePointSize(platformFontPointSize * pct / 100)
+            if (!_applyingRemoteUiScale && ScreenToolsController.isAndroid) {
+                QGroundControl.settingsManager.appSettings.uiScaleFollowRemote.rawValue = false
+            }
+        }
+    }
+
+    Connections {
+        target: QGroundControl.settingsManager.appSettings.uiScaleFollowRemote
+        function onRawValueChanged() {
+            if (QGroundControl.settingsManager.appSettings.uiScaleFollowRemote.rawValue) {
+                applyRemoteUiScaleForPreset(ScreenToolsController.detectRemoteControllerPreset())
+            }
         }
     }
 
@@ -207,6 +239,15 @@ Item {
             if(pct < _uiScalePercentFact.min || pct > _uiScalePercentFact.max) {
                 pct = 100;
                 _uiScalePercentFact.value = pct
+            }
+            if (QGroundControl.settingsManager.appSettings.uiScaleFollowRemote.rawValue) {
+                var rec = ScreenToolsController.recommendedUiScalePercent()
+                if (rec >= _uiScalePercentFact.min && rec <= _uiScalePercentFact.max) {
+                    pct = rec
+                    _screenTools._applyingRemoteUiScale = true
+                    _uiScalePercentFact.value = rec
+                    _screenTools._applyingRemoteUiScale = false
+                }
             }
             //-- Set size saved in settings
             _screenTools._setBasePointSize(platformFontPointSize * pct / 100);

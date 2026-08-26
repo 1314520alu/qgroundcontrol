@@ -16,8 +16,13 @@ private slots:
     void _testNonAutoConnectLinkNotReconnected();
     void _testNeverStartedLinkNotConnected();
     void _testLinkActiveStableAcrossReconnect();
+    void _testUdpAutoConnectSkippedWhenDedicatedUdpExists();
+    void _testUdpAutoConnectRemovedWhenDedicatedUdpConnects();
 
 private:
-    SharedLinkConfigurationPtr _addMockConfig(const QString &name, bool dynamic, bool autoConnect);
+    SharedLinkConfigurationPtr _addMockConfig(const QString& name, bool dynamic, bool autoConnect);
+    SharedLinkConfigurationPtr _addDedicatedUdpConfig(const QString& name, quint16 localPort);
     void _reconnect();
+    void _syncUdpAutoConnect();
+    bool _hasUdpAutoConnectLink() const;
 };

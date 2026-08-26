@@ -41,6 +41,10 @@
                     "showWhen": "ScreenTools.isMobile"
                 },
                 {
+                    "setting": "appSettings.uiScaleFollowRemote",
+                    "showWhen": "ScreenTools.isAndroid"
+                },
+                {
                     "setting": "appSettings.uiScalePercent",
                     "control": "scaler"
                 },

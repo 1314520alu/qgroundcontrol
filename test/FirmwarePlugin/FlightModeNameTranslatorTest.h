@@ -13,4 +13,6 @@ private slots:
     void _testChinesePlaneLoiter();
     void _testChineseUnknownLeftInEnglish();
     void _testChineseDuplicateSuffixPreserved();
+    void _testNamesMatchEnglishAndChinese();
+    void _testIsHiddenCopterDailyModes();
 };

@@ -1,8 +1,10 @@
 #include "UnipodMt11CameraControl.h"
 
 #include <QtCore/QTime>
+#include <QtCore/QtNumeric>
 
 #include "AppMessages.h"
+#include "PayloadCapabilityCatalog.h"
 #include "QGCLoggingCategory.h"
 #include "UnipodMt11Client.h"
 #include "UnipodMt11MediaClient.h"
@@ -11,6 +13,20 @@
 #include "VideoManager.h"
 
 QGC_LOGGING_CATEGORY(UnipodMt11CameraControlLog, "Camera.UnipodMt11CameraControl")
+
+namespace {
+
+const PayloadCapabilityCatalog::Entry* unipodCatalogEntry()
+{
+    return PayloadCapabilityCatalog::instance().byModelName(QStringLiteral("UniPod MT11"));
+}
+
+bool unipodOverlayHas(const char* feature)
+{
+    return PayloadCapabilityCatalog::overlayHas(unipodCatalogEntry(), QString::fromLatin1(feature));
+}
+
+}  // namespace
 
 UnipodMt11CameraControl::UnipodMt11CameraControl(Vehicle* vehicle, UnipodMt11Client* client, QObject* parent)
     : MavlinkCameraControlInterface(vehicle, parent), _client(client)
@@ -35,6 +51,12 @@ UnipodMt11CameraControl::UnipodMt11CameraControl(Vehicle* vehicle, UnipodMt11Cli
     (void) connect(_client, &UnipodMt11Client::funcFeedback, this, &UnipodMt11CameraControl::_onFuncFeedback);
     (void) connect(_client, &UnipodMt11Client::sendFailed, this,
                    [](const QString& reason) { QGC::showAppMessage(reason); });
+    (void) connect(_client, &UnipodMt11Client::laserEnabledChanged, this,
+                   &UnipodMt11CameraControl::laserEnabledChanged);
+    (void) connect(_client, &UnipodMt11Client::aiRecognitionEnabledChanged, this,
+                   &UnipodMt11CameraControl::aiRecognitionEnabledChanged);
+    (void) connect(_client, &UnipodMt11Client::laserDistanceChanged, this,
+                   &UnipodMt11CameraControl::laserDistanceChanged);
     (void) connect(this, &UnipodMt11CameraControl::photoCaptureStatusChanged, this,
                    &UnipodMt11CameraControl::captureVideoStateChanged);
     (void) connect(this, &UnipodMt11CameraControl::photoCaptureStatusChanged, this,
@@ -238,19 +260,161 @@ quint32 UnipodMt11CameraControl::recordTime() const
 
 bool UnipodMt11CameraControl::capturesVideo() const
 {
-    // Advertise capability while this control is selected so PhotoVideoControl does not
-    // fall through to Simulated. Buttons stay Disabled via captureVideoState until ready.
-    return true;
+    return unipodOverlayHas("video");
 }
 
 bool UnipodMt11CameraControl::capturesPhotos() const
 {
-    return true;
+    return unipodOverlayHas("photo");
+}
+
+bool UnipodMt11CameraControl::hasZoom() const
+{
+    return unipodOverlayHas("zoom");
+}
+
+bool UnipodMt11CameraControl::hasFocus() const
+{
+    return unipodOverlayHas("focus");
+}
+
+bool UnipodMt11CameraControl::hasGimbalPad() const
+{
+    return unipodOverlayHas("gimbal");
+}
+
+bool UnipodMt11CameraControl::hasLensSwitch() const
+{
+    return unipodOverlayHas("lens");
+}
+
+bool UnipodMt11CameraControl::hasLaserRange() const
+{
+    return unipodOverlayHas("laser");
+}
+
+bool UnipodMt11CameraControl::hasAiRecognition() const
+{
+    return unipodOverlayHas("ai");
+}
+
+bool UnipodMt11CameraControl::hasFollowFlight() const
+{
+    return unipodOverlayHas("follow");
+}
+
+bool UnipodMt11CameraControl::hasExposureAuto() const
+{
+    return unipodOverlayHas("exposure_auto");
 }
 
 bool UnipodMt11CameraControl::hasVideoStream() const
 {
     return VideoManager::instance()->decoding();
+}
+
+bool UnipodMt11CameraControl::laserEnabled() const
+{
+    return _client && _client->laserEnabled();
+}
+
+bool UnipodMt11CameraControl::aiRecognitionEnabled() const
+{
+    return _client && _client->aiRecognitionEnabled();
+}
+
+double UnipodMt11CameraControl::laserDistanceMeters() const
+{
+    return _client ? _client->laserDistanceMeters() : qQNaN();
+}
+
+void UnipodMt11CameraControl::stepZoom(int direction)
+{
+    startZoom(direction);
+    QTimer::singleShot(200, this, [this]() { stopZoom(); });
+}
+
+void UnipodMt11CameraControl::startZoom(int direction)
+{
+    if (_client && hasZoom()) {
+        _client->startZoom(direction);
+    }
+}
+
+void UnipodMt11CameraControl::stopZoom()
+{
+    if (_client) {
+        _client->stopZoom();
+    }
+}
+
+void UnipodMt11CameraControl::stepFocus(int direction)
+{
+    startFocus(direction);
+    QTimer::singleShot(200, this, [this]() { stopFocus(); });
+}
+
+void UnipodMt11CameraControl::startFocus(int direction)
+{
+    if (_client && hasFocus()) {
+        _client->startFocus(direction);
+    }
+}
+
+void UnipodMt11CameraControl::stopFocus()
+{
+    if (_client) {
+        _client->stopFocus();
+    }
+}
+
+void UnipodMt11CameraControl::ptzStart(int direction)
+{
+    if (_client && hasGimbalPad()) {
+        _client->ptzStart(direction);
+    }
+}
+
+void UnipodMt11CameraControl::ptzStop()
+{
+    if (_client) {
+        _client->ptzStop();
+    }
+}
+
+void UnipodMt11CameraControl::ptzHome()
+{
+    if (_client && hasGimbalPad()) {
+        _client->ptzHome();
+    }
+}
+
+void UnipodMt11CameraControl::setVideoLayout(int mainMode, int secondaryMode)
+{
+    if (_client && hasLensSwitch()) {
+        _client->setVideoLayout(static_cast<quint8>(mainMode), static_cast<quint8>(secondaryMode));
+    }
+}
+
+void UnipodMt11CameraControl::setLaserEnabled(bool enabled)
+{
+    if (_client && hasLaserRange()) {
+        _client->setLaserEnabled(enabled);
+    }
+}
+
+void UnipodMt11CameraControl::requestLaserDistance()
+{
+    if (_client && hasLaserRange()) {
+        _client->requestLaserDistance();
+    }
+}
+
+void UnipodMt11CameraControl::setAiRecognitionEnabled(bool enabled)
+{
+    if (_client && hasAiRecognition()) {
+        _client->setAiRecognitionEnabled(enabled);
+    }
 }
 
 MavlinkCameraControlInterface::CaptureVideoState UnipodMt11CameraControl::captureVideoState() const
@@ -318,5 +482,5 @@ void UnipodMt11CameraControl::setMediaClient(UnipodMt11MediaClient* client)
 
 bool UnipodMt11CameraControl::hasMediaLibrary() const
 {
-    return _mediaClient && _mediaClient->isReady();
+    return unipodOverlayHas("media_library") && _mediaClient && _mediaClient->isReady();
 }

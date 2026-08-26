@@ -1,8 +1,8 @@
 #include "FlightModeSettings.h"
 
-DECLARE_SETTINGGROUP(FlightMode, "FlightMode")
-{
-}
+#include "FlightModeNameTranslator.h"
+
+DECLARE_SETTINGGROUP(FlightMode, "FlightMode") {}
 
 DECLARE_SETTINGSFACT(FlightModeSettings, px4HiddenFlightModesMultiRotor)
 DECLARE_SETTINGSFACT(FlightModeSettings, px4HiddenFlightModesFixedWing)
@@ -17,3 +17,8 @@ DECLARE_SETTINGSFACT(FlightModeSettings, apmHiddenFlightModesRoverBoat)
 DECLARE_SETTINGSFACT(FlightModeSettings, apmHiddenFlightModesSub)
 DECLARE_SETTINGSFACT(FlightModeSettings, apmHiddenFlightModesAirship)
 DECLARE_SETTINGSFACT(FlightModeSettings, requireModeChangeConfirmation)
+
+bool FlightModeSettings::isFlightModeHidden(const QString& displayedName, const QStringList& hiddenNames) const
+{
+    return FlightModeNameTranslator::isHidden(displayedName, hiddenNames);
+}

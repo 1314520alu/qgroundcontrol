@@ -1,22 +1,22 @@
 #include "FlightModeNameTranslator.h"
 
-#include "QGCApplication.h"
-#include "QGCLoggingCategory.h"
-
 #include <QtCore/QHash>
 #include <QtCore/QRegularExpression>
+
+#include "QGCApplication.h"
+#include "QGCLoggingCategory.h"
 
 QGC_LOGGING_CATEGORY(FlightModeNameTranslatorLog, "FirmwarePlugin.FlightModeNameTranslator")
 
 namespace {
 
-const QRegularExpression &duplicateSuffixRe()
+const QRegularExpression& duplicateSuffixRe()
 {
     static const QRegularExpression re(QStringLiteral(R"( \((\d+)\)$)"));
     return re;
 }
 
-const QHash<QString, QString> &chineseNames()
+const QHash<QString, QString>& chineseNames()
 {
     // Keys are lowercase with spaces, underscores, and hyphens removed.
     static const QHash<QString, QString> names = {
@@ -117,15 +117,45 @@ const QHash<QString, QString> &chineseNames()
     return names;
 }
 
-} // namespace
+struct CanonicalMaps
+{
+    QHash<QString, QString> chineseToCanonical;
+    QHash<QString, QString> aliasToCanonical;
+};
 
-QString FlightModeNameTranslator::translate(const QString &name, bool fixedWing)
+const CanonicalMaps& canonicalMaps()
+{
+    static const CanonicalMaps maps = []() {
+        CanonicalMaps result;
+        const QHash<QString, QString>& names = chineseNames();
+        for (auto it = names.constBegin(); it != names.constEnd(); ++it) {
+            if (!result.chineseToCanonical.contains(it.value())) {
+                result.chineseToCanonical.insert(it.value(), it.key());
+            }
+        }
+        for (auto it = names.constBegin(); it != names.constEnd(); ++it) {
+            result.aliasToCanonical.insert(it.key(), result.chineseToCanonical.value(it.value()));
+        }
+        result.chineseToCanonical.insert(QStringLiteral("定点悬停"), QStringLiteral("loiter"));
+        result.chineseToCanonical.insert(QStringLiteral("盘旋"), QStringLiteral("loiter"));
+        result.aliasToCanonical.insert(QStringLiteral("loiter"), QStringLiteral("loiter"));
+        // ArduCopterFirmwarePlugin Qt ts uses 翻滚; the translator table uses 翻转.
+        const QString flipKey = result.aliasToCanonical.value(QStringLiteral("flip"), QStringLiteral("flip"));
+        result.chineseToCanonical.insert(QStringLiteral("翻滚"), flipKey);
+        return result;
+    }();
+    return maps;
+}
+
+}  // namespace
+
+QString FlightModeNameTranslator::translate(const QString& name, bool fixedWing)
 {
     const QLocale locale = qgcApp() ? qgcApp()->getCurrentLanguage() : QLocale();
     return translate(name, fixedWing, locale);
 }
 
-QString FlightModeNameTranslator::translate(const QString &name, bool fixedWing, const QLocale &locale)
+QString FlightModeNameTranslator::translate(const QString& name, bool fixedWing, const QLocale& locale)
 {
     if (name.isEmpty() || !_shouldTranslate(locale)) {
         return name;
@@ -138,12 +168,12 @@ QString FlightModeNameTranslator::translate(const QString &name, bool fixedWing,
     return translated;
 }
 
-bool FlightModeNameTranslator::_shouldTranslate(const QLocale &locale)
+bool FlightModeNameTranslator::_shouldTranslate(const QLocale& locale)
 {
     return locale.language() == QLocale::Chinese;
 }
 
-QString FlightModeNameTranslator::_normalizedKey(const QString &name)
+QString FlightModeNameTranslator::_normalizedKey(const QString& name)
 {
     QString key = name.trimmed().toLower();
     key.remove(QLatin1Char(' '));
@@ -152,7 +182,51 @@ QString FlightModeNameTranslator::_normalizedKey(const QString &name)
     return key;
 }
 
-QString FlightModeNameTranslator::_translateChinese(const QString &name, bool fixedWing)
+QString FlightModeNameTranslator::_canonicalKey(const QString& name)
+{
+    QString base = name.trimmed();
+    const QRegularExpressionMatch match = duplicateSuffixRe().match(base);
+    if (match.hasMatch()) {
+        base.chop(match.captured(0).size());
+    }
+    if (base.isEmpty()) {
+        return {};
+    }
+
+    const CanonicalMaps& maps = canonicalMaps();
+    const QString chineseKey = maps.chineseToCanonical.value(base);
+    if (!chineseKey.isEmpty()) {
+        return chineseKey;
+    }
+
+    const QString normalized = _normalizedKey(base);
+    return maps.aliasToCanonical.value(normalized, normalized);
+}
+
+bool FlightModeNameTranslator::namesMatch(const QString& left, const QString& right)
+{
+    const QString leftTrimmed = left.trimmed();
+    const QString rightTrimmed = right.trimmed();
+    if (leftTrimmed.isEmpty() || rightTrimmed.isEmpty()) {
+        return false;
+    }
+    if (leftTrimmed.compare(rightTrimmed, Qt::CaseInsensitive) == 0) {
+        return true;
+    }
+    return _canonicalKey(leftTrimmed) == _canonicalKey(rightTrimmed);
+}
+
+bool FlightModeNameTranslator::isHidden(const QString& displayedName, const QStringList& hiddenNames)
+{
+    for (const QString& hidden : hiddenNames) {
+        if (namesMatch(displayedName, hidden)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+QString FlightModeNameTranslator::_translateChinese(const QString& name, bool fixedWing)
 {
     QString base = name;
     QString suffix;

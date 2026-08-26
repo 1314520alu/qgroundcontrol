@@ -110,7 +110,11 @@ Item {
                         hiddenFlightModesFact = flightModeSettings[hiddenFlightModesProp]
                         // Split string into list of flight modes
                         if (hiddenFlightModesFact && hiddenFlightModesFact.value !== "") {
-                            hiddenFlightModesList = hiddenFlightModesFact.value.split(",")
+                            hiddenFlightModesList = hiddenFlightModesFact.value.split(",").map(function(item) {
+                                return item.trim()
+                            }).filter(function(item) {
+                                return item.length > 0
+                            })
                         }
                     } else {
                         control.allowEditMode = false
@@ -127,7 +131,7 @@ Item {
                             var button      = modeRepeater.itemAt(i).children[0]
                             var checkBox    = modeRepeater.itemAt(i).children[1]
 
-                            checkBox.checked = !hiddenFlightModesList.find(item => { return item === button.text } )
+                            checkBox.checked = !flightModeSettings.isFlightModeHidden(button.text, hiddenFlightModesList)
                         }
                     }
                 }
@@ -151,7 +155,7 @@ Item {
 
                 RowLayout {
                     spacing: ScreenTools.defaultFontPixelWidth
-                    visible: editMode || !hiddenFlightModesList.find(item => { return item === modelData } )
+                    visible: editMode || !flightModeSettings.isFlightModeHidden(modelData, hiddenFlightModesList)
 
                     QGCDelayButton {
                         id:                 modeButton

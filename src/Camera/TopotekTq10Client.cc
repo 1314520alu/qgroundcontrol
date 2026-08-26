@@ -11,8 +11,7 @@
 
 QGC_LOGGING_CATEGORY(TopotekTq10ClientLog, "Camera.TopotekTq10Client")
 
-TopotekTq10Client::TopotekTq10Client(QObject *parent)
-    : QObject(parent)
+TopotekTq10Client::TopotekTq10Client(QObject* parent) : QObject(parent)
 {
     _pollTimer = new QTimer(this);
     _pollTimer->setInterval(1000);
@@ -51,9 +50,10 @@ void TopotekTq10Client::start()
     }
 
     _socket = new QUdpSocket(this);
-    if (!_socket->bind(QHostAddress::AnyIPv4, TopotekTq10Protocol::kLocalPort)) {
-        qCWarning(TopotekTq10ClientLog) << "Failed to bind UDP socket on port"
-                                          << TopotekTq10Protocol::kLocalPort << ":" << _socket->errorString();
+    // Ephemeral local port (same as UniPod): multi-vehicle / retry must not fight over :9004.
+    // The pod replies to the datagram source port; demo's fixed 9004 is not required.
+    if (!_socket->bind(QHostAddress::AnyIPv4, 0)) {
+        qCWarning(TopotekTq10ClientLog) << "Failed to bind UDP socket:" << _socket->errorString();
         _socket->deleteLater();
         _socket = nullptr;
         _setReady(false);
@@ -68,7 +68,7 @@ void TopotekTq10Client::start()
     _pollRecordState();
 
     qCDebug(TopotekTq10ClientLog) << "Started on local port" << _socket->localPort()
-                                    << "ethernet:" << ScreenToolsController::siyiRadioEthernetAddress();
+                                  << "ethernet:" << ScreenToolsController::siyiRadioEthernetAddress();
 }
 
 void TopotekTq10Client::stop()
@@ -122,7 +122,7 @@ void TopotekTq10Client::startZoom(int direction)
         return;
     }
 
-    const char *data = (direction > 0) ? "02" : "01";
+    const char* data = (direction > 0) ? "02" : "01";
     (void) _sendDatagram(TopotekTq10Protocol::buildZoom(data));
 }
 
@@ -141,13 +141,22 @@ void TopotekTq10Client::ptzStart(int direction)
         return;
     }
 
-    const char *data = "00";
+    const char* data = "00";
     switch (direction) {
-    case 1: data = "01"; break;
-    case 2: data = "02"; break;
-    case 3: data = "03"; break;
-    case 4: data = "04"; break;
-    default: return;
+        case 1:
+            data = "01";
+            break;
+        case 2:
+            data = "02";
+            break;
+        case 3:
+            data = "03";
+            break;
+        case 4:
+            data = "04";
+            break;
+        default:
+            return;
     }
 
     (void) _sendDatagram(TopotekTq10Protocol::buildPtz(data));
@@ -176,7 +185,7 @@ void TopotekTq10Client::ptzHome()
 
 bool TopotekTq10Client::_canStart()
 {
-    VideoSettings *videoSettings = SettingsManager::instance()->videoSettings();
+    VideoSettings* videoSettings = SettingsManager::instance()->videoSettings();
     if (!videoSettings) {
         return false;
     }
@@ -219,7 +228,7 @@ void TopotekTq10Client::_setRecordSta(quint8 recordSta)
     emit recordStaChanged(_recordSta);
 }
 
-bool TopotekTq10Client::_sendDatagram(const QByteArray &frame)
+bool TopotekTq10Client::_sendDatagram(const QByteArray& frame)
 {
     if (!_socket) {
         qCWarning(TopotekTq10ClientLog) << "Send failed: socket not open";
@@ -228,10 +237,8 @@ bool TopotekTq10Client::_sendDatagram(const QByteArray &frame)
 
     qCDebug(TopotekTq10ClientLog) << "Send" << frame;
 
-    const qint64 bytes = _socket->writeDatagram(
-        frame,
-        QHostAddress(TopotekTq10Protocol::kDefaultHost),
-        TopotekTq10Protocol::kDefaultPort);
+    const qint64 bytes = _socket->writeDatagram(frame, QHostAddress(TopotekTq10Protocol::kDefaultHost),
+                                                TopotekTq10Protocol::kDefaultPort);
     if (bytes != frame.size()) {
         qCWarning(TopotekTq10ClientLog) << "Send failed:" << _socket->errorString();
         return false;

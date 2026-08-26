@@ -1,5 +1,6 @@
 #include "UnipodMt11Client.h"
 
+#include <QtCore/QtMath>
 #include <QtNetwork/QHostAddress>
 #include <QtNetwork/QUdpSocket>
 
@@ -11,8 +12,7 @@
 
 QGC_LOGGING_CATEGORY(UnipodMt11ClientLog, "Camera.UnipodMt11Client")
 
-UnipodMt11Client::UnipodMt11Client(QObject *parent)
-    : QObject(parent)
+UnipodMt11Client::UnipodMt11Client(QObject* parent) : QObject(parent)
 {
     _pollTimer = new QTimer(this);
     _pollTimer->setInterval(1000);
@@ -92,7 +92,7 @@ void UnipodMt11Client::stop()
 void UnipodMt11Client::takePhoto()
 {
     if (!isReady()) {
-        emit sendFailed(tr("UniPod MT11 not ready"));
+        emit sendFailed(tr("SIYI UDP camera not ready"));
         return;
     }
 
@@ -105,7 +105,7 @@ void UnipodMt11Client::takePhoto()
 void UnipodMt11Client::toggleRecording()
 {
     if (!isReady()) {
-        emit sendFailed(tr("UniPod MT11 not ready"));
+        emit sendFailed(tr("SIYI UDP camera not ready"));
         return;
     }
 
@@ -115,15 +115,164 @@ void UnipodMt11Client::toggleRecording()
     }
 }
 
+void UnipodMt11Client::startZoom(int direction)
+{
+    if (!isReady()) {
+        return;
+    }
+
+    const qint8 zoom = (direction > 0) ? 1 : ((direction < 0) ? -1 : 0);
+    (void) _sendDatagram(UnipodMt11Protocol::buildZoomCommand(++_seq, zoom));
+}
+
+void UnipodMt11Client::stopZoom()
+{
+    if (!isReady()) {
+        return;
+    }
+
+    (void) _sendDatagram(UnipodMt11Protocol::buildZoomCommand(++_seq, 0));
+}
+
+void UnipodMt11Client::startFocus(int direction)
+{
+    if (!isReady()) {
+        return;
+    }
+
+    const qint8 focus = (direction > 0) ? 1 : ((direction < 0) ? -1 : 0);
+    (void) _sendDatagram(UnipodMt11Protocol::buildFocusCommand(++_seq, focus));
+}
+
+void UnipodMt11Client::stopFocus()
+{
+    if (!isReady()) {
+        return;
+    }
+
+    (void) _sendDatagram(UnipodMt11Protocol::buildFocusCommand(++_seq, 0));
+}
+
+void UnipodMt11Client::ptzStart(int direction)
+{
+    if (!isReady()) {
+        return;
+    }
+
+    static constexpr qint8 kSpeed = 20;
+    qint8 yaw = 0;
+    qint8 pitch = 0;
+    switch (direction) {
+        case 1:  // up
+            pitch = kSpeed;
+            break;
+        case 2:  // down
+            pitch = -kSpeed;
+            break;
+        case 3:  // left
+            yaw = -kSpeed;
+            break;
+        case 4:  // right
+            yaw = kSpeed;
+            break;
+        default:
+            return;
+    }
+
+    (void) _sendDatagram(UnipodMt11Protocol::buildGimbalSpeedCommand(++_seq, yaw, pitch));
+}
+
+void UnipodMt11Client::ptzStop()
+{
+    if (!isReady()) {
+        return;
+    }
+
+    (void) _sendDatagram(UnipodMt11Protocol::buildGimbalSpeedCommand(++_seq, 0, 0));
+}
+
+void UnipodMt11Client::ptzHome()
+{
+    if (!isReady()) {
+        return;
+    }
+
+    (void) _sendDatagram(UnipodMt11Protocol::buildCenterCommand(++_seq, 1));
+}
+
+void UnipodMt11Client::setVideoLayout(quint8 mainMode, quint8 secondaryMode)
+{
+    if (!isReady()) {
+        emit sendFailed(tr("SIYI UDP camera not ready"));
+        return;
+    }
+
+    if (!_sendDatagram(UnipodMt11Protocol::buildSetVideoLayoutCommand(++_seq, mainMode, secondaryMode))) {
+        emit sendFailed(tr("Failed to send video layout command"));
+    }
+}
+
+void UnipodMt11Client::setLaserEnabled(bool enabled)
+{
+    if (!isReady()) {
+        emit sendFailed(tr("SIYI UDP camera not ready"));
+        return;
+    }
+
+    if (!_sendDatagram(UnipodMt11Protocol::buildSetLaserStateCommand(++_seq, enabled))) {
+        emit sendFailed(tr("Failed to send laser command"));
+        return;
+    }
+
+    if (_laserEnabled != enabled) {
+        _laserEnabled = enabled;
+        emit laserEnabledChanged();
+    }
+    if (!enabled) {
+        _laserDistanceMeters = qQNaN();
+        emit laserDistanceChanged();
+    }
+}
+
+void UnipodMt11Client::requestLaserDistance()
+{
+    if (!isReady()) {
+        return;
+    }
+
+    if (!_laserEnabled) {
+        setLaserEnabled(true);
+    }
+    (void) _sendDatagram(UnipodMt11Protocol::buildLaserDistanceRequest(++_seq));
+}
+
+void UnipodMt11Client::setAiRecognitionEnabled(bool enabled)
+{
+    if (!isReady()) {
+        emit sendFailed(tr("SIYI UDP camera not ready"));
+        return;
+    }
+
+    if (!_sendDatagram(UnipodMt11Protocol::buildSetAiTrackModeCommand(++_seq, enabled))) {
+        emit sendFailed(tr("Failed to send AI recognition command"));
+        return;
+    }
+
+    if (_aiRecognitionEnabled != enabled) {
+        _aiRecognitionEnabled = enabled;
+        emit aiRecognitionEnabledChanged();
+    }
+}
+
 bool UnipodMt11Client::_canStart()
 {
-    VideoSettings *videoSettings = SettingsManager::instance()->videoSettings();
+    VideoSettings* videoSettings = SettingsManager::instance()->videoSettings();
     if (!videoSettings) {
         return false;
     }
 
     const QString source = videoSettings->videoSource()->rawValue().toString();
-    if (source != VideoSettings::videoSourceUnipodMT11) {
+    if (source != VideoSettings::videoSourceUnipodMT11 && source != VideoSettings::videoSourceSiyiA8Mini) {
         return false;
     }
 
@@ -160,7 +309,7 @@ void UnipodMt11Client::_setRecordSta(quint8 recordSta)
     emit recordStaChanged(_recordSta);
 }
 
-bool UnipodMt11Client::_sendDatagram(const QByteArray &frame)
+bool UnipodMt11Client::_sendDatagram(const QByteArray& frame)
 {
     if (!_socket) {
         qCWarning(UnipodMt11ClientLog) << "Send failed: socket not open";
@@ -169,10 +318,8 @@ bool UnipodMt11Client::_sendDatagram(const QByteArray &frame)
 
     qCDebug(UnipodMt11ClientLog) << "Send" << frame.toHex(' ');
 
-    const qint64 bytes = _socket->writeDatagram(
-        frame,
-        QHostAddress(UnipodMt11Protocol::kDefaultHost),
-        UnipodMt11Protocol::kDefaultPort);
+    const qint64 bytes =
+        _socket->writeDatagram(frame, QHostAddress(UnipodMt11Protocol::kDefaultHost), UnipodMt11Protocol::kDefaultPort);
     if (bytes != frame.size()) {
         qCWarning(UnipodMt11ClientLog) << "Send failed:" << _socket->errorString();
         return false;
@@ -222,8 +369,8 @@ void UnipodMt11Client::_onReadyRead()
             continue;
         }
 
-        qCDebug(UnipodMt11ClientLog) << "Recv cmd" << Qt::hex << cmd << "seq" << seq
-                                     << "payload" << payload.toHex(' ') << Qt::dec;
+        qCDebug(UnipodMt11ClientLog) << "Recv cmd" << Qt::hex << cmd << "seq" << seq << "payload" << payload.toHex(' ')
+                                     << Qt::dec;
 
         if (cmd == 0x0A) {
             UnipodMt11Protocol::SystemInfoAck ack;
@@ -240,6 +387,12 @@ void UnipodMt11Client::_onReadyRead()
                     _setRecordSta(0);
                 }
                 emit funcFeedback(infoType);
+            }
+        } else if (cmd == 0x15) {
+            quint16 distanceDm = 0;
+            if (UnipodMt11Protocol::parseLaserDistanceAck(payload, &distanceDm)) {
+                _laserDistanceMeters = static_cast<double>(distanceDm) / 10.0;
+                emit laserDistanceChanged();
             }
         }
     }

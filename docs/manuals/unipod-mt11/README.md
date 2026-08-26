@@ -5,14 +5,14 @@
 ## 快速入口
 
 | 整理手册 | 数据库 |
-|----------|--------|
+| --- | --- |
 | [用户说明书整理](UniPod-MT11-User-Manual-Handbook.md) | [db/manual.db](db/manual.db) / [manual.json](db/manual.json) |
 | [外部 SDK 整理](UniPod-MT11-SDK-Handbook.md) | [db/sdk.db](db/sdk.db) / [sdk.json](db/sdk.json) |
 
 ## 官方 PDF
 
 | 文件 | 版本 / 日期 |
-|------|-------------|
+| ------ | ------------- |
 | [UniPod-MT11-User-Manual-V2.0-CN.pdf](UniPod-MT11-User-Manual-V2.0-CN.pdf) | 用户手册中文 V2.0（2026-06-04） |
 | [UniPod-MT11-User-Manual-V2.0-EN.pdf](UniPod-MT11-User-Manual-V2.0-EN.pdf) | 用户手册英文 V2.0（2026-06-04） |
 | [UniPod-MT11-User-Manual-v1.2.pdf](UniPod-MT11-User-Manual-v1.2.pdf) | 英文 v1.2 归档 |
@@ -24,19 +24,21 @@
 
 ## 官方下载页
 
-- 中文：https://www.reebot.com/index.php?asd=491&id=downloads2  
-- 英文：https://reebot.com/en/index.php?asd=481&id=downloads2  
+- 中文：<https://www.reebot.com/index.php?asd=491&id=downloads2>  
+- 英文：<https://reebot.com/en/index.php?asd=481&id=downloads2>  
 
 ## QGC 对接摘要
 
 | 用途 | 地址 |
-|------|------|
+| ------ | ------ |
 | 主码流 RTSP | `rtsp://192.168.144.25:8554/video1` |
 | 副码流 RTSP | `rtsp://192.168.144.25:8554/video2` |
 | 副 IP 出图 | `rtsp://192.168.144.80:8554/video1` |
 | SDK UDP/TCP | `192.168.144.25:37260` |
 
 视频源选项：`UniPod MT11`（`VideoSettings`）。
+
+UniGCS 浮层能力表（产品功能 vs 本轮按钮）：[../payload-capabilities/](../payload-capabilities/)。
 
 ## 查询示例
 

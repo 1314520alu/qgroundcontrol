@@ -66,13 +66,21 @@ Rectangle {
             _summaryComponents = []
             return
         }
+        const appSettings = QGroundControl.settingsManager.appSettings
         const raw = vehicle.autopilotPlugin.vehicleComponents
         const list = []
         for (let i = 0; i < raw.length; i++) {
             const comp = raw[i]
-            if (comp && comp.summaryQmlSource.toString() !== "") {
-                list.push(comp)
+            if (!comp || comp.summaryQmlSource.toString() === "") {
+                continue
             }
+            const menuId = appSettings.resolveVehicleSetupComponentId(
+                                comp.setupSource.toString(),
+                                comp.summaryQmlSource.toString())
+            if (!appSettings.isVehicleSetupComponentVisible(menuId)) {
+                continue
+            }
+            list.push(comp)
         }
         list.sort(function(a, b) {
             const ka = _summarySortKey(a)
@@ -143,6 +151,11 @@ Rectangle {
     Connections {
         target: typeof joystickManager !== "undefined" ? joystickManager : null
         function onActiveJoystickChanged() { _rebuildSummaryComponents() }
+    }
+
+    Connections {
+        target: QGroundControl.settingsManager.appSettings.vehicleSetupVisibleComponents
+        function onRawValueChanged(value) { _rebuildSummaryComponents() }
     }
 
     Component.onCompleted: _rebuildSummaryComponents()

@@ -34,17 +34,17 @@ public:
 
     void formatCard(int id = 1) override { Q_UNUSED(id); }
 
-    void stepZoom(int /*direction*/) override {}
+    void stepZoom(int direction) override;
 
-    void startZoom(int /*direction*/) override {}
+    void startZoom(int direction) override;
 
-    void stopZoom() override {}
+    void stopZoom() override;
 
-    void stepFocus(int /*direction*/) override {}
+    void stepFocus(int direction) override;
 
-    void startFocus(int /*direction*/) override {}
+    void startFocus(int direction) override;
 
-    void stopFocus() override {}
+    void stopFocus() override;
 
     void stopStream() override {}
 
@@ -77,9 +77,9 @@ public:
 
     bool hasModes() const override { return false; }
 
-    bool hasZoom() const override { return false; }
+    bool hasZoom() const override;
 
-    bool hasFocus() const override { return false; }
+    bool hasFocus() const override;
 
     bool hasTracking() const override { return false; }
 
@@ -207,6 +207,34 @@ public:
     void handleVideoStreamInformation(const mavlink_video_stream_information_t& /*videoStreamInformation*/) override {}
 
     void handleVideoStreamStatus(const mavlink_video_stream_status_t& /*videoStreamStatus*/) override {}
+
+    bool hasGimbalPad() const override;
+    bool hasLensSwitch() const override;
+    bool hasLaserRange() const override;
+    bool hasAiRecognition() const override;
+    bool hasFollowFlight() const override;
+    bool hasExposureAuto() const override;
+
+    Q_PROPERTY(bool laserEnabled READ laserEnabled NOTIFY laserEnabledChanged)
+    Q_PROPERTY(bool aiRecognitionEnabled READ aiRecognitionEnabled NOTIFY aiRecognitionEnabledChanged)
+    Q_PROPERTY(double laserDistanceMeters READ laserDistanceMeters NOTIFY laserDistanceChanged)
+
+    bool laserEnabled() const;
+    bool aiRecognitionEnabled() const;
+    double laserDistanceMeters() const;
+
+    Q_INVOKABLE void ptzStart(int direction);
+    Q_INVOKABLE void ptzStop();
+    Q_INVOKABLE void ptzHome();
+    Q_INVOKABLE void setVideoLayout(int mainMode, int secondaryMode);
+    Q_INVOKABLE void setLaserEnabled(bool enabled);
+    Q_INVOKABLE void requestLaserDistance();
+    Q_INVOKABLE void setAiRecognitionEnabled(bool enabled);
+
+signals:
+    void laserEnabledChanged();
+    void aiRecognitionEnabledChanged();
+    void laserDistanceChanged();
 
 protected slots:
 

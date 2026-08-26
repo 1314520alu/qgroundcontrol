@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 
+import QGroundControl
 import QGroundControl.Controls
 
 /// UniGCS-style flat D-pad for Topotek TQ10N PTZ speed control (hold direction, release stop).

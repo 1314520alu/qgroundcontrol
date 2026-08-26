@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="org.mavlink.qgroundcontrol.ethctl"
+    android:versionCode="3"
+    android:versionName="1.1">
+
+    <uses-sdk
+        android:minSdkVersion="21"
+        android:targetSdkVersion="22" />
+
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+
+    <application
+        android:allowBackup="false"
+        android:label="QGC Ethernet"
+        android:hasCode="true">
+        <receiver
+            android:name=".EnableEthernetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="org.mavlink.qgroundcontrol.ethctl.ENABLE_ETHERNET" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

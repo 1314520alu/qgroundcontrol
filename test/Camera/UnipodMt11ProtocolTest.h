@@ -13,4 +13,7 @@ private slots:
     void testParseRoundTrip();
     void testParseSystemInfoAck();
     void testParseFuncFeedback();
+    void testZoomFramesMatchHandbook();
+    void testFocusFramesMatchHandbook();
+    void testGimbalFramesMatchHandbook();
 };

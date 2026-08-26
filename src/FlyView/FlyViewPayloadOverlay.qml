@@ -27,20 +27,21 @@ Item {
             return null
         }
         var current = _cameraManager.currentCameraInstance
-        if (current && current.modelName === "UniPod MT11") {
+        if (current && (current.modelName === "UniPod MT11"
+                        || current.modelName === "SIYI A8 Mini"
+                        || current.modelName === "Topotek TQ10N")) {
             return current
         }
-        if (current && current.modelName === "Topotek TQ10N") {
-            return current
-        }
-        if (current && (current.capturesVideo || current.capturesPhotos || current.hasTracking || current.hasVideoStream)) {
+        if (current && (current.hasGimbalPad || current.capturesVideo || current.capturesPhotos
+                        || current.hasMediaLibrary || current.hasTracking || current.hasVideoStream)) {
             return current
         }
         var cams = _cameraManager.cameras
         if (cams) {
             for (var i = 0; i < cams.count; i++) {
                 var c = cams.get(i)
-                if (c && (c.capturesVideo || c.capturesPhotos || c.hasTracking || c.hasVideoStream)) {
+                if (c && (c.hasGimbalPad || c.capturesVideo || c.capturesPhotos
+                          || c.hasMediaLibrary || c.hasTracking || c.hasVideoStream)) {
                     return c
                 }
             }
@@ -56,7 +57,8 @@ Item {
                                                  || _camera.hasAiRecognition
                                                  || _camera.hasFollowFlight)
     readonly property bool _hasRight: _camera && (
-        (_camera.exposureMode != null)
+        _camera.hasExposureAuto
+        || (_camera.exposureMode != null)
         || _camera.capturesPhotos
         || _camera.capturesVideo
         || _camera.hasZoom
@@ -154,6 +156,107 @@ Item {
             camera: root._camera
         }
 
+        Column {
+            anchors.left: parent.left
+            anchors.top: parent.top
+            spacing: ScreenTools.defaultFontPixelWidth / 2
+            visible: root.expand === FlyViewPayloadOverlay.Expand.Lens
+                     && root._camera && root._camera.hasLensSwitch
+
+            FlyViewPayloadIconButton {
+                iconSource: "/InstrumentValueIcons/camera.svg"
+                label: qsTr("Zoom / IR")
+                onClicked: {
+                    if (root._camera) { root._camera.setVideoLayout(0, 2) }
+                    root.expand = FlyViewPayloadOverlay.Expand.None
+                }
+            }
+            FlyViewPayloadIconButton {
+                iconSource: "/InstrumentValueIcons/camera.svg"
+                label: qsTr("IR / Zoom")
+                onClicked: {
+                    if (root._camera) { root._camera.setVideoLayout(2, 0) }
+                    root.expand = FlyViewPayloadOverlay.Expand.None
+                }
+            }
+            FlyViewPayloadIconButton {
+                iconSource: "/InstrumentValueIcons/camera.svg"
+                label: qsTr("PIP / IR")
+                onClicked: {
+                    if (root._camera) { root._camera.setVideoLayout(3, 2) }
+                    root.expand = FlyViewPayloadOverlay.Expand.None
+                }
+            }
+        }
+
+        Column {
+            anchors.left: parent.left
+            anchors.top: parent.top
+            spacing: ScreenTools.defaultFontPixelWidth / 2
+            visible: root.expand === FlyViewPayloadOverlay.Expand.Range
+                     && root._camera && root._camera.hasLaserRange
+
+            FlyViewPayloadIconButton {
+                iconSource: "/InstrumentValueIcons/radar.svg"
+                label: root._camera && root._camera.laserEnabled ? qsTr("Laser On") : qsTr("Laser Off")
+                selected: root._camera && root._camera.laserEnabled
+                onClicked: {
+                    if (root._camera) {
+                        root._camera.setLaserEnabled(!root._camera.laserEnabled)
+                    }
+                }
+            }
+            FlyViewPayloadIconButton {
+                iconSource: "/InstrumentValueIcons/radar.svg"
+                label: {
+                    if (!root._camera) { return qsTr("Range") }
+                    var d = root._camera.laserDistanceMeters
+                    if (d !== d) { return qsTr("Range") } // NaN
+                    return Number(d).toFixed(1) + " m"
+                }
+                onClicked: {
+                    if (root._camera) { root._camera.requestLaserDistance() }
+                }
+            }
+        }
+
+        Column {
+            anchors.left: parent.left
+            anchors.top: parent.top
+            spacing: ScreenTools.defaultFontPixelWidth / 2
+            visible: root.expand === FlyViewPayloadOverlay.Expand.Recognize
+                     && root._camera && root._camera.hasAiRecognition
+
+            FlyViewPayloadIconButton {
+                iconSource: "/qmlimages/TrackingIcon.svg"
+                label: root._camera && root._camera.aiRecognitionEnabled ? qsTr("AI On") : qsTr("AI Off")
+                selected: root._camera && root._camera.aiRecognitionEnabled
+                onClicked: {
+                    if (root._camera) {
+                        root._camera.setAiRecognitionEnabled(!root._camera.aiRecognitionEnabled)
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.top: parent.top
+            width: placeholderFollow.implicitWidth + ScreenTools.defaultFontPixelWidth * 2
+            height: placeholderFollow.implicitHeight + ScreenTools.defaultFontPixelHeight
+            color: Qt.rgba(0, 0, 0, 0.55)
+            radius: ScreenTools.defaultFontPixelWidth / 2
+            visible: root.expand === FlyViewPayloadOverlay.Expand.Follow
+                     && root._camera && root._camera.hasFollowFlight
+
+            QGCLabel {
+                id: placeholderFollow
+                anchors.centerIn: parent
+                text: qsTr("Follow flight — protocol pending")
+                wrapMode: Text.WordWrap
+            }
+        }
+
         TopotekZoomHoldButtons {
             anchors.right: parent.right
             anchors.top: parent.top
@@ -179,6 +282,25 @@ Item {
             indexModel: false
             sizeToContents: true
         }
+
+        Rectangle {
+            anchors.right: parent.right
+            anchors.top: parent.top
+            width: placeholderAuto.implicitWidth + ScreenTools.defaultFontPixelWidth * 2
+            height: placeholderAuto.implicitHeight + ScreenTools.defaultFontPixelHeight
+            color: Qt.rgba(0, 0, 0, 0.55)
+            radius: ScreenTools.defaultFontPixelWidth / 2
+            visible: root.expand === FlyViewPayloadOverlay.Expand.Auto
+                     && root._camera && root._camera.hasExposureAuto
+                     && !root._camera.exposureMode
+
+            QGCLabel {
+                id: placeholderAuto
+                anchors.centerIn: parent
+                text: qsTr("AUTO exposure — protocol pending")
+                wrapMode: Text.WordWrap
+            }
+        }
     }
 
     FlyViewPayloadSideBar {
@@ -190,7 +312,7 @@ Item {
         z: 1
 
         FlyViewPayloadIconButton {
-            visible: root._camera && (root._camera.exposureMode != null)
+            visible: root._camera && (root._camera.hasExposureAuto || root._camera.exposureMode != null)
             iconSource: "/InstrumentValueIcons/brightness-down.svg"
             label: qsTr("AUTO")
             selected: root.expand === FlyViewPayloadOverlay.Expand.Auto

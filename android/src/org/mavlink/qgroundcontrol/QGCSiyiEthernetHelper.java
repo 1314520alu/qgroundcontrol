@@ -1,6 +1,7 @@
 package org.mavlink.qgroundcontrol;
 
 import android.content.ComponentName;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -9,6 +10,8 @@ import android.net.LinkAddress;
 import android.net.LinkProperties;
 import android.net.Network;
 import android.net.NetworkCapabilities;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
@@ -22,14 +25,17 @@ import java.util.Enumeration;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Best-effort bring-up of SIYI radio Ethernet (eth0 / 192.168.144.x) on UniRC-class Android remotes.
+ * Best-effort bring-up of radio Ethernet (eth0 / 192.168.144.x) on handheld GCS remotes.
  * <p>
- * On these devices eth0 is a USB CDC Ethernet gadget to the internal radio. Static IP is preconfigured
- * as 192.168.144.20/24. The OEM Settings package applies that config when it receives
- * {@code com.action.eth1_up} (see {@code EthernetStaicIPReceiver}).
+ * OEM Settings expose an Ethernet switch persisted as {@code isEthernetOpen} in
+ * {@link Settings.System}. Skydroid H30 / G-series {@code EthernetServiceImpl} observes that key
+ * and starts or stops eth0. SIYI UniRC additionally applies static 192.168.144.20/24 when it
+ * receives {@code com.action.eth1_up} ({@code EthernetStaicIPReceiver}).
  * <p>
- * This helper cannot create the USB interface if the radio gadget is powered down; it configures and
- * retries so the 144 subnet comes up as soon as eth0 appears (e.g. after the air unit links).
+ * On SIYI remotes, launch/resume turns the switch back on if it is off and retries until the
+ * 144 subnet appears. On Skydroid, this helper must not write {@code isEthernetOpen}: the OEM
+ * EthernetService NetworkAgent stops the on-device MAVLink UDP bridge, so every GCS loses
+ * telemetry while payload RTSP on 192.168.144.x keeps working.
  */
 public final class QGCSiyiEthernetHelper {
     private static final String TAG = "QGCSiyiEthernet";
@@ -40,6 +46,9 @@ public final class QGCSiyiEthernetHelper {
     private static final String SETTINGS_RECEIVER =
             "com.android.settings.ethernet.EthernetStaicIPReceiver";
     private static final String SUBNET_PREFIX = "192.168.144.";
+
+    private static final String KEY_ETHERNET_OPEN = "isEthernetOpen";
+    private static final String KEY_ETH_INIT = "eth_init";
 
     private static final String DEFAULT_IP = "192.168.144.20";
     private static final String DEFAULT_MASK = "255.255.255.0";
@@ -96,7 +105,10 @@ public final class QGCSiyiEthernetHelper {
      */
     public static void onUsbTopologyChanged() {
         final Context context = activityContext();
-        if (context == null || !looksLikeSiyiRemote(context)) {
+        if (context == null) {
+            return;
+        }
+        if (!looksLikeSiyiRemote(context) && !looksLikeSkydroidRemote(context)) {
             return;
         }
         QGCLogger.i(TAG, "USB topology changed; scheduling radio ethernet recovery");
@@ -183,6 +195,18 @@ public final class QGCSiyiEthernetHelper {
             return;
         }
 
+        // Skydroid H30: writing Settings.System isEthernetOpen starts EthernetService
+        // NetworkAgent and the OEM drops the on-device MAVLink UDP bridge — every GCS
+        // then shows disconnected while RTSP on 192.168.144.x still works. Do not touch
+        // that switch here. SIYI still needs the toggle / 144.x bring-up below.
+        unbindProcessFromNetwork(context);
+
+        final boolean skydroid = looksLikeSkydroidRemote(context);
+        if (skydroid && !hasSiyiRadioPackages(context)) {
+            QGCLogger.d(TAG, "Skydroid remote: skip ethernet switch (OEM switch kills radio telemetry)");
+            return;
+        }
+
         if (!looksLikeSiyiRemote(context)) {
             QGCLogger.d(TAG, "Skipping radio ethernet ensure (not a SIYI remote)");
             return;
@@ -191,7 +215,7 @@ public final class QGCSiyiEthernetHelper {
         if (isRadioEthernetReady()) {
             QGCLogger.i(TAG, "Radio ethernet already ready: " + radioEthernetAddress());
             s_ensureInProgress.set(false);
-            s_handler.removeCallbacksAndMessages(null);
+            s_handler.removeCallbacks(s_usbRecoveryRunnable);
             return;
         }
 
@@ -249,11 +273,122 @@ public final class QGCSiyiEthernetHelper {
         s_handler.postDelayed(() -> runEnsureAttempt(appContext), POLL_INTERVAL_MS);
     }
 
+    /**
+     * Restore the OEM Ethernet toggle if it is off.
+     * <p>
+     * Skydroid EthernetSettings writes {@code Settings.System isEthernetOpen}; {@code EthernetServiceImpl}
+     * observes that key and starts/stops eth0. SIYI remotes keep the same key in System and/or Secure.
+     */
+    private static void ensureEthernetSwitchOn(final Context context) {
+        final int value = ethernetSwitchValue(context);
+        if (value == 1) {
+            QGCLogger.d(TAG, "Ethernet switch already on");
+            return;
+        }
+
+        final boolean knownRemote = looksLikeSiyiRemote(context) || looksLikeSkydroidRemote(context);
+        if (value != 0 && !knownRemote) {
+            return;
+        }
+
+        QGCLogger.i(TAG, "Ethernet switch is " + (value == 0 ? "off" : "unknown") + "; turning on");
+        final boolean wroteSystem = putSystemInt(context, KEY_ETHERNET_OPEN, 1);
+        putSystemInt(context, KEY_ETH_INIT, 1);
+        putSecureInt(context, KEY_ETHERNET_OPEN, 1);
+        tryEnableEthernet(context);
+        if (!wroteSystem) {
+            requestHelperEnableEthernet(context);
+        }
+        if (!wroteSystem && value == 0) {
+            QGCLogger.w(TAG, "Could not write Settings.System isEthernetOpen=1; asked ethctl helper");
+        }
+    }
+
+    /**
+     * Clear the process default Network so dual-home sockets (eth0 192.168.144.x + lo) all work.
+     * Call before Qt creates UDP/RTSP sockets ({@code Activity.onCreate} before {@code super}).
+     */
+    public static void unbindProcessFromNetwork(final Context context) {
+        if (context == null) {
+            return;
+        }
+        try {
+            final ConnectivityManager cm =
+                    (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (cm == null) {
+                return;
+            }
+            cm.bindProcessToNetwork(null);
+            QGCLogger.d(TAG, "bindProcessToNetwork(null) so sockets are not pinned to one Network");
+        } catch (final Exception e) {
+            QGCLogger.d(TAG, "unbindProcessFromNetwork: " + e.getMessage());
+        }
+    }
+
+    /**
+     * targetSdk 22 helper APK can write OEM System keys that this app (targetSdk 36) cannot.
+     */
+    private static void requestHelperEnableEthernet(final Context context) {
+        try {
+            final Intent intent = new Intent("org.mavlink.qgroundcontrol.ethctl.ENABLE_ETHERNET");
+            intent.setComponent(new ComponentName(
+                    "org.mavlink.qgroundcontrol.ethctl",
+                    "org.mavlink.qgroundcontrol.ethctl.EnableEthernetReceiver"));
+            intent.addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES);
+            context.sendBroadcast(intent);
+            QGCLogger.i(TAG, "Broadcast ENABLE_ETHERNET to ethctl helper");
+        } catch (final Exception e) {
+            QGCLogger.w(TAG, "ethctl helper broadcast failed: " + e.getMessage());
+        }
+    }
+
+    /** 1 = on, 0 = off, -1 = setting absent. */
+    private static int ethernetSwitchValue(final Context context) {
+        try {
+            final int system = Settings.System.getInt(context.getContentResolver(), KEY_ETHERNET_OPEN, -1);
+            if (system == 0 || system == 1) {
+                return system;
+            }
+            return Settings.Secure.getInt(context.getContentResolver(), KEY_ETHERNET_OPEN, -1);
+        } catch (final Exception e) {
+            QGCLogger.d(TAG, "ethernetSwitchValue failed: " + e.getClass().getSimpleName());
+            return -1;
+        }
+    }
+
     private static boolean looksLikeSiyiRemote(final Context context) {
         final PackageManager pm = context.getPackageManager();
-        return isPackageInstalled(pm, "com.siyi.udpservice")
-                || isPackageInstalled(pm, "biz.siyi.remotecontrol")
+        return hasSiyiRadioPackages(context)
                 || isPackageInstalled(pm, "com.example.zyhkgcsandroid");
+    }
+
+    private static boolean hasSiyiRadioPackages(final Context context) {
+        final PackageManager pm = context.getPackageManager();
+        return isPackageInstalled(pm, "com.siyi.udpservice")
+                || isPackageInstalled(pm, "biz.siyi.remotecontrol");
+    }
+
+    private static boolean looksLikeSkydroidRemote(final Context context) {
+        final PackageManager pm = context.getPackageManager();
+        if (isPackageInstalled(pm, "com.skydroid.h30tool")
+                || isPackageInstalled(pm, "com.skydroid.fly")
+                || isPackageInstalled(pm, "com.skydroid.camerafpv")
+                || isPackageInstalled(pm, "com.skydroid.rcsdk")
+                || isPackageInstalled(pm, "com.skydroid.server")
+                || isPackageInstalled(pm, "com.skydroid.skydroidfly")
+                || isPackageInstalled(pm, "com.skydroid.fpv")
+                || isPackageInstalled(pm, "com.skydroid.rcservice")
+                || isPackageInstalled(pm, "com.skydroid.devicetool")
+                || isPackageInstalled(pm, "com.skydroid.rc_daemon")) {
+            return true;
+        }
+        final String model = Build.MODEL;
+        if (model == null || model.isEmpty()) {
+            return false;
+        }
+        final String lower = model.toLowerCase(java.util.Locale.ROOT);
+        return lower.contains("h30") || lower.contains("g20") || lower.contains("g16")
+                || lower.contains("h16") || lower.contains("skydroid");
     }
 
     private static boolean isPackageInstalled(final PackageManager pm, final String packageName) {
@@ -270,18 +405,22 @@ public final class QGCSiyiEthernetHelper {
     }
 
     private static void maybeSeedSettings(final Context context) {
-        // Only attempt writes once per process to avoid log spam; values are usually OEM-preseeded.
+        // Flip the OEM switch in System (what EthernetServiceImpl observes). Do not overwrite an
+        // existing static IP — Skydroid H30 uses 192.168.144.100, SIYI UniRC uses .20.
+        putSystemInt(context, KEY_ETHERNET_OPEN, 1);
+        putSystemInt(context, KEY_ETH_INIT, 1);
+
         if (s_loggedSettingsWriteDenied.get()) {
             return;
         }
-        final boolean wrote = putSecureInt(context, "isEthernetOpen", 1)
+        final boolean wrote = putSecureInt(context, KEY_ETHERNET_OPEN, 1)
                 && putSecureInt(context, "isEthernetStaticOpen", 1)
                 && putSecureString(context, "ethernet_static_ip", DEFAULT_IP)
                 && putSecureString(context, "ethernet_static_netmask", DEFAULT_MASK)
                 && putSecureString(context, "ethernet_static_gateway", DEFAULT_GATEWAY);
         if (!wrote) {
             s_loggedSettingsWriteDenied.set(true);
-            QGCLogger.d(TAG, "Cannot write ethernet settings (expected); relying on OEM Secure defaults + eth1_up");
+            QGCLogger.d(TAG, "Cannot write ethernet settings (expected); relying on OEM System switch + eth1_up");
         }
     }
 
@@ -394,6 +533,14 @@ public final class QGCSiyiEthernetHelper {
             } catch (final NoSuchMethodException ignored) {
             }
             try {
+                final Method enabledIface =
+                        ethManager.getClass().getMethod("setEthernetEnabled", String.class, boolean.class);
+                enabledIface.invoke(ethManager, IFACE, true);
+                QGCLogger.d(TAG, "setEthernetEnabled(" + IFACE + ", true)");
+                return;
+            } catch (final NoSuchMethodException ignored) {
+            }
+            try {
                 final Method enable = ethManager.getClass().getMethod("enable", String.class);
                 enable.invoke(ethManager, IFACE);
                 QGCLogger.d(TAG, "enable(" + IFACE + ")");
@@ -426,6 +573,28 @@ public final class QGCSiyiEthernetHelper {
         try {
             return Settings.Secure.putInt(context.getContentResolver(), key, value);
         } catch (final Exception e) {
+            return false;
+        }
+    }
+
+    private static boolean putSystemInt(final Context context, final String key, final int value) {
+        // Settings.System.putInt throws IllegalArgumentException on API 26+ for OEM keys that are
+        // not in PUBLIC_SETTINGS (isEthernetOpen, eth_init). Write the SettingsProvider URI directly
+        // so EthernetOpenedObserver still fires.
+        try {
+            final ContentValues values = new ContentValues(1);
+            values.put("value", String.valueOf(value));
+            final Uri uri = Settings.System.getUriFor(key);
+            final int updated = context.getContentResolver().update(uri, values, null, null);
+            if (updated > 0) {
+                return true;
+            }
+            values.put("name", key);
+            final Uri inserted = context.getContentResolver().insert(Settings.System.CONTENT_URI, values);
+            return inserted != null;
+        } catch (final Exception e) {
+            QGCLogger.d(TAG, "putSystemInt " + key + " failed: " + e.getClass().getSimpleName()
+                    + " " + e.getMessage());
             return false;
         }
     }

@@ -1,8 +1,9 @@
-#include <QtCore/QTime>
-
 #include "TopotekTq10CameraControl.h"
 
+#include <QtCore/QTime>
+
 #include "AppMessages.h"
+#include "PayloadCapabilityCatalog.h"
 #include "QGCLoggingCategory.h"
 #include "TopotekTq10Client.h"
 #include "Vehicle.h"
@@ -10,9 +11,19 @@
 
 QGC_LOGGING_CATEGORY(TopotekTq10CameraControlLog, "Camera.TopotekTq10CameraControl")
 
-TopotekTq10CameraControl::TopotekTq10CameraControl(Vehicle *vehicle, TopotekTq10Client *client, QObject *parent)
-    : MavlinkCameraControlInterface(vehicle, parent)
-    , _client(client)
+namespace {
+
+bool topotekOverlayHas(const char* feature)
+{
+    return PayloadCapabilityCatalog::overlayHas(
+        PayloadCapabilityCatalog::instance().byModelName(QStringLiteral("Topotek TQ10N")),
+        QString::fromLatin1(feature));
+}
+
+}  // namespace
+
+TopotekTq10CameraControl::TopotekTq10CameraControl(Vehicle* vehicle, TopotekTq10Client* client, QObject* parent)
+    : MavlinkCameraControlInterface(vehicle, parent), _client(client)
 {
     qCDebug(TopotekTq10CameraControlLog) << this;
 
@@ -31,11 +42,12 @@ TopotekTq10CameraControl::TopotekTq10CameraControl(Vehicle *vehicle, TopotekTq10
         emit capturePhotosStateChanged();
     });
     (void) connect(_client, &TopotekTq10Client::recordStaChanged, this, &TopotekTq10CameraControl::_onRecordStaChanged);
-    (void) connect(_client, &TopotekTq10Client::sendFailed, this, [](const QString &reason) {
-        QGC::showAppMessage(reason);
-    });
-    (void) connect(this, &TopotekTq10CameraControl::photoCaptureStatusChanged, this, &TopotekTq10CameraControl::captureVideoStateChanged);
-    (void) connect(this, &TopotekTq10CameraControl::photoCaptureStatusChanged, this, &TopotekTq10CameraControl::capturePhotosStateChanged);
+    (void) connect(_client, &TopotekTq10Client::sendFailed, this,
+                   [](const QString& reason) { QGC::showAppMessage(reason); });
+    (void) connect(this, &TopotekTq10CameraControl::photoCaptureStatusChanged, this,
+                   &TopotekTq10CameraControl::captureVideoStateChanged);
+    (void) connect(this, &TopotekTq10CameraControl::photoCaptureStatusChanged, this,
+                   &TopotekTq10CameraControl::capturePhotosStateChanged);
 
     _videoRecordTimeUpdateTimer.setInterval(1000);
     (void) connect(&_videoRecordTimeUpdateTimer, &QTimer::timeout, this, &TopotekTq10CameraControl::recordTimeChanged);
@@ -85,17 +97,11 @@ void TopotekTq10CameraControl::setCameraMode(CameraMode cameraMode)
     qCDebug(TopotekTq10CameraControlLog) << cameraModeToStr(cameraMode);
 }
 
-void TopotekTq10CameraControl::toggleCameraMode()
-{
-}
+void TopotekTq10CameraControl::toggleCameraMode() {}
 
-void TopotekTq10CameraControl::setCameraModeVideo()
-{
-}
+void TopotekTq10CameraControl::setCameraModeVideo() {}
 
-void TopotekTq10CameraControl::setCameraModePhoto()
-{
-}
+void TopotekTq10CameraControl::setCameraModePhoto() {}
 
 bool TopotekTq10CameraControl::takePhoto()
 {
@@ -195,12 +201,27 @@ quint32 TopotekTq10CameraControl::recordTime() const
 
 bool TopotekTq10CameraControl::capturesVideo() const
 {
-    return true;
+    return topotekOverlayHas("video");
 }
 
 bool TopotekTq10CameraControl::capturesPhotos() const
 {
-    return true;
+    return topotekOverlayHas("photo");
+}
+
+bool TopotekTq10CameraControl::hasZoom() const
+{
+    return topotekOverlayHas("zoom");
+}
+
+bool TopotekTq10CameraControl::hasGimbalPad() const
+{
+    return topotekOverlayHas("gimbal");
+}
+
+bool TopotekTq10CameraControl::hasExposureAuto() const
+{
+    return topotekOverlayHas("exposure_auto");
 }
 
 bool TopotekTq10CameraControl::hasVideoStream() const

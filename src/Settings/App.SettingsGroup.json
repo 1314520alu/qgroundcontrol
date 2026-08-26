@@ -231,6 +231,15 @@
             "keywords": "ui scale,font size,zoom"
         },
         {
+            "name": "uiScaleFollowRemote",
+            "shortDesc": "Automatically set UI scaling from the detected handheld remote.",
+            "longDesc": "When enabled on Android, UI scaling follows the detected remote (10\" 100%, 7\" 90%, MK15 80%). Dragging UI Scaling turns this off.",
+            "type": "bool",
+            "default": true,
+            "label": "UI Scale From Remote",
+            "keywords": "ui scale,font size,zoom,remote,unirc,skydroid"
+        },
+        {
             "name": "indoorPalette",
             "shortDesc": "Switches between light and dark color schemes for different lighting conditions.",
             "longDesc": "The color scheme for the user interface.",
@@ -395,9 +404,9 @@
         {
             "name": "vehicleSetupVisibleComponents",
             "shortDesc": "Comma separated list of Vehicle Setup sidebar component IDs to show.",
-            "longDesc": "Controls which Vehicle Setup menu entries appear in the sidebar. Summary, Parameters, Firmware, and Optical Flow are not included. Default is a remote-friendly essential set.",
+            "longDesc": "Controls which Vehicle Setup menu entries appear in the sidebar. Summary, Parameters, Firmware, and Optical Flow are not included. Default is a remote-friendly essential set without Frame, Radio, or Joystick.",
             "type": "string",
-            "default": "frame,sensors,radio,flightModes,power,esc,escTelemetry,motors,flightSafety,failsafes",
+            "default": "sensors,flightModes,power,esc,escTelemetry,motors,flightSafety,failsafes",
             "label": "Vehicle Setup visible components",
             "keywords": "vehicle setup,menu,sidebar,esc,esc telemetry,radio,joystick"
         },

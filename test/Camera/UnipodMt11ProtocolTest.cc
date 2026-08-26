@@ -60,4 +60,34 @@ void UnipodMt11ProtocolTest::testParseFuncFeedback()
     QVERIFY(!UnipodMt11Protocol::parseFuncFeedback(QByteArray(), &infoType));
 }
 
+void UnipodMt11ProtocolTest::testZoomFramesMatchHandbook()
+{
+    QCOMPARE(UnipodMt11Protocol::buildZoomCommand(0, 1).toHex(' ').toUpper(),
+             QByteArray("55 66 01 01 00 00 00 05 01 8D 64"));
+    QCOMPARE(UnipodMt11Protocol::buildZoomCommand(0, 0).toHex(' ').toUpper(),
+             QByteArray("55 66 01 01 00 00 00 05 00 AC 74"));
+    QCOMPARE(UnipodMt11Protocol::buildZoomCommand(0, -1).toHex(' ').toUpper(),
+             QByteArray("55 66 01 01 00 00 00 05 FF 5C 6A"));
+}
+
+void UnipodMt11ProtocolTest::testFocusFramesMatchHandbook()
+{
+    QCOMPARE(UnipodMt11Protocol::buildFocusCommand(0, 1).toHex(' ').toUpper(),
+             QByteArray("55 66 01 01 00 00 00 06 01 DE 31"));
+    QCOMPARE(UnipodMt11Protocol::buildFocusCommand(0, 0).toHex(' ').toUpper(),
+             QByteArray("55 66 01 01 00 00 00 06 00 FF 21"));
+    QCOMPARE(UnipodMt11Protocol::buildFocusCommand(0, -1).toHex(' ').toUpper(),
+             QByteArray("55 66 01 01 00 00 00 06 FF 0F 3F"));
+}
+
+void UnipodMt11ProtocolTest::testGimbalFramesMatchHandbook()
+{
+    QCOMPARE(UnipodMt11Protocol::buildGimbalSpeedCommand(0, 20, 0).toHex(' ').toUpper(),
+             QByteArray("55 66 01 02 00 00 00 07 14 00 46 EB"));
+    QCOMPARE(UnipodMt11Protocol::buildGimbalSpeedCommand(0, 0, 0).toHex(' ').toUpper(),
+             QByteArray("55 66 01 02 00 00 00 07 00 00 F1 24"));
+    QCOMPARE(UnipodMt11Protocol::buildCenterCommand(0, 1).toHex(' ').toUpper(),
+             QByteArray("55 66 01 01 00 00 00 08 01 D1 12"));
+}
+
 UT_REGISTER_TEST(UnipodMt11ProtocolTest, TestLabel::Unit)

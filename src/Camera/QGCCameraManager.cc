@@ -16,6 +16,7 @@
 #include "QGCVideoStreamInfo.h"
 #include "SettingsManager.h"
 #include "SimulatedCameraControl.h"
+#include "SiyiA8MiniCameraControl.h"
 #include "TopotekTq10CameraControl.h"
 #include "TopotekTq10Client.h"
 #include "UnipodMt11CameraControl.h"
@@ -48,6 +49,21 @@ bool isUnipodVideoSource()
     }
     return settingsManager->videoSettings()->videoSource()->rawValue().toString() ==
            QLatin1String(VideoSettings::videoSourceUnipodMT11);
+}
+
+bool isSiyiA8MiniVideoSource()
+{
+    SettingsManager* settingsManager = SettingsManager::instance();
+    if (!settingsManager || !settingsManager->videoSettings() || !settingsManager->videoSettings()->videoSource()) {
+        return false;
+    }
+    return settingsManager->videoSettings()->videoSource()->rawValue().toString() ==
+           QLatin1String(VideoSettings::videoSourceSiyiA8Mini);
+}
+
+bool isSiyiUdpVideoSource()
+{
+    return isUnipodVideoSource() || isSiyiA8MiniVideoSource();
 }
 
 bool isTopotekVideoSource()
@@ -109,6 +125,7 @@ QGCCameraManager::QGCCameraManager(Vehicle* vehicle)
       _simulatedCameraControl(new SimulatedCameraControl(vehicle, this)),
       _unipodClient(new UnipodMt11Client(this)),
       _unipodCameraControl(new UnipodMt11CameraControl(vehicle, _unipodClient, this)),
+      _siyiA8CameraControl(new SiyiA8MiniCameraControl(vehicle, _unipodClient, this)),
       _unipodMediaClient(new UnipodMt11MediaClient(this)),
       _topotekClient(new TopotekTq10Client(this)),
       _topotekCameraControl(new TopotekTq10CameraControl(vehicle, _topotekClient, this))
@@ -147,9 +164,9 @@ QGCCameraManager::QGCCameraManager(Vehicle* vehicle)
     (void) connect(_unipodClient, &UnipodMt11Client::readyChanged, this, [this]() {
         emit currentCameraChanged();
         if (_unipodMediaClient) {
-            _unipodMediaClient->setReady(_unipodClient->isReady());
+            _unipodMediaClient->setReady(isUnipodVideoSource() && _unipodClient->isReady());
         }
-        _syncUnipodCamera();
+        _syncSiyiUdpCamera();
     });
 
     (void) connect(_topotekClient, &TopotekTq10Client::readyChanged, this, [this]() {
@@ -159,26 +176,26 @@ QGCCameraManager::QGCCameraManager(Vehicle* vehicle)
 
     // Manual streams (RTSP/UDP) record via SimulatedCameraControl; keep it available
     // even after a MAVLink camera appears, and re-select it when the current camera can't capture.
-    // UniPod MT11 must not fall through to that Simulated DIGICAM / local GST path.
+    // UniPod MT11 / A8 Mini must not fall through to that Simulated DIGICAM / local GST path.
     if (Fact* videoSource = SettingsManager::instance()->videoSettings()->videoSource()) {
         (void) connect(videoSource, &Fact::rawValueChanged, this, [this](const QVariant&) {
-            _syncUnipodCamera();
+            _syncSiyiUdpCamera();
             _syncTopotekCamera();
             _ensureSimulatedCameraForLocalRecord();
         });
     }
     if (VideoManager* videoManager = VideoManager::instance()) {
         (void) connect(videoManager, &VideoManager::hasVideoChanged, this, [this]() {
-            _syncUnipodCamera();
+            _syncSiyiUdpCamera();
             _syncTopotekCamera();
         });
         (void) connect(videoManager, &VideoManager::decodingChanged, this, [this]() {
-            _syncUnipodCamera();
+            _syncSiyiUdpCamera();
             _syncTopotekCamera();
         });
     }
     QTimer::singleShot(0, this, [this]() {
-        _syncUnipodCamera();
+        _syncSiyiUdpCamera();
         _syncTopotekCamera();
         _ensureSimulatedCameraForLocalRecord();
     });
@@ -340,11 +357,14 @@ void QGCCameraManager::_handleHeartbeat(const mavlink_message_t& message)
 
 MavlinkCameraControlInterface* QGCCameraManager::currentCameraInstance()
 {
-    // While UniPod MT11 is the selected video source, always expose UniPod control so
-    // PhotoVideoControl does not fall through to Simulated DIGICAM / local GST. Buttons
-    // stay Disabled via capture*State until the UDP client is ready.
+    // While UniPod MT11 / SIYI A8 Mini / Topotek is the selected video source, always
+    // expose that control so PhotoVideoControl does not fall through to Simulated.
     if (_unipodCameraControl && isUnipodVideoSource()) {
         return _unipodCameraControl;
+    }
+
+    if (_siyiA8CameraControl && isSiyiA8MiniVideoSource()) {
+        return _siyiA8CameraControl;
     }
 
     if (_topotekCameraControl && isTopotekVideoSource()) {
@@ -438,8 +458,8 @@ void QGCCameraManager::_ensureSimulatedCameraForLocalRecord()
     if (!_simulatedCameraControl) {
         return;
     }
-    // UniPod MT11 / Topotek TQ10N onboard capture must own the strip; do not re-select Simulated.
-    if (isUnipodVideoSource() || isTopotekVideoSource()) {
+    // UniPod MT11 / A8 Mini / Topotek TQ10N onboard capture must own the strip; do not re-select Simulated.
+    if (isSiyiUdpVideoSource() || isTopotekVideoSource()) {
         return;
     }
     if (!VideoManager::instance() || !VideoManager::instance()->isManualStreamSource()) {
@@ -469,7 +489,7 @@ void QGCCameraManager::_ensureSimulatedCameraForLocalRecord()
     }
 }
 
-void QGCCameraManager::_syncUnipodCamera()
+void QGCCameraManager::_syncSiyiUdpCamera()
 {
     if (!_unipodClient) {
         return;
@@ -480,16 +500,16 @@ void QGCCameraManager::_syncUnipodCamera()
         return;
     }
 
-    const QString source = videoSettings->videoSource()->rawValue().toString();
-    const bool wantUnipod = (source == VideoSettings::videoSourceUnipodMT11);
+    const bool wantSiyiUdp = isSiyiUdpVideoSource();
+    const bool wantUnipod = isUnipodVideoSource();
 
-    if (wantUnipod) {
+    if (wantSiyiUdp) {
         _unipodClient->setActive(true);
         // setActive(true) is a no-op if already active; after ethernet-loss stop() the
         // client stays _active and must be start()'d again.
         _unipodClient->start();
         if (_unipodMediaClient) {
-            _unipodMediaClient->setReady(_unipodClient->isReady());
+            _unipodMediaClient->setReady(wantUnipod && _unipodClient->isReady());
         }
         if (!_unipodClient->isReady()) {
             if (!_unipodStartRetryTimer.isActive()) {
@@ -498,7 +518,7 @@ void QGCCameraManager::_syncUnipodCamera()
                 _unipodStartRetryTimer.start();
             } else if (_unipodStartRetryTimer.interval() != kUnipodStartRetryMs) {
                 // Video/ethernet came up after the slow-retry window — resume 1s attempts.
-                qCInfo(CameraManagerLog) << "UniPod start retry resuming at 1s";
+                qCInfo(CameraManagerLog) << "SIYI UDP camera start retry resuming at 1s";
                 _unipodStartRetryTicks = 0;
                 _unipodStartRetryTimer.setInterval(kUnipodStartRetryMs);
             }
@@ -523,7 +543,7 @@ void QGCCameraManager::_syncUnipodCamera()
 
 void QGCCameraManager::_onUnipodStartRetry()
 {
-    if (!isUnipodVideoSource()) {
+    if (!isSiyiUdpVideoSource()) {
         _unipodStartRetryTimer.stop();
         _unipodStartRetryTimer.setInterval(kUnipodStartRetryMs);
         _unipodStartRetryTicks = 0;
@@ -538,7 +558,7 @@ void QGCCameraManager::_onUnipodStartRetry()
 
     if (_unipodClient && _unipodClient->isReady()) {
         if (_unipodMediaClient) {
-            _unipodMediaClient->setReady(true);
+            _unipodMediaClient->setReady(isUnipodVideoSource());
         }
         _unipodStartRetryTimer.stop();
         _unipodStartRetryTimer.setInterval(kUnipodStartRetryMs);
@@ -548,7 +568,7 @@ void QGCCameraManager::_onUnipodStartRetry()
     }
 
     if (_unipodStartRetryTicks == kUnipodStartRetryMaxTicks) {
-        qCWarning(CameraManagerLog) << "UniPod camera start retry slowing to 5s (will keep trying)";
+        qCWarning(CameraManagerLog) << "SIYI UDP camera start retry slowing to 5s (will keep trying)";
         _unipodStartRetryTimer.setInterval(kUnipodStartSlowRetryMs);
     }
 }

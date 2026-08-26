@@ -33,6 +33,9 @@ Rectangle {
         if (current && current.modelName === "UniPod MT11") {
             return current
         }
+        if (current && current.modelName === "SIYI A8 Mini") {
+            return current
+        }
         if (current && current.modelName === "Topotek TQ10N") {
             return current
         }

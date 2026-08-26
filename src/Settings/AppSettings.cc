@@ -1,20 +1,21 @@
 #include "AppSettings.h"
-#include "QGCFileHelper.h"
-#include "QGCPalette.h"
+
 #include "AppMessages.h"
 #include "FirmwarePluginManager.h"
+#include "LinkManager.h"
 #include "QGCApplication.h"
+#include "QGCFileHelper.h"
 #include "QGCLoggingCategory.h"
 #include "QGCMAVLink.h"
-#include "LinkManager.h"
+#include "QGCPalette.h"
 
 #ifdef Q_OS_ANDROID
 #include "AndroidInterface.h"
 #endif
 
-#include <QtCore/QStandardPaths>
 #include <QtCore/QDir>
 #include <QtCore/QSettings>
+#include <QtCore/QStandardPaths>
 #include <QtCore/QVariantMap>
 
 #include <iterator>
@@ -23,13 +24,8 @@ QGC_LOGGING_CATEGORY(AppSettingsLog, "Settings.AppSettings")
 
 // Release languages are 90%+ complete
 QList<QLocale::Language> AppSettings::_rgReleaseLanguages = {
-    QLocale::English,
-    QLocale::Azerbaijani,
-    QLocale::Chinese,
-    QLocale::Japanese,
-    QLocale::Korean,
-    QLocale::Portuguese,
-    QLocale::Russian,
+    QLocale::English, QLocale::Azerbaijani, QLocale::Chinese, QLocale::Japanese,
+    QLocale::Korean,  QLocale::Portuguese,  QLocale::Russian,
 };
 
 // Partial languages are 40%+ complete
@@ -37,45 +33,44 @@ QList<QLocale::Language> AppSettings::_rgPartialLanguages = {
     QLocale::Ukrainian,
 };
 
-AppSettings::LanguageInfo_t AppSettings::_rgLanguageInfo[] = {
-    { QLocale::AnyLanguage,     "System" },                     // Must be first
-    { QLocale::Azerbaijani,     "Azerbaijani (Azerbaijani)" },
-    { QLocale::Bulgarian,       "български (Bulgarian)" },
-    { QLocale::Chinese,         "中文 (Chinese)" },
-    { QLocale::Dutch,           "Nederlands (Dutch)" },
-    { QLocale::English,         "English" },
-    { QLocale::Finnish,         "Suomi (Finnish)" },
-    { QLocale::French,          "Français (French)" },
-    { QLocale::German,          "Deutsche (German)" },
-    { QLocale::Greek,           "Ελληνικά (Greek)" },
-    { QLocale::Hebrew,          "עברית (Hebrew)" },
-    { QLocale::Italian,         "Italiano (Italian)" },
-    { QLocale::Japanese,        "日本語 (Japanese)" },
-    { QLocale::Korean,          "한국어 (Korean)" },
-    { QLocale::NorwegianBokmal, "Norsk (Norwegian)" },
-    { QLocale::Polish,          "Polskie (Polish)" },
-    { QLocale::Portuguese,      "Português (Portuguese)" },
-    { QLocale::Russian,         "Pусский (Russian)" },
-    { QLocale::Spanish,         "Español (Spanish)" },
-    { QLocale::Swedish,         "Svenska (Swedish)" },
-    { QLocale::Turkish,         "Türk (Turkish)" }
-};
+AppSettings::LanguageInfo_t AppSettings::_rgLanguageInfo[] = {{QLocale::AnyLanguage, "System"},  // Must be first
+                                                              {QLocale::Azerbaijani, "Azerbaijani (Azerbaijani)"},
+                                                              {QLocale::Bulgarian, "български (Bulgarian)"},
+                                                              {QLocale::Chinese, "中文 (Chinese)"},
+                                                              {QLocale::Dutch, "Nederlands (Dutch)"},
+                                                              {QLocale::English, "English"},
+                                                              {QLocale::Finnish, "Suomi (Finnish)"},
+                                                              {QLocale::French, "Français (French)"},
+                                                              {QLocale::German, "Deutsche (German)"},
+                                                              {QLocale::Greek, "Ελληνικά (Greek)"},
+                                                              {QLocale::Hebrew, "עברית (Hebrew)"},
+                                                              {QLocale::Italian, "Italiano (Italian)"},
+                                                              {QLocale::Japanese, "日本語 (Japanese)"},
+                                                              {QLocale::Korean, "한국어 (Korean)"},
+                                                              {QLocale::NorwegianBokmal, "Norsk (Norwegian)"},
+                                                              {QLocale::Polish, "Polskie (Polish)"},
+                                                              {QLocale::Portuguese, "Português (Portuguese)"},
+                                                              {QLocale::Russian, "Pусский (Russian)"},
+                                                              {QLocale::Spanish, "Español (Spanish)"},
+                                                              {QLocale::Swedish, "Svenska (Swedish)"},
+                                                              {QLocale::Turkish, "Türk (Turkish)"}};
 
 DECLARE_SETTINGGROUP(App, "")
 {
     // Don't offer firmware classes whose plugin factory is not registered in this build
-    const QList<QGCMAVLink::FirmwareClass_t> supportedFirmwareClasses = FirmwarePluginManager::instance()->supportedFirmwareClasses();
-    const auto isSupported = [&supportedFirmwareClasses](const QVariant &value) {
+    const QList<QGCMAVLink::FirmwareClass_t> supportedFirmwareClasses =
+        FirmwarePluginManager::instance()->supportedFirmwareClasses();
+    const auto isSupported = [&supportedFirmwareClasses](const QVariant& value) {
         return supportedFirmwareClasses.contains(static_cast<QGCMAVLink::FirmwareClass_t>(value.toUInt()));
     };
-    for (const char *factName : { preferredFirmwareClassName, offlineEditingFirmwareClassName }) {
-        FactMetaData *const metaData = _nameToMetaDataMap.value(factName);
+    for (const char* factName : {preferredFirmwareClassName, offlineEditingFirmwareClassName}) {
+        FactMetaData* const metaData = _nameToMetaDataMap.value(factName);
         if (!metaData) {
             qCWarning(AppSettingsLog) << "Missing metadata for fact" << factName;
             continue;
         }
         const QVariantList enumValues = metaData->enumValues();
-        for (const QVariant &enumValue : enumValues) {
+        for (const QVariant& enumValue : enumValues) {
             if (!isSupported(enumValue)) {
                 metaData->removeEnumInfo(enumValue);
             }
@@ -83,7 +78,7 @@ DECLARE_SETTINGGROUP(App, "")
     }
 
     // A previously stored value (or even the default) may no longer be supported by this build
-    for (Fact *const fact : { preferredFirmwareClass(), offlineEditingFirmwareClass() }) {
+    for (Fact* const fact : {preferredFirmwareClass(), offlineEditingFirmwareClass()}) {
         if (!isSupported(fact->rawValue())) {
             if (isSupported(fact->rawDefaultValue())) {
                 fact->setRawValue(fact->rawDefaultValue());
@@ -103,36 +98,40 @@ DECLARE_SETTINGGROUP(App, "")
     // Mobile builds always use the runtime generated location for savePath.
     bool userHasModifiedSavePath = false;
 #else
-    bool userHasModifiedSavePath = !savePathFact->rawValue().toString().isEmpty() || !_nameToMetaDataMap[savePathName]->rawDefaultValue().toString().isEmpty();
+    bool userHasModifiedSavePath = !savePathFact->rawValue().toString().isEmpty() ||
+                                   !_nameToMetaDataMap[savePathName]->rawDefaultValue().toString().isEmpty();
 #endif
 
     if (!userHasModifiedSavePath) {
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
-    #ifdef Q_OS_IOS
+#ifdef Q_OS_IOS
         // This will expose the directories directly to the File iOs app
         QDir rootDir = QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation));
         savePathFact->setRawValue(rootDir.absolutePath());
-    #else
+#else
         QString rootDirPath;
-        #ifdef Q_OS_ANDROID
-            if (!androidDontSaveToSDCard()->rawValue().toBool()) {
-                rootDirPath = AndroidInterface::getSDCardPath();
-                qCDebug(AppSettingsLog) << "AndroidInterface::getSDCardPath()" << rootDirPath;
-                if (rootDirPath.isEmpty() || !QDir(rootDirPath).exists()) {
-                    rootDirPath.clear();
-                    qCWarning(AppSettingsLog) << "Save to SD card specified for application data. But no SD card present or permissions not granted. Using internal storage.";
-                } else if (!QFileInfo(rootDirPath).isWritable()) {
-                    rootDirPath.clear();
-                    QGC::showAppMessage(AppSettings::tr("Save to SD card specified for application data. But SD card is write protected. Using internal storage."));
-                }
+#ifdef Q_OS_ANDROID
+        if (!androidDontSaveToSDCard()->rawValue().toBool()) {
+            rootDirPath = AndroidInterface::getSDCardPath();
+            qCDebug(AppSettingsLog) << "AndroidInterface::getSDCardPath()" << rootDirPath;
+            if (rootDirPath.isEmpty() || !QDir(rootDirPath).exists()) {
+                rootDirPath.clear();
+                qCWarning(AppSettingsLog) << "Save to SD card specified for application data. But no SD card present "
+                                             "or permissions not granted. Using internal storage.";
+            } else if (!QFileInfo(rootDirPath).isWritable()) {
+                rootDirPath.clear();
+                QGC::showAppMessage(
+                    AppSettings::tr("Save to SD card specified for application data. But SD card is write protected. "
+                                    "Using internal storage."));
             }
-        #endif
+        }
+#endif
         if (rootDirPath.isEmpty()) {
             rootDirPath = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
         }
         savePathFact->setRawValue(QDir(rootDirPath).filePath(appName));
-    #endif
-    savePathFact->setUserVisible(false);
+#endif
+        savePathFact->setUserVisible(false);
 #else
         QDir rootDir;
         if (QGC::runningUnitTests() || qgcApp()->simpleBootTest()) {
@@ -198,6 +197,7 @@ DECLARE_SETTINGSFACT(AppSettings, virtualJoystick)
 DECLARE_SETTINGSFACT(AppSettings, virtualJoystickAutoCenterThrottle)
 DECLARE_SETTINGSFACT(AppSettings, virtualJoystickLeftHandedMode)
 DECLARE_SETTINGSFACT(AppSettings, uiScalePercent)
+DECLARE_SETTINGSFACT(AppSettings, uiScaleFollowRemote)
 DECLARE_SETTINGSFACT(AppSettings, savePath)
 DECLARE_SETTINGSFACT(AppSettings, androidDontSaveToSDCard)
 DECLARE_SETTINGSFACT(AppSettings, androidUsePosixSerial)
@@ -236,21 +236,21 @@ DECLARE_SETTINGSFACT_NO_FUNC(AppSettings, qLocaleLanguage)
         _qLocaleLanguageFact = _createSettingsFact(qLocaleLanguageName);
         connect(_qLocaleLanguageFact, &Fact::rawValueChanged, this, &AppSettings::_qLocaleLanguageChanged);
 
-        FactMetaData*   metaData            = _qLocaleLanguageFact->metaData();
-        QStringList     rgEnumStrings;
-        QVariantList    rgEnumValues;
+        FactMetaData* metaData = _qLocaleLanguageFact->metaData();
+        QStringList rgEnumStrings;
+        QVariantList rgEnumValues;
 
         // System is always an available selection
         rgEnumStrings.append(_rgLanguageInfo[0].languageName);
         rgEnumValues.append(_rgLanguageInfo[0].languageId);
 
-        for (const auto& languageInfo: _rgLanguageInfo) {
+        for (const auto& languageInfo : _rgLanguageInfo) {
             if (_rgReleaseLanguages.contains(languageInfo.languageId)) {
                 rgEnumStrings.append(languageInfo.languageName);
                 rgEnumValues.append(languageInfo.languageId);
             }
         }
-        for (const auto& languageInfo: _rgLanguageInfo) {
+        for (const auto& languageInfo : _rgLanguageInfo) {
             if (_rgPartialLanguages.contains(languageInfo.languageId)) {
                 rgEnumStrings.append(QString(languageInfo.languageName) + AppSettings::tr(" (Partial)"));
                 rgEnumValues.append(languageInfo.languageId);
@@ -258,8 +258,9 @@ DECLARE_SETTINGSFACT_NO_FUNC(AppSettings, qLocaleLanguage)
         }
 #ifdef QGC_DAILY_BUILD
         // Only daily builds include full set of languages for testing purposes
-        for (const auto& languageInfo: _rgLanguageInfo) {
-            if (!_rgReleaseLanguages.contains(languageInfo.languageId) && !_rgPartialLanguages.contains(languageInfo.languageId)) {
+        for (const auto& languageInfo : _rgLanguageInfo) {
+            if (!_rgReleaseLanguages.contains(languageInfo.languageId) &&
+                !_rgPartialLanguages.contains(languageInfo.languageId)) {
                 rgEnumStrings.append(QString(languageInfo.languageName) + AppSettings::tr(" (Test Only)"));
                 rgEnumValues.append(languageInfo.languageId);
             }
@@ -372,7 +373,7 @@ QList<int> AppSettings::firstRunPromptsIdsVariantToList(const QVariant& firstRun
 
     QStringList strIdList = firstRunPromptIds.toString().split(",", Qt::SkipEmptyParts);
 
-    for (const QString& strId: strIdList) {
+    for (const QString& strId : strIdList) {
         rgIds.append(strId.toInt());
     }
     return rgIds;
@@ -381,7 +382,7 @@ QList<int> AppSettings::firstRunPromptsIdsVariantToList(const QVariant& firstRun
 QVariant AppSettings::firstRunPromptsIdsListToVariant(const QList<int>& rgIds)
 {
     QStringList strList;
-    for (int id: rgIds) {
+    for (int id : rgIds) {
         strList.append(QString::number(id));
     }
     return QVariant(strList.join(","));
@@ -397,103 +398,96 @@ void AppSettings::firstRunPromptIdsMarkIdAsShown(int id)
 }
 
 namespace {
-struct VehicleSetupMenuEntry {
-    const char *id;
-    const char *label;
+struct VehicleSetupMenuEntry
+{
+    const char* id;
+    const char* label;
 };
 
 // Checkbox catalog order (not sidebar sort order).
 constexpr VehicleSetupMenuEntry kVehicleSetupMenuCatalog[] = {
-    { "frame", QT_TRANSLATE_NOOP("AppSettings", "Frame") },
-    { "sensors", QT_TRANSLATE_NOOP("AppSettings", "Sensors") },
-    { "radio", QT_TRANSLATE_NOOP("AppSettings", "Radio") },
-    { "flightModes", QT_TRANSLATE_NOOP("AppSettings", "Flight Modes") },
-    { "power", QT_TRANSLATE_NOOP("AppSettings", "Power") },
-    { "esc", QT_TRANSLATE_NOOP("AppSettings", "ESC") },
-    { "escTelemetry", QT_TRANSLATE_NOOP("AppSettings", "电调遥测") },
-    { "motors", QT_TRANSLATE_NOOP("AppSettings", "Motors") },
-    { "flightSafety", QT_TRANSLATE_NOOP("AppSettings", "Flight Safety") },
-    { "failsafes", QT_TRANSLATE_NOOP("AppSettings", "Failsafes") },
-    { "joystick", QT_TRANSLATE_NOOP("AppSettings", "Joystick") },
-    { "tuning", QT_TRANSLATE_NOOP("AppSettings", "Tuning") },
-    { "tuningAdvanced", QT_TRANSLATE_NOOP("AppSettings", "Tuning - Advanced") },
-    { "servo", QT_TRANSLATE_NOOP("AppSettings", "Servo Outputs") },
-    { "gimbal", QT_TRANSLATE_NOOP("AppSettings", "Gimbal") },
-    { "airspeed", QT_TRANSLATE_NOOP("AppSettings", "Airspeed") },
-    { "logging", QT_TRANSLATE_NOOP("AppSettings", "Logging") },
-    { "scripting", QT_TRANSLATE_NOOP("AppSettings", "Scripting") },
-    { "remoteSupport", QT_TRANSLATE_NOOP("AppSettings", "Remote Support") },
-    { "wifiBridge", QT_TRANSLATE_NOOP("AppSettings", "WiFi Bridge") },
-    { "heli", QT_TRANSLATE_NOOP("AppSettings", "Heli") },
-    { "lights", QT_TRANSLATE_NOOP("AppSettings", "Lights") },
-    { "followMe", QT_TRANSLATE_NOOP("AppSettings", "Follow Me") },
+    {"frame", QT_TRANSLATE_NOOP("AppSettings", "Frame")},
+    {"sensors", QT_TRANSLATE_NOOP("AppSettings", "Sensors")},
+    {"radio", QT_TRANSLATE_NOOP("AppSettings", "Radio")},
+    {"flightModes", QT_TRANSLATE_NOOP("AppSettings", "Flight Modes")},
+    {"power", QT_TRANSLATE_NOOP("AppSettings", "Power")},
+    {"esc", QT_TRANSLATE_NOOP("AppSettings", "ESC")},
+    {"escTelemetry", QT_TRANSLATE_NOOP("AppSettings", "电调遥测")},
+    {"motors", QT_TRANSLATE_NOOP("AppSettings", "Motors")},
+    {"flightSafety", QT_TRANSLATE_NOOP("AppSettings", "Flight Safety")},
+    {"failsafes", QT_TRANSLATE_NOOP("AppSettings", "Failsafes")},
+    {"joystick", QT_TRANSLATE_NOOP("AppSettings", "Joystick")},
+    {"tuning", QT_TRANSLATE_NOOP("AppSettings", "Tuning")},
+    {"tuningAdvanced", QT_TRANSLATE_NOOP("AppSettings", "Tuning - Advanced")},
+    {"servo", QT_TRANSLATE_NOOP("AppSettings", "Servo Outputs")},
+    {"gimbal", QT_TRANSLATE_NOOP("AppSettings", "Gimbal")},
+    {"airspeed", QT_TRANSLATE_NOOP("AppSettings", "Airspeed")},
+    {"logging", QT_TRANSLATE_NOOP("AppSettings", "Logging")},
+    {"scripting", QT_TRANSLATE_NOOP("AppSettings", "Scripting")},
+    {"remoteSupport", QT_TRANSLATE_NOOP("AppSettings", "Remote Support")},
+    {"wifiBridge", QT_TRANSLATE_NOOP("AppSettings", "WiFi Bridge")},
+    {"heli", QT_TRANSLATE_NOOP("AppSettings", "Heli")},
+    {"lights", QT_TRANSLATE_NOOP("AppSettings", "Lights")},
+    {"followMe", QT_TRANSLATE_NOOP("AppSettings", "Follow Me")},
 };
 
-struct VehicleSetupIdNeedle {
-    const char *needle;
-    const char *id;
+struct VehicleSetupIdNeedle
+{
+    const char* needle;
+    const char* id;
 };
 
 // First match wins — more specific needles before broader ones.
 constexpr VehicleSetupIdNeedle kVehicleSetupIdNeedles[] = {
-    { "AdvancedTuning", "tuningAdvanced" },
-    { "FlightBehavior", "tuningAdvanced" },
-    { "FlightSafety", "flightSafety" },
-    { "Failsafes", "failsafes" },
-    { "SubFrame", "frame" },
-    { "Airframe", "frame" },
-    { "Sensors", "sensors" },
-    { "Radio", "radio" },
-    { "FlightModes", "flightModes" },
-    { "Power", "power" },
-    { "ESCTelemetry", "escTelemetry" },
-    { "ESC", "esc" },
-    { "Actuator", "motors" },
-    { "Motor", "motors" },
-    { "Safety", "flightSafety" },
-    { "Joystick", "joystick" },
-    { "Tuning", "tuning" },
-    { "Servo", "servo" },
-    { "Gimbal", "gimbal" },
-    { "Airspeed", "airspeed" },
-    { "Logging", "logging" },
-    { "Scripting", "scripting" },
-    { "RemoteSupport", "remoteSupport" },
-    { "ESP8266", "wifiBridge" },
-    { "Heli", "heli" },
-    { "Lights", "lights" },
-    { "Follow", "followMe" },
+    {"AdvancedTuning", "tuningAdvanced"},
+    {"FlightBehavior", "tuningAdvanced"},
+    {"FlightSafety", "flightSafety"},
+    {"Failsafes", "failsafes"},
+    {"SubFrame", "frame"},
+    {"Airframe", "frame"},
+    {"Sensors", "sensors"},
+    {"Radio", "radio"},
+    {"FlightModes", "flightModes"},
+    {"Power", "power"},
+    {"ESCTelemetry", "escTelemetry"},
+    {"ESC", "esc"},
+    {"Actuator", "motors"},
+    {"Motor", "motors"},
+    {"Safety", "flightSafety"},
+    {"Joystick", "joystick"},
+    {"Tuning", "tuning"},
+    {"Servo", "servo"},
+    {"Gimbal", "gimbal"},
+    {"Airspeed", "airspeed"},
+    {"Logging", "logging"},
+    {"Scripting", "scripting"},
+    {"RemoteSupport", "remoteSupport"},
+    {"ESP8266", "wifiBridge"},
+    {"Heli", "heli"},
+    {"Lights", "lights"},
+    {"Follow", "followMe"},
 };
 
-constexpr const char *kVehicleSetupSortOrder[] = {
-    "frame",
-    "sensors",
-    "radio",
-    "flightModes",
-    "power",
-    "esc",
-    "escTelemetry",
-    "motors",
-    "flightSafety",
-    "failsafes",
+constexpr const char* kVehicleSetupSortOrder[] = {
+    "frame", "sensors", "radio", "flightModes", "power", "esc", "escTelemetry", "motors", "flightSafety", "failsafes",
 };
 
-bool _isKnownVehicleSetupId(const QString &id)
+bool _isKnownVehicleSetupId(const QString& id)
 {
-    for (const VehicleSetupMenuEntry &entry : kVehicleSetupMenuCatalog) {
+    for (const VehicleSetupMenuEntry& entry : kVehicleSetupMenuCatalog) {
         if (id == QLatin1String(entry.id)) {
             return true;
         }
     }
     return false;
 }
-} // namespace
+}  // namespace
 
 QVariantList AppSettings::vehicleSetupMenuCatalog() const
 {
     QVariantList catalog;
     catalog.reserve(static_cast<int>(std::size(kVehicleSetupMenuCatalog)));
-    for (const VehicleSetupMenuEntry &entry : kVehicleSetupMenuCatalog) {
+    for (const VehicleSetupMenuEntry& entry : kVehicleSetupMenuCatalog) {
         QVariantMap item;
         item.insert(QStringLiteral("id"), QString::fromLatin1(entry.id));
         item.insert(QStringLiteral("label"), tr(entry.label));
@@ -504,7 +498,9 @@ QVariantList AppSettings::vehicleSetupMenuCatalog() const
 
 QStringList AppSettings::vehicleSetupVisibleIdList() const
 {
-    const QStringList raw = const_cast<AppSettings *>(this)->vehicleSetupVisibleComponents()->rawValue().toString().split(QLatin1Char(','), Qt::SkipEmptyParts);
+    const QStringList raw =
+        const_cast<AppSettings*>(this)->vehicleSetupVisibleComponents()->rawValue().toString().split(
+            QLatin1Char(','), Qt::SkipEmptyParts);
     QStringList ids;
     ids.reserve(raw.size());
     for (QString id : raw) {
@@ -516,7 +512,7 @@ QStringList AppSettings::vehicleSetupVisibleIdList() const
     return ids;
 }
 
-bool AppSettings::isVehicleSetupComponentVisible(const QString &id) const
+bool AppSettings::isVehicleSetupComponentVisible(const QString& id) const
 {
     if (id.isEmpty() || !_isKnownVehicleSetupId(id)) {
         return false;
@@ -524,7 +520,7 @@ bool AppSettings::isVehicleSetupComponentVisible(const QString &id) const
     return vehicleSetupVisibleIdList().contains(id);
 }
 
-void AppSettings::setVehicleSetupComponentVisible(const QString &id, bool visible)
+void AppSettings::setVehicleSetupComponentVisible(const QString& id, bool visible)
 {
     if (id.isEmpty() || !_isKnownVehicleSetupId(id)) {
         return;
@@ -549,10 +545,10 @@ void AppSettings::resetVehicleSetupVisibleComponents()
     vehicleSetupVisibleComponents()->setRawValue(QString::fromLatin1(vehicleSetupVisibleComponentsDefault));
 }
 
-QString AppSettings::resolveVehicleSetupComponentId(const QString &setupSource, const QString &summarySource) const
+QString AppSettings::resolveVehicleSetupComponentId(const QString& setupSource, const QString& summarySource) const
 {
     const QString haystack = setupSource + QLatin1Char('\n') + summarySource;
-    for (const VehicleSetupIdNeedle &entry : kVehicleSetupIdNeedles) {
+    for (const VehicleSetupIdNeedle& entry : kVehicleSetupIdNeedles) {
         if (haystack.contains(QLatin1String(entry.needle))) {
             return QString::fromLatin1(entry.id);
         }
@@ -560,7 +556,7 @@ QString AppSettings::resolveVehicleSetupComponentId(const QString &setupSource, 
     return QString();
 }
 
-int AppSettings::vehicleSetupComponentSortKey(const QString &id) const
+int AppSettings::vehicleSetupComponentSortKey(const QString& id) const
 {
     for (int i = 0; i < static_cast<int>(std::size(kVehicleSetupSortOrder)); ++i) {
         if (id == QLatin1String(kVehicleSetupSortOrder[i])) {
@@ -581,7 +577,7 @@ QLocale::Language AppSettings::_qLocaleLanguageEarlyAccess(void)
 
     // Note that the AppSettings group has no group name
     QLocale::Language localeLanguage = static_cast<QLocale::Language>(settings.value(qLocaleLanguageName).toInt());
-    for (auto& languageInfo: _rgLanguageInfo) {
+    for (auto& languageInfo : _rgLanguageInfo) {
         if (languageInfo.languageId == localeLanguage) {
             return localeLanguage;
         }

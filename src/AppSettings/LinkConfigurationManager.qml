@@ -18,7 +18,10 @@ SettingsGroupLayout {
     // radio Ethernet interface is up. On-device the SIYI UDP service listens on *:19856
     // (reachable via 127.0.0.1) — UniGCS uses that path when eth .20 is absent.
     // SIYI MK15/MK32: manuals use Port 19856 + 192.168.144.12
-    // Skydroid: manuals use Port 14551 + 127.0.0.1:14552
+    // Skydroid: when radio ethernet is up (payload RTSP on 192.168.144.x), the air unit
+    // sends MAVLink UDP to the GCS on :14550 from 192.168.144.101 (verified on H30).
+    // The older 14551 ↔ 127.0.0.1:14552 path is an on-device bridge that stops once the
+    // OEM Ethernet NetworkAgent is running — so presets must listen on 14550.
     readonly property var remotePresets: [
         {
             name:       "UniRC 10 Pro",
@@ -47,26 +50,26 @@ SettingsGroupLayout {
         {
             name:       "云卓 G20",
             linkType:   LinkConfiguration.TypeUdp,
-            localPort:  14551,
-            host:       "127.0.0.1:14552"
+            localPort:  14550,
+            host:       "192.168.144.101:14550"
         },
         {
             name:       "云卓 G16",
             linkType:   LinkConfiguration.TypeUdp,
-            localPort:  14551,
-            host:       "127.0.0.1:14552"
+            localPort:  14550,
+            host:       "192.168.144.101:14550"
         },
         {
             name:       "云卓 H16",
             linkType:   LinkConfiguration.TypeUdp,
-            localPort:  14551,
-            host:       "127.0.0.1:14552"
+            localPort:  14550,
+            host:       "192.168.144.101:14550"
         },
         {
             name:       "云卓 H30",
             linkType:   LinkConfiguration.TypeUdp,
-            localPort:  14551,
-            host:       "127.0.0.1:14552"
+            localPort:  14550,
+            host:       "192.168.144.101:14550"
         }
     ]
 
@@ -110,6 +113,88 @@ SettingsGroupLayout {
         return false
     }
 
+    // Android boots a hidden LinkConfigurationManager (MainWindow) and the Comm Links
+    // page creates another. Both auto-apply; removing only the first same-name config
+    // leaves a second "UniRC 10 Pro" row above Add New Link.
+    function _removeAllConfigsNamed(name) {
+        var configs = _linkManager.linkConfigurations
+        var toRemove = []
+        for (var i = 0; i < configs.count; i++) {
+            var c = configs.get(i)
+            if (c && !c.dynamic && c.name === name) {
+                toRemove.push(c)
+            }
+        }
+        for (var r = 0; r < toRemove.length; r++) {
+            _linkManager.removeConfiguration(toRemove[r])
+        }
+    }
+
+    function _dedupeConfigsNamed(name) {
+        var configs = _linkManager.linkConfigurations
+        var keep = null
+        var toRemove = []
+        for (var i = 0; i < configs.count; i++) {
+            var c = configs.get(i)
+            if (!c || c.dynamic || c.name !== name) {
+                continue
+            }
+            if (!keep) {
+                keep = c
+            } else if (c.linkActive && !keep.linkActive) {
+                toRemove.push(keep)
+                keep = c
+            } else {
+                toRemove.push(c)
+            }
+        }
+        for (var r = 0; r < toRemove.length; r++) {
+            _linkManager.removeConfiguration(toRemove[r])
+        }
+        return keep
+    }
+
+    function _hostListContains(config, host) {
+        if (!config || !config.hostList) {
+            return false
+        }
+        var list = config.hostList
+        for (var i = 0; i < list.length; i++) {
+            if (list[i] === host) {
+                return true
+            }
+        }
+        return false
+    }
+
+    function _presetNeedsRebuild(config, preset) {
+        if (config.localPort !== preset.localPort) {
+            return true
+        }
+        if (!_hostListContains(config, preset.host)) {
+            return true
+        }
+        if (!preset.extraHosts) {
+            return false
+        }
+        for (var i = 0; i < preset.extraHosts.length; i++) {
+            if (!_hostListContains(config, preset.extraHosts[i])) {
+                return true
+            }
+        }
+        return false
+    }
+
+    function _addPresetHosts(config, preset) {
+        config.addHost(preset.host)
+        if (!preset.extraHosts) {
+            return
+        }
+        for (var i = 0; i < preset.extraHosts.length; i++) {
+            config.addHost(preset.extraHosts[i])
+        }
+    }
+
     function applyRemotePreset(preset, fromManual) {
         // UniRC / MK presets need the radio ethernet subnet for handbook UDP and RTSP pods.
         if (preset.name.indexOf("UniRC") === 0 || preset.name.indexOf("MK") === 0) {
@@ -128,21 +213,31 @@ SettingsGroupLayout {
             _linkManager.removeConfiguration(toRemove[r])
         }
 
-        var config = _findConfigByName(preset.name)
-        if (config) {
-            // Recreate so Port/host always match the current preset (fixes stale saves).
-            _linkManager.removeConfiguration(config)
-            config = null
+        // Auto-detect (boot + opening this page) must not rebuild an already-good link.
+        if (!fromManual) {
+            var existing = _dedupeConfigsNamed(preset.name)
+            if (existing && !_presetNeedsRebuild(existing, preset)) {
+                remotePresetSettings.selectedName = preset.name
+                if (!existing.linkActive) {
+                    _linkManager.createConnectedLink(existing)
+                }
+                _linkManager.syncUdpAutoConnectLink()
+                ScreenTools.applyRemoteUiScaleForPreset(preset.name)
+                return
+            }
         }
 
-        config = _linkManager.createConfiguration(preset.linkType, preset.name)
+        _removeAllConfigsNamed(preset.name)
+
+        var config = _linkManager.createConfiguration(preset.linkType, preset.name)
         config.dynamic = false
         // autoConnect must be set BEFORE localPort/host: UDPConfiguration::setAutoConnect(true)
         // overwrites localPort with AutoConnectSettings.udpListenPort (default 14550).
         config.autoConnect = true
         config.localPort = preset.localPort
-        config.addHost(preset.host)
+        _addPresetHosts(config, preset)
         _linkManager.endCreateConfiguration(config)
+        _dedupeConfigsNamed(preset.name)
 
         remotePresetSettings.selectedName = preset.name
         if (fromManual) {
@@ -153,6 +248,10 @@ SettingsGroupLayout {
         if (config && !config.linkActive) {
             _linkManager.createConnectedLink(config)
         }
+
+        // Default UDP AutoConnect (14550) would attach the same vehicle as a flaky secondary.
+        _linkManager.syncUdpAutoConnectLink()
+        ScreenTools.applyRemoteUiScaleForPreset(preset.name)
     }
 
     function _autoDetectAndApply() {

@@ -1,4 +1,3 @@
-#include "QmlObjectListModel.h"
 #include "VehicleLinkManagerTest.h"
 
 #include <QtCore/QRegularExpression>
@@ -8,6 +7,7 @@
 #include "LinkManager.h"
 #include "MultiSignalSpy.h"
 #include "MultiVehicleManager.h"
+#include "QmlObjectListModel.h"
 #include "UnitTest.h"
 #include "Vehicle.h"
 #include "VehicleLinkManager.h"
@@ -152,8 +152,9 @@ void VehicleLinkManagerTest::_multiLinkSingleVehicleTest()
 
     // Comm lost on 2: 1 is primary, 2 is secondary so comm loss/regain on 2 should only update status text
     pMockLink2->setCommLost(true);
-    QCOMPARE(multiSpy.waitForSignal(_linkStatusesChangedSignalName, VehicleLinkManager::kTestCommLostDetectionTimeoutMs),
-             true);
+    QCOMPARE(
+        multiSpy.waitForSignal(_linkStatusesChangedSignalName, VehicleLinkManager::kTestCommLostDetectionTimeoutMs),
+        true);
     QVERIFY(multiSpy.onlyEmitted(_linkStatusesChangedSignalName));
 
     rgStatus = vehicleLinkManager->linkStatuses();
@@ -164,8 +165,9 @@ void VehicleLinkManagerTest::_multiLinkSingleVehicleTest()
     multiSpy.clearAllSignals();
 
     pMockLink2->setCommLost(false);
-    QCOMPARE(multiSpy.waitForSignal(_linkStatusesChangedSignalName, VehicleLinkManager::kTestCommLostDetectionTimeoutMs),
-             true);
+    QCOMPARE(
+        multiSpy.waitForSignal(_linkStatusesChangedSignalName, VehicleLinkManager::kTestCommLostDetectionTimeoutMs),
+        true);
     QVERIFY(multiSpy.onlyEmitted(_linkStatusesChangedSignalName));
 
     rgStatus = vehicleLinkManager->linkStatuses();
@@ -178,12 +180,11 @@ void VehicleLinkManagerTest::_multiLinkSingleVehicleTest()
     // Comm loss on 1: 1 is primary so should trigger switch of primary to 2
     // Switching primary produces a showAppMessage debug log.
     ignoreLogMessage("API.QGCApplication.AppMessage", QtDebugMsg,
-                     QRegularExpression("Switching communication to secondary link"));
+                     QRegularExpression("Switching communication to|正在切换通信"));
     pMockLink1->setCommLost(true);
     QCOMPARE(multiSpy.waitForSignal(_primaryLinkChangedSignalName, VehicleLinkManager::kTestCommLostDetectionTimeoutMs),
              true);
-    QVERIFY(
-        multiSpy.onlyEmittedOnce(_primaryLinkChangedSignalName, _linkStatusesChangedSignalName));
+    QVERIFY(multiSpy.onlyEmittedOnce(_primaryLinkChangedSignalName, _linkStatusesChangedSignalName));
 
     QCOMPARE(pMockLink2, vehicleLinkManager->primaryLink().lock().get());
     rgStatus = vehicleLinkManager->linkStatuses();
@@ -195,8 +196,9 @@ void VehicleLinkManagerTest::_multiLinkSingleVehicleTest()
 
     // Comm regained on 1 should leave 2 as primary and only update status
     pMockLink1->setCommLost(false);
-    QCOMPARE(multiSpy.waitForSignal(_linkStatusesChangedSignalName, VehicleLinkManager::kTestCommLostDetectionTimeoutMs),
-             true);
+    QCOMPARE(
+        multiSpy.waitForSignal(_linkStatusesChangedSignalName, VehicleLinkManager::kTestCommLostDetectionTimeoutMs),
+        true);
     QVERIFY(multiSpy.onlyEmitted(_linkStatusesChangedSignalName));
 
     QCOMPARE(pMockLink2, vehicleLinkManager->primaryLink().lock().get());
@@ -215,7 +217,7 @@ void VehicleLinkManagerTest::_multiLinkTotalCommLossRecoveryTest()
                      QRegularExpression("Giving up sending command after max retries:"));
     // Primary link switchover produces a showAppMessage debug log.
     ignoreLogMessage("API.QGCApplication.AppMessage", QtDebugMsg,
-                     QRegularExpression("Switching communication to"));
+                     QRegularExpression("Switching communication to|正在切换通信"));
 
     SharedLinkConfigurationPtr mockConfig1;
     SharedLinkInterfacePtr mockLink1;
@@ -297,7 +299,7 @@ void VehicleLinkManagerTest::_highLatencyLinkTest()
     ignoreLogMessage("Vehicle.MavCommandQueue", QtWarningMsg,
                      QRegularExpression("Giving up sending command after max retries:"));
     ignoreLogMessage("API.QGCApplication.AppMessage", QtDebugMsg,
-                     QRegularExpression("Switching communication to secondary link"));
+                     QRegularExpression("Switching communication to|正在切换通信"));
     // Giving up on the COMPONENT_METADATA request leaves the metadata load unable to complete.
     ignoreLogMessage("ComponentInformation.RequestMetaDataTypeStateMachine", QtWarningMsg,
                      QRegularExpression("failed to load metadata \\(primary and fallback\\)"));

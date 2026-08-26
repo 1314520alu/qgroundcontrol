@@ -1,5 +1,6 @@
 import QtQuick
 
+import QGroundControl
 import QGroundControl.Controls
 
 /// Single flat pad cell for TopotekGimbalPad.
