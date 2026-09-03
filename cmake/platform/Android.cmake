@@ -82,11 +82,9 @@ elseif(_qgc_dev_len EQUAL 2)
 endif()
 
 # Version code format: BBMIPPDDD (B=Bitness, M=Major, I=Minor, P=Patch, D=Dev)
-set(_android_version_code "${ANDROID_BITNESS_CODE}${CMAKE_PROJECT_VERSION_MAJOR}"
-                          "${CMAKE_PROJECT_VERSION_MINOR}${ANDROID_PATCH_VERSION}${ANDROID_DEV_VERSION}"
+string(CONCAT ANDROID_VERSION_CODE "${ANDROID_BITNESS_CODE}" "${CMAKE_PROJECT_VERSION_MAJOR}"
+              "${CMAKE_PROJECT_VERSION_MINOR}" "${ANDROID_PATCH_VERSION}" "${ANDROID_DEV_VERSION}"
 )
-set(ANDROID_VERSION_CODE "${_android_version_code}")
-unset(_android_version_code)
 message(STATUS "QGC: Android version code: ${ANDROID_VERSION_CODE}")
 
 # ----------------------------------------------------------------------------

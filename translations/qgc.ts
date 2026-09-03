@@ -7894,6 +7894,10 @@ VTOL</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Vehicle GPS 2 Status</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <location filename="../src/Toolbar/GPSIndicatorPage.qml" line="91"/>
         <location filename="../src/Toolbar/GPSIndicatorPage.qml" line="131"/>
         <source>Satellites</source>
@@ -18047,13 +18051,33 @@ Click &apos;Ok&apos; to upload the Plan anyway.</source>
 <context>
     <name>RCRSSIIndicator</name>
     <message>
-        <location filename="../src/Toolbar/RCRSSIIndicator.qml" line="27"/>
-        <source>RC RSSI Status</source>
+        <location filename="../src/Toolbar/RCRSSIIndicator.qml" line="31"/>
+        <source>Link Quality</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/Toolbar/RCRSSIIndicator.qml" line="30"/>
-        <source>RSSI</source>
+        <location filename="../src/Toolbar/RCRSSIIndicator.qml" line="34"/>
+        <source>GCS link quality</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/Toolbar/RCRSSIIndicator.qml" line="39"/>
+        <source>Packets received</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/Toolbar/RCRSSIIndicator.qml" line="40"/>
+        <source>Not Connected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/Toolbar/RCRSSIIndicator.qml" line="44"/>
+        <source>Packets lost</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/Toolbar/RCRSSIIndicator.qml" line="50"/>
+        <source>RC RSSI</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

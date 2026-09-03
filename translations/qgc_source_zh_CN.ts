@@ -4940,6 +4940,10 @@ VTOL</translation>
         <translation>飞行器 GPS 状态</translation>
     </message>
     <message>
+        <source>Vehicle GPS 2 Status</source>
+        <translation>飞行器 GPS 2 状态</translation>
+    </message>
+    <message>
         <source>Not Yet Valid</source>
         <translation>尚未有效</translation>
     </message>
@@ -9504,6 +9508,10 @@ Click &apos;Ok&apos; to upload the Plan anyway.</source>
         <source>Comm Links</source>
         <translation>通信链路</translation>
     </message>
+    <message>
+        <source>My Aircraft</source>
+        <translation>我的机型</translation>
+    </message>
 </context>
 <context>
     <name>NtripServerSettings</name>
@@ -10683,12 +10691,28 @@ If a vehicle still has this key configured, you will no longer be able to commun
 <context>
     <name>RCRSSIIndicator</name>
     <message>
-        <source>RSSI</source>
-        <translation>RSSI</translation>
+        <source>Link Quality</source>
+        <translation>链路质量</translation>
     </message>
     <message>
-        <source>RC RSSI Status</source>
-        <translation>遥控器RSSI状态</translation>
+        <source>GCS link quality</source>
+        <translation>地面站链路质量</translation>
+    </message>
+    <message>
+        <source>Packets received</source>
+        <translation>已收包数</translation>
+    </message>
+    <message>
+        <source>Packets lost</source>
+        <translation>丢包数</translation>
+    </message>
+    <message>
+        <source>Not Connected</source>
+        <translation>未连接</translation>
+    </message>
+    <message>
+        <source>RC RSSI</source>
+        <translation>遥控 RSSI</translation>
     </message>
 </context>
 <context>
@@ -19379,6 +19403,134 @@ Click Ok to start the auto-tuning process.
     <message>
         <source>Ready</source>
         <translation>就绪</translation>
+    </message>
+</context>
+<context>
+    <name>MyAircraft.SettingsUI.json</name>
+    <message>
+        <source>Aircraft 1</source>
+        <translation>机型1</translation>
+    </message>
+    <message>
+        <source>Weitong aircraft — satellite antenna network control</source>
+        <translation>卫通小飞机 — 卫星天线网络控制</translation>
+    </message>
+    <message>
+        <source>Weitong aircraft</source>
+        <translation>卫通小飞机</translation>
+    </message>
+    <message>
+        <source>Antenna host</source>
+        <translation>天线地址</translation>
+    </message>
+    <message>
+        <source>Antenna port</source>
+        <translation>天线端口</translation>
+    </message>
+</context>
+<context>
+    <name>SatcomAntennaIndicator</name>
+    <message>
+        <source>Satcom Antenna</source>
+        <translation>卫通天线</translation>
+    </message>
+    <message>
+        <source>Connection</source>
+        <translation>连接</translation>
+    </message>
+    <message>
+        <source>State</source>
+        <translation>状态</translation>
+    </message>
+    <message>
+        <source>Network</source>
+        <translation>入网</translation>
+    </message>
+    <message>
+        <source>Signal</source>
+        <translation>信号</translation>
+    </message>
+    <message>
+        <source>Azimuth</source>
+        <translation>方位</translation>
+    </message>
+    <message>
+        <source>Elevation</source>
+        <translation>俯仰</translation>
+    </message>
+</context>
+<context>
+    <name>FlyViewSatcomPanel</name>
+    <message>
+        <source>Antenna</source>
+        <translation>天线</translation>
+    </message>
+    <message>
+        <source>Unfold</source>
+        <translation>展开</translation>
+    </message>
+    <message>
+        <source>Fold</source>
+        <translation>折收</translation>
+    </message>
+    <message>
+        <source>El+</source>
+        <translation>俯仰+</translation>
+    </message>
+    <message>
+        <source>El-</source>
+        <translation>俯仰-</translation>
+    </message>
+    <message>
+        <source>Az+</source>
+        <translation>方位+</translation>
+    </message>
+    <message>
+        <source>Az-</source>
+        <translation>方位-</translation>
+    </message>
+</context>
+<context>
+    <name>SatcomAntennaController</name>
+    <message>
+        <source>Disabled</source>
+        <translation>未启用</translation>
+    </message>
+    <message>
+        <source>Connecting</source>
+        <translation>连接中</translation>
+    </message>
+    <message>
+        <source>Connected</source>
+        <translation>已连接</translation>
+    </message>
+    <message>
+        <source>Disconnected</source>
+        <translation>已断开</translation>
+    </message>
+    <message>
+        <source>Folded</source>
+        <translation>折收</translation>
+    </message>
+    <message>
+        <source>Searching</source>
+        <translation>展开搜索</translation>
+    </message>
+    <message>
+        <source>Tracking</source>
+        <translation>锁星跟踪</translation>
+    </message>
+    <message>
+        <source>Stowed</source>
+        <translation>收藏</translation>
+    </message>
+    <message>
+        <source>Online</source>
+        <translation>已入网</translation>
+    </message>
+    <message>
+        <source>Offline</source>
+        <translation>未入网</translation>
     </message>
 </context>
 </TS>

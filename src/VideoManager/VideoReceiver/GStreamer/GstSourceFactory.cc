@@ -3,6 +3,7 @@
 #include <QtCore/QFile>
 #include <QtCore/QUrl>
 
+#include <algorithm>
 #include <gst/gst.h>
 #include <gst/rtsp/gstrtsptransport.h>
 
@@ -137,6 +138,16 @@ bool validPort(int port)
 }  // namespace
 
 namespace GStreamer::SourceFactory {
+
+int effectiveRtspLatencyMs(int requestedMs, bool radioEthernetHost, JitterBuffer jitterBuffer)
+{
+    const int clamped = std::max(0, requestedMs);
+    if (!radioEthernetHost || (jitterBuffer == JitterBuffer::None)) {
+        return clamped;
+    }
+    constexpr int kRadioEthernetMinLatencyMs = 180;
+    return std::max(clamped, kRadioEthernetMinLatencyMs);
+}
 
 namespace {
 
@@ -518,10 +529,17 @@ GstElement* create(const QString& uri, const Config& config)
         return nullptr;
     }
 
-    const guint latencyMs = (config.latencyMs < 0) ? 0u : static_cast<guint>(config.latencyMs);
-
     const QUrl sourceUrl(uri);
     const QString scheme = sourceUrl.scheme().toLower();
+    const bool radioEthernetHost = sourceUrl.host().startsWith(QLatin1String("192.168.144."));
+    const int appliedLatencyMs = scheme.startsWith(QLatin1String("rtsp"))
+                                     ? effectiveRtspLatencyMs(config.latencyMs, radioEthernetHost, config.jitterBuffer)
+                                     : std::max(0, config.latencyMs);
+    if (appliedLatencyMs != std::max(0, config.latencyMs)) {
+        qCInfo(GstSourceFactoryLog) << "Radio ethernet RTSP: raising RTP jitter latency from" << config.latencyMs
+                                    << "to" << appliedLatencyMs << "ms";
+    }
+    const guint latencyMs = static_cast<guint>(appliedLatencyMs);
 
     const bool isRtsp = scheme.startsWith(QLatin1String("rtsp"));
     const bool isUdpH264 = (scheme == QLatin1String("udp"));

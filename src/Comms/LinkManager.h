@@ -144,6 +144,8 @@ private:
     void _addUDPAutoConnectLink();
     void _removeUdpAutoConnectLink();
     bool _hasConnectedDedicatedUdpLink();
+    /// Live UDP interface already bound to `port`, or empty. Port 0 (ephemeral) is ignored.
+    SharedLinkInterfacePtr _existingUdpLinkForPort(quint16 port);
     void _addMAVLinkForwardingLink();
     void _reconnectAutoConnectLinks();
     void _createDynamicForwardLink(const char* linkName, const QString& hostName);

@@ -105,7 +105,10 @@ void GstVideoReceiver::start(uint32_t timeout)
     }
 
     _timeout = timeout;
-    _buffer = lowLatency() ? -1 : 0;
+    // -1 = no jitterbuffer (low latency). Otherwise keep late frames so RF jitter (MK22 relay,
+    // radio ethernet) does not become visible stutter. DropOnLatency (_buffer == 0) is unused
+    // from this path; it is still valid for SourceFactory callers that want bounded playout.
+    _buffer = lowLatency() ? -1 : 1;
 
     qCDebug(GstVideoReceiverLog) << "Starting" << _uri << ", lowLatency" << lowLatency() << ", timeout" << _timeout;
 

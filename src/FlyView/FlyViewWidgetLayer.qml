@@ -40,7 +40,7 @@ Item {
     QGCToolInsets {
         id:                     _totalToolInsets
         leftEdgeTopInset:       toolStrip.leftEdgeTopInset
-        leftEdgeCenterInset:    toolStrip.leftEdgeCenterInset
+        leftEdgeCenterInset:    Math.max(toolStrip.leftEdgeCenterInset, satcomPanel.visible ? satcomPanel.x + satcomPanel.width + _layoutMargin : 0)
         leftEdgeBottomInset:    virtualJoystickMultiTouch.visible ? virtualJoystickMultiTouch.leftEdgeBottomInset : parentToolInsets.leftEdgeBottomInset
         rightEdgeTopInset:      topRightPanel.rightEdgeTopInset
         rightEdgeCenterInset:   topRightPanel.rightEdgeCenterInset
@@ -174,6 +174,16 @@ Item {
         property real topEdgeLeftInset:     visible ? y + height : 0
         property real leftEdgeTopInset:     visible ? x + width : 0
         property real leftEdgeCenterInset:  leftEdgeTopInset
+    }
+
+    FlyViewSatcomPanel {
+        id:                     satcomPanel
+        anchors.left:           parent.left
+        anchors.leftMargin:     _toolsMargin
+        anchors.top:            toolStrip.bottom
+        anchors.topMargin:      _toolsMargin
+        z:                      QGroundControl.zOrderWidgets
+        visible:                !QGroundControl.videoManager.fullScreen && QGroundControl.satcomAntennaController.enabled
     }
 
     MapScale {

@@ -12,12 +12,13 @@ QGC_LOGGING_CATEGORY(GStreamerTestLog, "Video.GStreamer.GStreamerTest")
 #include <QtCore/QRegularExpression>
 #include <QtCore/QScopeGuard>
 #include <QtCore/QStandardPaths>
+
 #include <gst/gst.h>
 #include <memory>
 #include <vector>
 
-#include "Fixtures/RAIIFixtures.h"
 #include "Fact.h"
+#include "Fixtures/RAIIFixtures.h"
 #include "GStreamer.h"
 #include "GStreamerHelpers.h"
 #include "GStreamerLogging.h"
@@ -130,9 +131,7 @@ void GStreamerTest::_testSetCodecPrioritiesDefaultPrefersMatchingD3DDecoder()
     GstRegistry* registry = gst_registry_get();
     QVERIFY(registry != nullptr);
 
-    auto lookup = [registry](const char* featureName) {
-        return gst_registry_lookup_feature(registry, featureName);
-    };
+    auto lookup = [registry](const char* featureName) { return gst_registry_lookup_feature(registry, featureName); };
 
     GstPluginFeature* software = lookup("avdec_h265");
     GstPluginFeature* d3d11 = lookup("d3d11h265dec");
@@ -197,9 +196,8 @@ void GStreamerTest::_testSetCodecPrioritiesSkipsAbsentD3DDecoders()
 
     const QByteArray oldLoggingRules = qgetenv("QT_LOGGING_RULES");
     QLoggingCategory::setFilterRules(QStringLiteral("*.debug=false\nVideo.GStreamer.GStreamerHelpers.debug=true"));
-    const auto restoreLoggingRules = qScopeGuard([oldLoggingRules]() {
-        QLoggingCategory::setFilterRules(QString::fromUtf8(oldLoggingRules));
-    });
+    const auto restoreLoggingRules =
+        qScopeGuard([oldLoggingRules]() { QLoggingCategory::setFilterRules(QString::fromUtf8(oldLoggingRules)); });
 
     LogManager::clearCapturedMessages();
     QVERIFY(!GStreamer::changeFeatureRank(registry, "__qgc_missing_d3d_decoder_for_test__", GST_RANK_NONE));
@@ -207,9 +205,9 @@ void GStreamerTest::_testSetCodecPrioritiesSkipsAbsentD3DDecoders()
     const QList<LogEntry> helperMessages =
         LogManager::capturedMessages(QStringLiteral("Video.GStreamer.GStreamerHelpers"));
     for (const LogEntry& entry : helperMessages) {
-        QVERIFY2(!entry.message.contains(QStringLiteral("Feature does not exist")),
-                 qPrintable(QStringLiteral("Optional D3D decoder factory was logged as a failure: %1")
-                                 .arg(entry.message)));
+        QVERIFY2(
+            !entry.message.contains(QStringLiteral("Feature does not exist")),
+            qPrintable(QStringLiteral("Optional D3D decoder factory was logged as a failure: %1").arg(entry.message)));
     }
 #endif
 }
@@ -478,10 +476,11 @@ void GStreamerTest::_testRuntimeVersionCheck()
                                          .arg(minor)
                                          .arg(micro)));
 #else
-    QVERIFY2(minor >= 28, qPrintable(QStringLiteral("GStreamer runtime version %1.%2.%3 is below bundled SDK minimum 1.28.0")
-                                         .arg(major)
-                                         .arg(minor)
-                                         .arg(micro)));
+    QVERIFY2(minor >= 28,
+             qPrintable(QStringLiteral("GStreamer runtime version %1.%2.%3 is below bundled SDK minimum 1.28.0")
+                            .arg(major)
+                            .arg(minor)
+                            .arg(micro)));
 #endif
 
 #ifdef QGC_GST_BUILD_VERSION_MAJOR
@@ -499,9 +498,9 @@ void GStreamerTest::init()
     UnitTest::init();
 }
 
-#define QGC_GST_SKIP_TEST(fn) \
-    void GStreamerTest::fn()  \
-    {                         \
+#define QGC_GST_SKIP_TEST(fn)           \
+    void GStreamerTest::fn()            \
+    {                                   \
         QSKIP("GStreamer not enabled"); \
     }
 
@@ -580,6 +579,8 @@ QGC_GST_SKIP_TEST(_testSourceFactoryUdpMpegTs)
 QGC_GST_SKIP_TEST(_testSourceFactorySchemeCaseInsensitive)
 QGC_GST_SKIP_TEST(_testSourceFactoryNegativeLatencyClamped)
 QGC_GST_SKIP_TEST(_testSourceFactoryDynamicRtpLinkFailureCleansJitterBuffer)
+QGC_GST_SKIP_TEST(_testEffectiveRtspLatencyMs)
+QGC_GST_SKIP_TEST(_testSourceFactoryRadioEthernetFloorsLatency)
 QGC_GST_SKIP_TEST(_testColorimetryColorRangeMapping)
 QGC_GST_SKIP_TEST(_testPixelFormatAcceptedButNotAdvertised)
 QGC_GST_SKIP_TEST(_testAdvertisedFormatListMatchesTable)

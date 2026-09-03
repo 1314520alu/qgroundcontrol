@@ -37,6 +37,7 @@
 #include "QGCLoggingCategory.h"
 #include "QGCLoggingCategoryManager.h"
 #include "QGCNetworkHelper.h"
+#include "SatcomAntennaController.h"
 #include "SettingsManager.h"
 #include "Vehicle.h"
 #include "VideoManager.h"
@@ -78,10 +79,12 @@ QGCApplication::QGCApplication(int& argc, char* argv[], const QGCCommandLinePars
         // name. Also we want to run unit tests with clean settings every time.
         // Include test name or PID to prevent settings file conflicts when tests run in parallel
         if (!cli.unitTests.isEmpty()) {
-            applicationName = QStringLiteral("%1_unittest_%2").arg(QString::fromUtf8(QGC_APP_NAME), cli.unitTests.first());
-        } else {
             applicationName =
-                QStringLiteral("%1_unittest_%2").arg(QString::fromUtf8(QGC_APP_NAME)).arg(QCoreApplication::applicationPid());
+                QStringLiteral("%1_unittest_%2").arg(QString::fromUtf8(QGC_APP_NAME), cli.unitTests.first());
+        } else {
+            applicationName = QStringLiteral("%1_unittest_%2")
+                                  .arg(QString::fromUtf8(QGC_APP_NAME))
+                                  .arg(QCoreApplication::applicationPid());
         }
     } else {
 #ifdef QGC_DAILY_BUILD
@@ -306,6 +309,7 @@ void QGCApplication::_initForNormalAppBoot()
     FollowMe::instance()->init();
     QGCPositionManager::instance()->init();
     NTRIPManager::instance()->init();
+    SatcomAntennaController::instance()->init();
     LinkManager::instance()->init();
     VideoManager::instance()->init(mainRootWindow());
 
@@ -688,10 +692,12 @@ bool QGCApplication::compressEvent(QEvent* event, QObject* receiver, QPostEventL
     }
 
     // QMetaCallEvent::id() was removed in 6.11; its protected Data is reachable from a derived helper.
-    struct MetaCallHelper : public QMetaCallEvent {
+    struct MetaCallHelper : public QMetaCallEvent
+    {
         int id() const { return d.method_offset_ + d.method_relative_; }
     };
-    const auto methodId = [](const QMetaCallEvent *e) { return static_cast<const MetaCallHelper*>(e)->id(); };
+
+    const auto methodId = [](const QMetaCallEvent* e) { return static_cast<const MetaCallHelper*>(e)->id(); };
 
     for (QPostEventList::iterator it = postedEvents->begin(); it != postedEvents->end(); ++it) {
         QPostEvent& cur = *it;

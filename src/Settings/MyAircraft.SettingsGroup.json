@@ -1,0 +1,35 @@
+{
+    "version": 1,
+    "fileType": "FactMetaData",
+    "QGC.MetaData.Facts": [
+        {
+            "name": "weitongAircraftEnabled",
+            "shortDesc": "Enable Weitong aircraft satellite-antenna TCP control.",
+            "longDesc": "When enabled, the ground station connects to the high-altitude satellite antenna and shows antenna control buttons on the Fly view.",
+            "type": "bool",
+            "default": false,
+            "label": "Weitong aircraft",
+            "keywords": "weitong,satcom,satellite,antenna,aircraft"
+        },
+        {
+            "name": "satcomHost",
+            "shortDesc": "Satellite antenna TCP host address.",
+            "longDesc": "IPv4 address of the antenna server. Protocol default is 192.168.0.200.",
+            "type": "string",
+            "default": "192.168.0.200",
+            "label": "Antenna host",
+            "keywords": "satcom,antenna,host,ip"
+        },
+        {
+            "name": "satcomPort",
+            "shortDesc": "Satellite antenna TCP port.",
+            "longDesc": "TCP port of the antenna server. Protocol default is 23.",
+            "type": "uint16",
+            "default": 23,
+            "min": 1,
+            "max": 65535,
+            "label": "Antenna port",
+            "keywords": "satcom,antenna,port"
+        }
+    ]
+}

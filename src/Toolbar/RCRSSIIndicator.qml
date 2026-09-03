@@ -5,17 +5,21 @@ import QGroundControl
 import QGroundControl.Controls
 
 //-------------------------------------------------------------------------
-//-- RC RSSI Indicator
+//-- GCS link quality (Mission Planner HUD "telemetry connection link quality")
 Item {
     id:             control
-    width:          rssiRow.width * 1.1
+    objectName:     "toolbar_rcRSSIIndicator"
+    width:          rssiRow.width
     anchors.top:    parent.top
     anchors.bottom: parent.bottom
 
-    property bool showIndicator: _activeVehicle.supports.radio && _rcRSSIAvailable
+    property bool showIndicator: _activeVehicle
 
-    property var    _activeVehicle:     QGroundControl.multiVehicleManager.activeVehicle
-    property bool   _rcRSSIAvailable:   _activeVehicle.rcRSSI.rawValue > 0 && _activeVehicle.rcRSSI.rawValue <= 100
+    property var  _activeVehicle:   QGroundControl.multiVehicleManager.activeVehicle
+    property real _linkQuality:     _activeVehicle ? _activeVehicle.gcsLinkQuality : 0
+    property bool _rcRSSIAvailable: _activeVehicle && _activeVehicle.rcRSSI.rawValue > 0 && _activeVehicle.rcRSSI.rawValue <= 100
+    // Match GPS satellite icon: square, full toolbar height.
+    property real _iconSize:        height
 
     Component {
         id: rcRSSIInfoPage
@@ -24,37 +28,47 @@ Item {
             showExpand: false
 
             contentComponent: SettingsGroupLayout {
-                heading: qsTr("RC RSSI Status")
+                heading: qsTr("Link Quality")
 
                 LabelledLabel {
-                    label:      qsTr("RSSI")
-                    labelText:  _activeVehicle.rcRSSI.rawValue + "%"
+                    label:      qsTr("GCS link quality")
+                    labelText:  Math.round(control._linkQuality) + "%"
+                }
+
+                LabelledLabel {
+                    label:      qsTr("Packets received")
+                    labelText:  control._activeVehicle ? control._activeVehicle.mavlinkReceivedCount : qsTr("Not Connected")
+                }
+
+                LabelledLabel {
+                    label:      qsTr("Packets lost")
+                    labelText:  control._activeVehicle ? control._activeVehicle.mavlinkLossCount : qsTr("Not Connected")
+                }
+
+                LabelledLabel {
+                    visible:    control._rcRSSIAvailable
+                    label:      qsTr("RC RSSI")
+                    labelText:  control._activeVehicle.rcRSSI.rawValue + "%"
                 }
             }
         }
     }
 
     Row {
-        id:             rssiRow
-        anchors.top:    parent.top
-        anchors.bottom: parent.bottom
-        spacing:        ScreenTools.defaultFontPixelWidth
-
-        QGCColoredImage {
-            width:              height
-            anchors.top:        parent.top
-            anchors.bottom:     parent.bottom
-            sourceSize.height:  height
-            source:             "/qmlimages/RC.svg"
-            fillMode:           Image.PreserveAspectFit
-            opacity:            _rcRSSIAvailable ? 1 : 0.5
-            color:              qgcPal.buttonText
-        }
+        id:                     rssiRow
+        anchors.verticalCenter: parent.verticalCenter
+        spacing:                ScreenTools.defaultFontPixelWidth / 4
 
         SignalStrength {
             anchors.verticalCenter: parent.verticalCenter
-            size:                   parent.height * 0.5
-            percent:                _rcRSSIAvailable ? _activeVehicle.rcRSSI.rawValue : 0
+            size:                   control._iconSize
+            percent:                control._linkQuality
+        }
+
+        QGCLabel {
+            anchors.verticalCenter: parent.verticalCenter
+            text:                   Math.round(control._linkQuality) + "%"
+            font.pointSize:         ScreenTools.smallFontPointSize
         }
     }
 

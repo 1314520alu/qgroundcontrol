@@ -131,6 +131,35 @@ void LinkManager::disconnectLinkConfiguration(LinkConfiguration* config)
 
 bool LinkManager::createConnectedLink(SharedLinkConfigurationPtr& config)
 {
+    if (!config) {
+        return false;
+    }
+
+    // QML instantiates LinkConfigurationManager twice on Android (hidden MainWindow +
+    // Comm Links page). Both call createConnectedLink; UDP _connect() only queues the
+    // bind, so a second UDPLink was added while the first was still binding. ShareAddress
+    // then let both sockets own the same port and VehicleLinkManager treated them as
+    // primary/secondary ("Switching communication to secondary link").
+    if (config->link()) {
+        return true;
+    }
+
+    if (config->type() == LinkConfiguration::TypeUdp) {
+        const auto* udpConfig = qobject_cast<const UDPConfiguration*>(config.get());
+        if (udpConfig) {
+            if (const SharedLinkInterfacePtr existing = _existingUdpLinkForPort(udpConfig->localPort())) {
+                const SharedLinkConfigurationPtr existingConfig = existing->linkConfiguration();
+                if (existingConfig.get() == config.get()) {
+                    config->setLink(existing);
+                    return true;
+                }
+                qCDebug(LinkManagerLog) << "Skip duplicate UDP bind on port" << udpConfig->localPort() << "owned by"
+                                        << (existingConfig ? existingConfig->name() : QString());
+                return false;
+            }
+        }
+    }
+
     config->setSuppressAutoReconnect(false);
 
     SharedLinkInterfacePtr link = nullptr;
@@ -443,6 +472,27 @@ void LinkManager::loadLinkConfigurationList()
 
     // Enable automatic Serial PX4/3DR Radio hunting
     _configurationsLoaded = true;
+}
+
+SharedLinkInterfacePtr LinkManager::_existingUdpLinkForPort(quint16 port)
+{
+    if (port == 0) {
+        return {};
+    }
+
+    QMutexLocker locker(&_linksMutex);
+    for (const SharedLinkInterfacePtr& link : _rgLinks) {
+        const SharedLinkConfigurationPtr linkConfig = link->linkConfiguration();
+        if (!linkConfig || (linkConfig->type() != LinkConfiguration::TypeUdp)) {
+            continue;
+        }
+        const auto* udpConfig = qobject_cast<const UDPConfiguration*>(linkConfig.get());
+        if (udpConfig && (udpConfig->localPort() == port)) {
+            return link;
+        }
+    }
+
+    return {};
 }
 
 bool LinkManager::_hasConnectedDedicatedUdpLink()

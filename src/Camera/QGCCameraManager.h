@@ -168,6 +168,8 @@ private:
     void _ensureSimulatedCameraForLocalRecord();
     void _syncSiyiUdpCamera();
     void _syncTopotekCamera();
+    /// Only the video-source payload (UniPod / A8 Mini / Topotek) is visible as a camera.
+    void _syncPayloadCameraList();
     void _handleCameraFovStatus(const mavlink_message_t& message);
 
     Vehicle* _vehicle;  ///< Raw pointer is safe: QGCCameraManager is a QObject child of Vehicle, so Vehicle always

@@ -8747,6 +8747,10 @@ VTOL</translation>
         <translation type="unfinished">Vehicle GPS Status</translation>
     </message>
     <message>
+        <source>Vehicle GPS 2 Status</source>
+        <translation>飛行器 GPS 2 狀態</translation>
+    </message>
+    <message>
         <location filename="../src/Toolbar/GPSIndicatorPage.qml" line="91"/>
         <location filename="../src/Toolbar/GPSIndicatorPage.qml" line="131"/>
         <source>Satellites</source>
@@ -19089,14 +19093,28 @@ Click &apos;Ok&apos; to upload the Plan anyway.</translation>
 <context>
     <name>RCRSSIIndicator</name>
     <message>
-        <location filename="../src/Toolbar/RCRSSIIndicator.qml" line="27"/>
-        <source>RC RSSI Status</source>
-        <translation type="unfinished">RC RSSI Status</translation>
+        <source>Link Quality</source>
+        <translation>鏈路品質</translation>
     </message>
     <message>
-        <location filename="../src/Toolbar/RCRSSIIndicator.qml" line="30"/>
-        <source>RSSI</source>
-        <translation type="unfinished">RSSI</translation>
+        <source>GCS link quality</source>
+        <translation>地面站鏈路品質</translation>
+    </message>
+    <message>
+        <source>Packets received</source>
+        <translation>已收封包</translation>
+    </message>
+    <message>
+        <source>Packets lost</source>
+        <translation>丟包數</translation>
+    </message>
+    <message>
+        <source>Not Connected</source>
+        <translation>未連線</translation>
+    </message>
+    <message>
+        <source>RC RSSI</source>
+        <translation>遙控 RSSI</translation>
     </message>
 </context>
 <context>

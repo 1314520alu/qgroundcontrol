@@ -6,11 +6,13 @@
 #include "AppMessages.h"
 #include "PayloadCapabilityCatalog.h"
 #include "QGCLoggingCategory.h"
+#include "SettingsManager.h"
 #include "UnipodMt11Client.h"
 #include "UnipodMt11MediaClient.h"
 #include "UnipodMt11Protocol.h"
 #include "Vehicle.h"
 #include "VideoManager.h"
+#include "VideoSettings.h"
 
 QGC_LOGGING_CATEGORY(UnipodMt11CameraControlLog, "Camera.UnipodMt11CameraControl")
 
@@ -49,8 +51,7 @@ UnipodMt11CameraControl::UnipodMt11CameraControl(Vehicle* vehicle, UnipodMt11Cli
     });
     (void) connect(_client, &UnipodMt11Client::recordStaChanged, this, &UnipodMt11CameraControl::_onRecordStaChanged);
     (void) connect(_client, &UnipodMt11Client::funcFeedback, this, &UnipodMt11CameraControl::_onFuncFeedback);
-    (void) connect(_client, &UnipodMt11Client::sendFailed, this,
-                   [](const QString& reason) { QGC::showAppMessage(reason); });
+    (void) connect(_client, &UnipodMt11Client::sendFailed, this, &UnipodMt11CameraControl::_onSendFailed);
     (void) connect(_client, &UnipodMt11Client::laserEnabledChanged, this,
                    &UnipodMt11CameraControl::laserEnabledChanged);
     (void) connect(_client, &UnipodMt11Client::aiRecognitionEnabledChanged, this,
@@ -89,6 +90,16 @@ bool UnipodMt11CameraControl::_isRecording() const
     return (recordSta == 1) || (recordSta == 3);
 }
 
+bool UnipodMt11CameraControl::_isSelectedVideoSource() const
+{
+    SettingsManager* const settingsManager = SettingsManager::instance();
+    if (!settingsManager || !settingsManager->videoSettings() || !settingsManager->videoSettings()->videoSource()) {
+        return false;
+    }
+    return settingsManager->videoSettings()->videoSource()->rawValue().toString() ==
+           QLatin1String(VideoSettings::videoSourceUnipodMT11);
+}
+
 void UnipodMt11CameraControl::_onRecordStaChanged(quint8 recordSta)
 {
     const bool capturing = (recordSta == 1) || (recordSta == 3);
@@ -102,7 +113,12 @@ void UnipodMt11CameraControl::_onRecordStaChanged(quint8 recordSta)
     }
 
     if (recordSta == 2) {
-        QGC::showAppMessage(tr("UniPod MT11: no storage card"));
+        if (!_noStorageCardNotified && _isSelectedVideoSource()) {
+            _noStorageCardNotified = true;
+            QGC::showAppMessage(tr("UniPod MT11: no storage card"));
+        }
+    } else {
+        _noStorageCardNotified = false;
     }
 
     emit captureVideoStateChanged();
@@ -111,6 +127,10 @@ void UnipodMt11CameraControl::_onRecordStaChanged(quint8 recordSta)
 
 void UnipodMt11CameraControl::_onFuncFeedback(quint8 infoType)
 {
+    if (!_isSelectedVideoSource()) {
+        return;
+    }
+
     using UnipodMt11Protocol::FuncFeedback;
 
     switch (static_cast<FuncFeedback>(infoType)) {
@@ -127,6 +147,13 @@ void UnipodMt11CameraControl::_onFuncFeedback(quint8 infoType)
             break;
         default:
             break;
+    }
+}
+
+void UnipodMt11CameraControl::_onSendFailed(const QString& reason)
+{
+    if (_isSelectedVideoSource()) {
+        QGC::showAppMessage(reason);
     }
 }
 

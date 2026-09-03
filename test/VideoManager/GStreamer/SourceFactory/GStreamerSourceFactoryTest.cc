@@ -4,6 +4,7 @@
 
 #include <QtCore/QRegularExpression>
 #include <QtCore/QScopeGuard>
+
 #include <gst/gst.h>
 
 #include "GstSourceFactory.h"
@@ -352,6 +353,45 @@ void GStreamerTest::_testSourceFactoryDynamicRtpLinkFailureCleansJitterBuffer()
              "a failed dynamic RTP pad link must leave parsebin available for the next valid pad");
     QVERIFY2(!findChildByFactoryName(bin, "rtpjitterbuffer"),
              "a failed dynamic RTP pad link must remove its temporary jitterbuffer");
+}
+
+void GStreamerTest::_testEffectiveRtspLatencyMs()
+{
+    using GStreamer::SourceFactory::JitterBuffer;
+
+    QCOMPARE(GStreamer::SourceFactory::effectiveRtspLatencyMs(80, false, JitterBuffer::Buffered), 80);
+    QCOMPARE(GStreamer::SourceFactory::effectiveRtspLatencyMs(80, true, JitterBuffer::None), 80);
+    QCOMPARE(GStreamer::SourceFactory::effectiveRtspLatencyMs(80, true, JitterBuffer::Buffered), 180);
+    QCOMPARE(GStreamer::SourceFactory::effectiveRtspLatencyMs(120, true, JitterBuffer::DropOnLatency), 180);
+    QCOMPARE(GStreamer::SourceFactory::effectiveRtspLatencyMs(250, true, JitterBuffer::Buffered), 250);
+    QCOMPARE(GStreamer::SourceFactory::effectiveRtspLatencyMs(-10, true, JitterBuffer::Buffered), 180);
+}
+
+void GStreamerTest::_testSourceFactoryRadioEthernetFloorsLatency()
+{
+    if (!gst_element_factory_find("rtspsrc")) {
+        QSKIP("rtspsrc plugin unavailable");
+    }
+
+    ignoreLogMessage("Video.GStreamer.GstSourceFactory", QtInfoMsg,
+                     QRegularExpression(QStringLiteral("raising RTP jitter latency")));
+
+    GStreamer::SourceFactory::Config config;
+    config.jitterBuffer = GStreamer::SourceFactory::JitterBuffer::Buffered;
+    config.latencyMs = 80;
+
+    GstElement* bin = GStreamer::SourceFactory::create(QStringLiteral("rtsp://192.168.144.25:8554/main.264"), config);
+    QVERIFY(bin);
+    const auto cleanup = qScopeGuard([&] { gst_object_unref(bin); });
+
+    GstElement* src = findChildByFactoryName(bin, "rtspsrc");
+    QVERIFY2(src, "RTSP radio-ethernet path must create rtspsrc");
+
+    guint latency = 0;
+    gboolean dropOnLatency = TRUE;
+    g_object_get(src, "latency", &latency, "drop-on-latency", &dropOnLatency, nullptr);
+    QCOMPARE(latency, 180u);
+    QCOMPARE(dropOnLatency, FALSE);
 }
 
 #endif

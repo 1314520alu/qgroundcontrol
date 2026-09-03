@@ -18,10 +18,9 @@ SettingsGroupLayout {
     // radio Ethernet interface is up. On-device the SIYI UDP service listens on *:19856
     // (reachable via 127.0.0.1) — UniGCS uses that path when eth .20 is absent.
     // SIYI MK15/MK32: manuals use Port 19856 + 192.168.144.12
-    // Skydroid: when radio ethernet is up (payload RTSP on 192.168.144.x), the air unit
-    // sends MAVLink UDP to the GCS on :14550 from 192.168.144.101 (verified on H30).
-    // The older 14551 ↔ 127.0.0.1:14552 path is an on-device bridge that stops once the
-    // OEM Ethernet NetworkAgent is running — so presets must listen on 14550.
+    // Skydroid: two MAVLink paths (chosen at apply time via skydroidUsesDirectRadioEthernetTelemetry):
+    // - G20/G16 (ar_net0): listen 14551, peer 127.0.0.1:14552 (on-device UDP bridge).
+    // - H30/H16 (eth0 on 192.168.144.x): listen 14550, peer 192.168.144.101:14550.
     readonly property var remotePresets: [
         {
             name:       "UniRC 10 Pro",
@@ -50,20 +49,20 @@ SettingsGroupLayout {
         {
             name:       "云卓 G20",
             linkType:   LinkConfiguration.TypeUdp,
-            localPort:  14550,
-            host:       "192.168.144.101:14550"
+            localPort:  14551,
+            host:       "127.0.0.1:14552"
         },
         {
             name:       "云卓 G16",
             linkType:   LinkConfiguration.TypeUdp,
-            localPort:  14550,
-            host:       "192.168.144.101:14550"
+            localPort:  14551,
+            host:       "127.0.0.1:14552"
         },
         {
             name:       "云卓 H16",
             linkType:   LinkConfiguration.TypeUdp,
-            localPort:  14550,
-            host:       "192.168.144.101:14550"
+            localPort:  14551,
+            host:       "127.0.0.1:14552"
         },
         {
             name:       "云卓 H30",
@@ -91,6 +90,31 @@ SettingsGroupLayout {
             }
         }
         return null
+    }
+
+    function _isSkydroidPreset(preset) {
+        return preset && preset.name.indexOf("云卓") === 0
+    }
+
+    function _skydroidTelemetryParams() {
+        if (ScreenToolsController.skydroidUsesDirectRadioEthernetTelemetry()) {
+            return { localPort: 14550, host: "192.168.144.101:14550" }
+        }
+        return { localPort: 14551, host: "127.0.0.1:14552" }
+    }
+
+    function _effectivePreset(preset) {
+        if (!_isSkydroidPreset(preset)) {
+            return preset
+        }
+        var p = _skydroidTelemetryParams()
+        return {
+            name:       preset.name,
+            linkType:   preset.linkType,
+            localPort:  p.localPort,
+            host:       p.host,
+            extraHosts: preset.extraHosts
+        }
     }
 
     function _findConfigByName(name) {
@@ -196,6 +220,8 @@ SettingsGroupLayout {
     }
 
     function applyRemotePreset(preset, fromManual) {
+        preset = _effectivePreset(preset)
+
         // UniRC / MK presets need the radio ethernet subnet for handbook UDP and RTSP pods.
         if (preset.name.indexOf("UniRC") === 0 || preset.name.indexOf("MK") === 0) {
             ScreenToolsController.ensureSiyiRadioEthernet()
@@ -213,18 +239,21 @@ SettingsGroupLayout {
             _linkManager.removeConfiguration(toRemove[r])
         }
 
-        // Auto-detect (boot + opening this page) must not rebuild an already-good link.
-        if (!fromManual) {
-            var existing = _dedupeConfigsNamed(preset.name)
-            if (existing && !_presetNeedsRebuild(existing, preset)) {
-                remotePresetSettings.selectedName = preset.name
-                if (!existing.linkActive) {
-                    _linkManager.createConnectedLink(existing)
-                }
-                _linkManager.syncUdpAutoConnectLink()
-                ScreenTools.applyRemoteUiScaleForPreset(preset.name)
-                return
+        // Boot (hidden MainWindow instance) and opening this page both auto-apply.
+        // Tearing down an already-correct UDP link races a second bind on the same
+        // port; QGC then treats the duplicate socket as a flapping secondary link.
+        var existing = _dedupeConfigsNamed(preset.name)
+        if (existing && !_presetNeedsRebuild(existing, preset)) {
+            remotePresetSettings.selectedName = preset.name
+            if (fromManual) {
+                remotePresetSettings.manualOverride = (detectedRemoteName === "" || preset.name !== detectedRemoteName)
             }
+            if (!existing.linkActive) {
+                _linkManager.createConnectedLink(existing)
+            }
+            _linkManager.syncUdpAutoConnectLink()
+            ScreenTools.applyRemoteUiScaleForPreset(preset.name)
+            return
         }
 
         _removeAllConfigsNamed(preset.name)

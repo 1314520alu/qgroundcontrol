@@ -35,6 +35,7 @@ qt_add_qml_module(
               FlyViewPayloadIconButton.qml
               FlyViewPayloadOverlay.qml
               FlyViewPayloadSideBar.qml
+              FlyViewSatcomPanel.qml
               FlyViewMap.qml
               TopotekGimbalPad.qml
               TopotekGimbalPadButton.qml

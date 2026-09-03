@@ -185,6 +185,32 @@ public final class QGCSiyiEthernetHelper {
     }
 
     /**
+     * Skydroid H30-class: USB {@code eth0} on 192.168.144.x carries MAVLink from the air unit
+     * (QGC listens on 14550, peer 192.168.144.101:14550). G20/G16-class AR8030 radios use
+     * {@code ar_net0} and a localhost UDP bridge (listen 14551, peer 127.0.0.1:14552).
+     */
+    public static boolean skydroidUsesDirectRadioEthernetTelemetry() {
+        try {
+            final NetworkInterface eth = NetworkInterface.getByName(IFACE);
+            if (eth == null || !eth.isUp()) {
+                return false;
+            }
+            for (final InetAddress addr : Collections.list(eth.getInetAddresses())) {
+                if (!(addr instanceof Inet4Address) || addr.isLoopbackAddress()) {
+                    continue;
+                }
+                final String host = addr.getHostAddress();
+                if (host != null && host.startsWith(SUBNET_PREFIX)) {
+                    return true;
+                }
+            }
+        } catch (final Exception e) {
+            QGCLogger.w(TAG, "skydroidUsesDirectRadioEthernetTelemetry failed", e);
+        }
+        return false;
+    }
+
+    /**
      * Kick OEM ethernet bring-up and keep retrying until the 144 subnet is ready or attempts expire.
      * Safe to call repeatedly; overlapping calls extend the attempt budget.
      */

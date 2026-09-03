@@ -11,4 +11,5 @@ private slots:
     void _recommendedUiScaleTenInchClass();
     void _recommendedUiScaleSevenInchClass();
     void _recommendedUiScaleMk15();
+    void _siyiRadioEthernetReadyMatchesLocal144Net();
 };

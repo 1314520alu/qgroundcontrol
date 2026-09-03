@@ -206,8 +206,24 @@ ApplicationWindow {
     //-------------------------------------------------------------------------
     //-- Global simple message dialog
 
+    // Identical showAppMessage calls (e.g. SIYI no-card every poll) used to stack a new
+    // modal on top of the last one. Skip while the same title+text is already open.
+    property var _openMessageDialogKeys: ({})
+
     function _showMessageDialogWorker(owner, dialogTitle, dialogText, buttons = Dialog.Ok, acceptFunction = null, closeFunction = null, bypassNavigationCheck = false) {
-        let dialog = simpleMessageDialogComponent.createObject(owner, { title: dialogTitle, text: dialogText, buttons: buttons, acceptFunction: acceptFunction, closeFunction: closeFunction, bypassNavigationCheck: bypassNavigationCheck })
+        const key = String(dialogTitle) + "\0" + String(dialogText)
+        if (_openMessageDialogKeys[key]) {
+            return
+        }
+        _openMessageDialogKeys[key] = true
+        const previousClose = closeFunction
+        const wrappedClose = function() {
+            delete _openMessageDialogKeys[key]
+            if (previousClose) {
+                previousClose()
+            }
+        }
+        let dialog = simpleMessageDialogComponent.createObject(owner, { title: dialogTitle, text: dialogText, buttons: buttons, acceptFunction: acceptFunction, closeFunction: wrappedClose, bypassNavigationCheck: bypassNavigationCheck })
         dialog.open()
     }
 

@@ -1,0 +1,31 @@
+{
+    "version": 1,
+    "fileType": "SettingsUI",
+    "bindings": {
+        "_myAircraftSettings": "QGroundControl.settingsManager.myAircraftSettings",
+        "weitongEnabled": "_myAircraftSettings.weitongAircraftEnabled.rawValue"
+    },
+    "groups": [
+        {
+            "heading": "Aircraft 1",
+            "keywords": ["weitong", "satcom", "satellite", "antenna", "aircraft", "my aircraft"],
+            "headingDescription": "qsTranslate(\"MyAircraft.SettingsUI.json\", \"Weitong aircraft — satellite antenna network control\")",
+            "controls": [
+                {
+                    "setting": "myAircraftSettings.weitongAircraftEnabled",
+                    "label": "Weitong aircraft"
+                },
+                {
+                    "setting": "myAircraftSettings.satcomHost",
+                    "label": "Antenna host",
+                    "enableWhen": "weitongEnabled"
+                },
+                {
+                    "setting": "myAircraftSettings.satcomPort",
+                    "label": "Antenna port",
+                    "enableWhen": "weitongEnabled"
+                }
+            ]
+        }
+    ]
+}

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QtCore/QString>
+
 #include <gst/gstelement.h>
 
 namespace GStreamer::SourceFactory {
@@ -23,6 +24,11 @@ struct Config
     int latencyMs = 80;
     bool doRetransmission = true;
 };
+
+/// Two-hop radio ethernet (MK22 relay / SIYI / Skydroid `192.168.144.x`) typically has ~100 ms RTT.
+/// Floor jitter latency so `rtspsrc` is not dropping against the mean RTT. No-op for low-latency
+/// (`JitterBuffer::None`) and for non-radio hosts. Callers may still request a higher value.
+int effectiveRtspLatencyMs(int requestedMs, bool radioEthernetHost, JitterBuffer jitterBuffer);
 
 /// Build a source bin (`source` [+ `tsdemux`] [+ `rtpjitterbuffer`] + `parsebin`)
 /// for `uri`. Supported schemes: rtsp/rtspt, tcp:// (MPEG-TS), udp:// (H.264 RTP),

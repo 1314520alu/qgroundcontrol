@@ -244,8 +244,11 @@ private:
     void _onRecordStaChanged(quint8 recordSta);
     void _onFuncFeedback(quint8 infoType);
     bool _isRecording() const;
+    bool _isSelectedVideoSource() const;
+    void _onSendFailed(const QString& reason);
 
     UnipodMt11Client* _client = nullptr;
+    bool _noStorageCardNotified = false;
     UnipodMt11MediaClient* _mediaClient = nullptr;
     QElapsedTimer _videoRecordTimeElapsedTimer;
 };

@@ -7,6 +7,8 @@
 #include <QtGui/QGuiApplication>
 #include <QtGui/QInputDevice>
 #include <QtGui/QScreen>
+#include <QtNetwork/QHostAddress>
+#include <QtNetwork/QNetworkInterface>
 
 #include "AppSettings.h"
 #include "QGCApplication.h"
@@ -203,7 +205,7 @@ QString ScreenToolsController::detectRemoteControllerPreset()
 
     if (hasSkydroid) {
         // Build.MODEL is often a board string (e.g. "Bengal for arm64") with no G20/H16 token.
-        // G/H series use the same radio-ethernet MAVLink path (listen 14550 ↔ 192.168.144.101:14550).
+        // Link ports are chosen at apply time: G20 uses localhost bridge; H30 uses eth0 / 144.101.
         if (diagonalInches >= 9.0) {
             qCDebug(ScreenToolsControllerLog) << "Skydroid ~10\" class; model:" << model << "diag:" << diagonalInches;
             return QStringLiteral("云卓 H30");
@@ -257,6 +259,33 @@ int ScreenToolsController::recommendedUiScalePercent()
     return recommendedUiScalePercentForPreset(detectRemoteControllerPreset());
 }
 
+namespace {
+constexpr quint32 kSiyiRadioSubnet = 0xc0a89000;  // 192.168.144.0
+constexpr quint32 kSiyiRadioMask = 0xffffff00;    // /24
+
+QString localSiyiRadioEthernetAddress()
+{
+    const QList<QNetworkInterface> ifaces = QNetworkInterface::allInterfaces();
+    for (const QNetworkInterface& iface : ifaces) {
+        const QNetworkInterface::InterfaceFlags flags = iface.flags();
+        if (!(flags & QNetworkInterface::IsUp) || (flags & QNetworkInterface::IsLoopBack)) {
+            continue;
+        }
+        const QList<QNetworkAddressEntry> entries = iface.addressEntries();
+        for (const QNetworkAddressEntry& entry : entries) {
+            const QHostAddress ip = entry.ip();
+            if (ip.protocol() != QAbstractSocket::IPv4Protocol) {
+                continue;
+            }
+            if ((ip.toIPv4Address() & kSiyiRadioMask) == kSiyiRadioSubnet) {
+                return ip.toString();
+            }
+        }
+    }
+    return {};
+}
+}  // namespace
+
 void ScreenToolsController::ensureSiyiRadioEthernet()
 {
 #if defined(Q_OS_ANDROID)
@@ -278,12 +307,11 @@ bool ScreenToolsController::isSiyiRadioEthernetReady()
     QJniEnvironment env;
     if (env->ExceptionCheck()) {
         env->ExceptionClear();
-        return false;
+    } else if (ready) {
+        return true;
     }
-    return ready;
-#else
-    return false;
 #endif
+    return !localSiyiRadioEthernetAddress().isEmpty();
 }
 
 QString ScreenToolsController::siyiRadioEthernetAddress()
@@ -294,10 +322,28 @@ QString ScreenToolsController::siyiRadioEthernetAddress()
     QJniEnvironment env;
     if (env->ExceptionCheck()) {
         env->ExceptionClear();
-        return QString();
+    } else if (address.isValid()) {
+        const QString jniAddress = address.toString();
+        if (!jniAddress.isEmpty()) {
+            return jniAddress;
+        }
     }
-    return address.isValid() ? address.toString() : QString();
+#endif
+    return localSiyiRadioEthernetAddress();
+}
+
+bool ScreenToolsController::skydroidUsesDirectRadioEthernetTelemetry()
+{
+#if defined(Q_OS_ANDROID)
+    const jboolean direct = QJniObject::callStaticMethod<jboolean>("org/mavlink/qgroundcontrol/QGCSiyiEthernetHelper",
+                                                                   "skydroidUsesDirectRadioEthernetTelemetry", "()Z");
+    QJniEnvironment env;
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+        return false;
+    }
+    return direct;
 #else
-    return QString();
+    return false;
 #endif
 }

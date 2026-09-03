@@ -8,6 +8,7 @@ import QGroundControl.FactControls
 // This indicator page is used both when showing RTK status only with no vehicle connect and when showing GPS/RTK status with a vehicle connected
 
 ToolIndicatorPage {
+    id:         gpsPage
     showExpand: true
 
     property var    activeVehicle:      QGroundControl.multiVehicleManager.activeVehicle
@@ -54,12 +55,12 @@ ToolIndicatorPage {
         updateSettingsDisplayId()
     }
 
-    function errorText() {
-        if (!_activeVehicle) {
+    function errorText(gps) {
+        if (!gps) {
             return qsTr("Disconnected");
         }
 
-        switch (_activeVehicle.gps.systemErrors.value) {
+        switch (gps.systemErrors.value) {
             case 1:
                 return qsTr("Incoming correction");
             case 2:
@@ -79,50 +80,64 @@ ToolIndicatorPage {
         }
     }
 
+    component GpsStatusGroup: SettingsGroupLayout {
+        required property string headingText
+        required property var    gps
+
+        heading: headingText
+
+        LabelledLabel {
+            label:      qsTr("Satellites")
+            labelText:  gps ? gps.count.valueString : gpsPage.na
+        }
+
+        LabelledLabel {
+            label:      qsTr("GPS Lock")
+            labelText:  gps ? gps.lock.enumStringValue : gpsPage.na
+        }
+
+        LabelledLabel {
+            label:      qsTr("HDOP")
+            labelText:  gps ? gps.hdop.valueString : gpsPage.valueNA
+        }
+
+        LabelledLabel {
+            label:      qsTr("VDOP")
+            labelText:  gps ? gps.vdop.valueString : gpsPage.valueNA
+        }
+
+        LabelledLabel {
+            label:      qsTr("Course Over Ground")
+            labelText:  gps ? gps.courseOverGround.valueString : gpsPage.valueNA
+        }
+
+        LabelledLabel {
+            label:      qsTr("GPS Heading")
+            labelText:  gps ? gps.yaw.valueString : gpsPage.valueNA
+            visible:    gps && !isNaN(gps.yaw.rawValue)
+        }
+
+        LabelledLabel {
+            label:      qsTr("GPS Error")
+            labelText:  gpsPage.errorText(gps)
+            visible:    gps && gps.systemErrors.value > 0
+        }
+    }
+
     contentComponent: Component {
         ColumnLayout {
             spacing: ScreenTools.defaultFontPixelHeight / 2
 
-            SettingsGroupLayout {
-                heading: qsTr("Vehicle GPS Status")
-                visible: activeVehicle
+            GpsStatusGroup {
+                headingText: qsTr("Vehicle GPS Status")
+                gps:         activeVehicle ? activeVehicle.gps : null
+                visible:     activeVehicle
+            }
 
-                LabelledLabel {
-                    label:      qsTr("Satellites")
-                    labelText:  activeVehicle ? activeVehicle.gps.count.valueString : na
-                }
-
-                LabelledLabel {
-                    label:      qsTr("GPS Lock")
-                    labelText:  activeVehicle ? activeVehicle.gps.lock.enumStringValue : na
-                }
-
-                LabelledLabel {
-                    label:      qsTr("HDOP")
-                    labelText:  activeVehicle ? activeVehicle.gps.hdop.valueString : valueNA
-                }
-
-                LabelledLabel {
-                    label:      qsTr("VDOP")
-                    labelText:  activeVehicle ? activeVehicle.gps.vdop.valueString : valueNA
-                }
-
-                LabelledLabel {
-                    label:      qsTr("Course Over Ground")
-                    labelText:  activeVehicle ? activeVehicle.gps.courseOverGround.valueString : valueNA
-                }
-
-                LabelledLabel {
-                    label:      qsTr("GPS Heading")
-                    labelText:  activeVehicle ? activeVehicle.gps.yaw.valueString : valueNA
-                    visible:    activeVehicle && !isNaN(activeVehicle.gps.yaw.rawValue)
-                }
-
-                LabelledLabel {
-                    label: qsTr("GPS Error")
-                    labelText: errorText()
-                    visible: activeVehicle && activeVehicle.gps.systemErrors.value > 0
-                }
+            GpsStatusGroup {
+                headingText: qsTr("Vehicle GPS 2 Status")
+                gps:         (activeVehicle && activeVehicle.gps2) ? activeVehicle.gps2 : null
+                visible:     activeVehicle && activeVehicle.gps2 && activeVehicle.gps2.telemetryAvailable
             }
 
             SettingsGroupLayout {

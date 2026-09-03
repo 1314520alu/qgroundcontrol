@@ -182,6 +182,7 @@ QGCCameraManager::QGCCameraManager(Vehicle* vehicle)
             _syncSiyiUdpCamera();
             _syncTopotekCamera();
             _ensureSimulatedCameraForLocalRecord();
+            _syncPayloadCameraList();
         });
     }
     if (VideoManager* videoManager = VideoManager::instance()) {
@@ -489,6 +490,59 @@ void QGCCameraManager::_ensureSimulatedCameraForLocalRecord()
     }
 }
 
+void QGCCameraManager::_syncPayloadCameraList()
+{
+    MavlinkCameraControlInterface* wanted = nullptr;
+    if (isUnipodVideoSource()) {
+        wanted = _unipodCameraControl;
+    } else if (isSiyiA8MiniVideoSource()) {
+        wanted = _siyiA8CameraControl;
+    } else if (isTopotekVideoSource()) {
+        wanted = _topotekCameraControl;
+    }
+
+    const QList<MavlinkCameraControlInterface*> payloadCams = {_unipodCameraControl, _siyiA8CameraControl,
+                                                               _topotekCameraControl};
+
+    bool changed = false;
+    for (MavlinkCameraControlInterface* cam : payloadCams) {
+        if (!cam) {
+            continue;
+        }
+        const int idx = _cameras.indexOf(cam);
+        if (cam == wanted) {
+            if (idx < 0) {
+                _cameras.append(cam);
+                _cameraLabels.append(cam->modelName());
+                changed = true;
+            }
+        } else if (idx >= 0) {
+            (void) _cameras.removeAt(idx);
+            if (idx < _cameraLabels.count()) {
+                (void) _cameraLabels.removeAt(idx);
+            }
+            if (_currentCameraIndex >= _cameras.count()) {
+                _currentCameraIndex = qMax(0, _cameras.count() - 1);
+            }
+            changed = true;
+        }
+    }
+
+    if (wanted) {
+        const int wantedIdx = _cameras.indexOf(wanted);
+        if ((wantedIdx >= 0) && (_currentCameraIndex != wantedIdx)) {
+            _currentCameraIndex = wantedIdx;
+            changed = true;
+        }
+    }
+
+    if (changed) {
+        emit camerasChanged();
+        emit cameraLabelsChanged();
+        emit currentCameraChanged();
+    }
+}
+
 void QGCCameraManager::_syncSiyiUdpCamera()
 {
     if (!_unipodClient) {
@@ -538,6 +592,7 @@ void QGCCameraManager::_syncSiyiUdpCamera()
         }
     }
 
+    _syncPayloadCameraList();
     emit currentCameraChanged();
 }
 
@@ -613,6 +668,7 @@ void QGCCameraManager::_syncTopotekCamera()
         _topotekClient->stop();
     }
 
+    _syncPayloadCameraList();
     emit currentCameraChanged();
 }
 

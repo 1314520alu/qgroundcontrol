@@ -5,10 +5,12 @@
 #include "AppMessages.h"
 #include "PayloadCapabilityCatalog.h"
 #include "QGCLoggingCategory.h"
+#include "SettingsManager.h"
 #include "UnipodMt11Client.h"
 #include "UnipodMt11Protocol.h"
 #include "Vehicle.h"
 #include "VideoManager.h"
+#include "VideoSettings.h"
 
 QGC_LOGGING_CATEGORY(SiyiA8MiniCameraControlLog, "Camera.SiyiA8MiniCameraControl")
 
@@ -43,8 +45,7 @@ SiyiA8MiniCameraControl::SiyiA8MiniCameraControl(Vehicle* vehicle, UnipodMt11Cli
     });
     (void) connect(_client, &UnipodMt11Client::recordStaChanged, this, &SiyiA8MiniCameraControl::_onRecordStaChanged);
     (void) connect(_client, &UnipodMt11Client::funcFeedback, this, &SiyiA8MiniCameraControl::_onFuncFeedback);
-    (void) connect(_client, &UnipodMt11Client::sendFailed, this,
-                   [](const QString& reason) { QGC::showAppMessage(reason); });
+    (void) connect(_client, &UnipodMt11Client::sendFailed, this, &SiyiA8MiniCameraControl::_onSendFailed);
     (void) connect(this, &SiyiA8MiniCameraControl::photoCaptureStatusChanged, this,
                    &SiyiA8MiniCameraControl::captureVideoStateChanged);
     (void) connect(this, &SiyiA8MiniCameraControl::photoCaptureStatusChanged, this,
@@ -76,6 +77,16 @@ bool SiyiA8MiniCameraControl::_isRecording() const
     return (recordSta == 1) || (recordSta == 3);
 }
 
+bool SiyiA8MiniCameraControl::_isSelectedVideoSource() const
+{
+    SettingsManager* const settingsManager = SettingsManager::instance();
+    if (!settingsManager || !settingsManager->videoSettings() || !settingsManager->videoSettings()->videoSource()) {
+        return false;
+    }
+    return settingsManager->videoSettings()->videoSource()->rawValue().toString() ==
+           QLatin1String(VideoSettings::videoSourceSiyiA8Mini);
+}
+
 void SiyiA8MiniCameraControl::_onRecordStaChanged(quint8 recordSta)
 {
     const bool capturing = (recordSta == 1) || (recordSta == 3);
@@ -88,16 +99,23 @@ void SiyiA8MiniCameraControl::_onRecordStaChanged(quint8 recordSta)
         _videoRecordTimeUpdateTimer.stop();
     }
 
-    if (recordSta == 2) {
-        QGC::showAppMessage(tr("SIYI A8 Mini: no storage card"));
-    }
-
     emit captureVideoStateChanged();
     emit recordTimeChanged();
 }
 
+void SiyiA8MiniCameraControl::_onSendFailed(const QString& reason)
+{
+    if (_isSelectedVideoSource()) {
+        QGC::showAppMessage(reason);
+    }
+}
+
 void SiyiA8MiniCameraControl::_onFuncFeedback(quint8 infoType)
 {
+    if (!_isSelectedVideoSource()) {
+        return;
+    }
+
     using UnipodMt11Protocol::FuncFeedback;
 
     switch (static_cast<FuncFeedback>(infoType)) {

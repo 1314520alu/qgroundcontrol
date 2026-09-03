@@ -216,7 +216,9 @@ protected slots:
 private:
     void _onRecordStaChanged(quint8 recordSta);
     void _onFuncFeedback(quint8 infoType);
+    void _onSendFailed(const QString& reason);
     bool _isRecording() const;
+    bool _isSelectedVideoSource() const;
 
     UnipodMt11Client* _client = nullptr;
     QElapsedTimer _videoRecordTimeElapsedTimer;

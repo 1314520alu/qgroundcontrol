@@ -191,4 +191,38 @@ void LinkManagerTest::_testUdpAutoConnectRemovedWhenDedicatedUdpConnects()
     QTRY_VERIFY_WITH_TIMEOUT(linkManager()->links().isEmpty(), TestTimeout::mediumMs());
 }
 
+void LinkManagerTest::_testCreateConnectedLinkDoesNotDuplicateSameConfig()
+{
+    SharedLinkConfigurationPtr dedicated = _addDedicatedUdpConfig(QStringLiteral("G20-once"), 14571);
+    QVERIFY(dedicated);
+    QVERIFY(dedicated->link());
+    QCOMPARE(linkManager()->links().count(), 1);
+
+    QVERIFY(linkManager()->createConnectedLink(dedicated));
+    QCOMPARE(linkManager()->links().count(), 1);
+
+    linkManager()->removeConfiguration(dedicated.get());
+    QTRY_VERIFY_WITH_TIMEOUT(linkManager()->links().isEmpty(), TestTimeout::mediumMs());
+}
+
+void LinkManagerTest::_testCreateConnectedLinkDoesNotDuplicateUdpPort()
+{
+    SharedLinkConfigurationPtr first = _addDedicatedUdpConfig(QStringLiteral("G20-port"), 14572);
+    QVERIFY(first);
+    QVERIFY(first->link());
+    QCOMPARE(linkManager()->links().count(), 1);
+
+    UDPConfiguration* const dupConfig = new UDPConfiguration(QStringLiteral("G20-port-dup"));
+    dupConfig->setDynamic(false);
+    dupConfig->setLocalPort(14572);
+    SharedLinkConfigurationPtr second = linkManager()->addConfiguration(dupConfig);
+    QVERIFY(!linkManager()->createConnectedLink(second));
+    QCOMPARE(linkManager()->links().count(), 1);
+    QVERIFY(second->link() == nullptr);
+
+    linkManager()->removeConfiguration(second.get());
+    linkManager()->removeConfiguration(first.get());
+    QTRY_VERIFY_WITH_TIMEOUT(linkManager()->links().isEmpty(), TestTimeout::mediumMs());
+}
+
 UT_REGISTER_TEST(LinkManagerTest, TestLabel::Integration, TestLabel::Comms)

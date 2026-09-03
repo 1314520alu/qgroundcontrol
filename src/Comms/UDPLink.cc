@@ -343,8 +343,11 @@ void UDPWorker::connectLink()
     _udpConfig->resolveHosts();
 
     qCDebug(UDPLinkLog) << "Attempting to bind to port:" << _udpConfig->localPort();
-    const bool bindSuccess = _socket->bind(QHostAddress::AnyIPv4, _udpConfig->localPort(),
-                                           QAbstractSocket::ReuseAddressHint | QAbstractSocket::ShareAddress);
+    // ReuseAddressHint allows rebind after TIME_WAIT. ShareAddress (SO_REUSEPORT) lets
+    // several QGC UDPLinks own the same listen port; unicast heartbeats are then split
+    // across sockets and VehicleLinkManager flaps primary/secondary.
+    const bool bindSuccess =
+        _socket->bind(QHostAddress::AnyIPv4, _udpConfig->localPort(), QAbstractSocket::ReuseAddressHint);
     if (!bindSuccess) {
         qCWarning(UDPLinkLog) << "Failed to bind UDP socket to port" << _udpConfig->localPort();
 

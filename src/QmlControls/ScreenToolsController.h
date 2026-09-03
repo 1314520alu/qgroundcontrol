@@ -52,6 +52,8 @@ public:
     Q_INVOKABLE static bool isSiyiRadioEthernetReady();
     /// Local 192.168.144.x address, or empty.
     Q_INVOKABLE static QString siyiRadioEthernetAddress();
+    /// Skydroid H30 eth0 path (14550 ↔ 192.168.144.101) vs G20 localhost bridge (14551 ↔ 127.0.0.1:14552).
+    Q_INVOKABLE static bool skydroidUsesDirectRadioEthernetTelemetry();
 
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
     static bool isMobile() { return true; }
