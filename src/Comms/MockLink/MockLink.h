@@ -118,6 +118,10 @@ public:
     }
     int receivedMissionRequestListCount(MAV_MISSION_TYPE type) const { return _missionItemHandler->requestListCount(type); }
 
+    /// Unit test support: bumps the AVAILABLE_MODES_MONITOR sequence number, which unlocks the
+    /// delayed flight mode and causes QGC to re-query standard modes.
+    void bumpAvailableModesMonitorSequence() { ++_availableModesMonitorSeqNumber; }
+
     enum RequestMessageFailureMode_t {
         FailRequestMessageNone,
         FailRequestMessageCommandAcceptedMsgNotSent,
@@ -387,7 +391,6 @@ private:
 
     uint8_t _mavBaseMode = MAV_MODE_FLAG_MANUAL_INPUT_ENABLED | MAV_MODE_FLAG_CUSTOM_MODE_ENABLED;
     uint32_t _mavCustomMode = PX4CustomMode::MANUAL;
-    uint8_t _mavState = MAV_STATE_STANDBY;
 
     QElapsedTimer _runningTime;
     static constexpr int kTestParamRequestListBatch = 25;
@@ -423,7 +426,9 @@ private:
     ///   - Main thread: _handleRequestMessageAvailableModes() checking/starting/stopping worker
     ///   - Worker thread: _availableModesWorker() incrementing index every 2ms (500Hz)
     QMutex _availableModesWorkerMutex;
-    uint8_t _availableModesMonitorSeqNumber = 0;        ///< Sequence number for the next available mode message to send
+    /// Sequence number sent in AVAILABLE_MODES_MONITOR. Written from the test (main) thread via
+    /// bumpAvailableModesMonitorSequence, read from the worker thread at 1Hz/500Hz.
+    std::atomic<uint8_t> _availableModesMonitorSeqNumber = 0;
 
     QString _logDownloadFilename;                       ///< Filename for log download which is in progress
     bool _logsErased = false;                           ///< Set by LOG_ERASE, LOG_REQUEST_LIST reports no logs
@@ -508,11 +513,18 @@ private:
 
     static std::atomic<int> _nextVehicleSystemId;
 
+#ifdef QGC_MOCKLINK_TERRAIN_TEST_HOME
+    // Alternate vehicle location which is a good spot for testing varying terrain
+    static constexpr double _defaultVehicleLatitude = 47.6305111;
+    static constexpr double _defaultVehicleLongitude = -122.0863806;
+    static constexpr double _defaultVehicleHomeAltitude = 9.26;
+#else
     // Vehicle position is set close to default Gazebo vehicle location. This allows for multi-vehicle
     // testing of a gazebo vehicle and a mocklink vehicle
     static constexpr double _defaultVehicleLatitude = 47.397;
     static constexpr double _defaultVehicleLongitude = 8.5455;
     static constexpr double _defaultVehicleHomeAltitude = 488.056;
+#endif
 
     static constexpr const char *_failParam = "COM_FLTMODE6";
 
@@ -534,6 +546,13 @@ private:
     };
 
     static QList<FlightMode_t> _availableFlightModes;
+    static QList<FlightMode_t> _apmCopterAvailableFlightModes;
+    static QList<FlightMode_t> _apmPlaneAvailableFlightModes;
+    static QList<FlightMode_t> _apmRoverAvailableFlightModes;
+    static QList<FlightMode_t> _apmSubAvailableFlightModes;
+
+    /// Returns the flight mode list appropriate for the simulated firmware/vehicle type
+    const QList<FlightMode_t> &_flightModeList() const;
 
     std::atomic<bool> _disconnectedEmitted{false};
 };

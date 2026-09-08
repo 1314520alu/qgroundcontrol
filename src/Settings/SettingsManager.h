@@ -2,7 +2,7 @@
 
 #include <QtCore/QJsonObject>
 #include <QtCore/QMap>
-#include <QtCore/QObject>
+#include <QtQml/QQmlPropertyMap>
 #include <QtQmlIntegration/QtQmlIntegration>
 
 class ADSBVehicleManagerSettings;
@@ -16,7 +16,6 @@ class FirmwareUpgradeSettings;
 class FlightMapSettings;
 class FlightModeSettings;
 class FlyViewSettings;
-class GeoViewSettings;
 class GimbalControllerSettings;
 class MapsSettings;
 class OfflineMapsSettings;
@@ -32,10 +31,11 @@ class FactMetaData;
 class JoystickManagerSettings;
 class LogManagerSettings;
 class LogViewerSettings;
+class SettingsGroup;
 
 /// \brief Provides access to all app settings
 ///
-class SettingsManager : public QObject
+class SettingsManager : public QQmlPropertyMap
 {
     Q_OBJECT
     QML_ELEMENT
@@ -51,7 +51,6 @@ class SettingsManager : public QObject
     Q_MOC_INCLUDE("FlightMapSettings.h")
     Q_MOC_INCLUDE("FlightModeSettings.h")
     Q_MOC_INCLUDE("FlyViewSettings.h")
-    Q_MOC_INCLUDE("GeoViewSettings.h")
     Q_MOC_INCLUDE("GimbalControllerSettings.h")
     Q_MOC_INCLUDE("MapsSettings.h")
     Q_MOC_INCLUDE("OfflineMapsSettings.h")
@@ -77,7 +76,6 @@ class SettingsManager : public QObject
     Q_PROPERTY(QObject* flightMapSettings READ flightMapSettings CONSTANT)
     Q_PROPERTY(QObject* flightModeSettings READ flightModeSettings CONSTANT)
     Q_PROPERTY(QObject* flyViewSettings READ flyViewSettings CONSTANT)
-    Q_PROPERTY(QObject* geoViewSettings READ geoViewSettings CONSTANT)
     Q_PROPERTY(QObject* gimbalControllerSettings READ gimbalControllerSettings CONSTANT)
     Q_PROPERTY(QObject* mapsSettings READ mapsSettings CONSTANT)
     Q_PROPERTY(QObject* offlineMapsSettings READ offlineMapsSettings CONSTANT)
@@ -107,6 +105,14 @@ public:
     ///     (default value will be used as value)
     static void adjustSettingMetaData(const QString& settingsGroup, FactMetaData& metaData, bool& userVisible);
 
+    /// Registers a custom build settings group so QML can access it as
+    /// QGroundControl.settingsManager.<accessorName>. Called from a
+    /// QGCCorePlugin::registerCustomSettings override. The accessor name must be the
+    /// camelCase form of the group's SettingsGroup.json stem plus "Settings"
+    /// (e.g. Custom.SettingsGroup.json -> "customSettings") so the generated settings
+    /// pages resolve to the same name. Takes ownership of the group; a rejected group is deleted.
+    void registerCustomSettingsGroup(const QString& accessorName, SettingsGroup* group);
+
     ADSBVehicleManagerSettings* adsbVehicleManagerSettings() const;
     APMMavlinkStreamRateSettings* apmMavlinkStreamRateSettings() const;
     AppSettings* appSettings() const;
@@ -118,7 +124,6 @@ public:
     FlightMapSettings* flightMapSettings() const;
     FlightModeSettings* flightModeSettings() const;
     FlyViewSettings* flyViewSettings() const;
-    GeoViewSettings* geoViewSettings() const;
     GimbalControllerSettings* gimbalControllerSettings() const;
     MapsSettings* mapsSettings() const;
     OfflineMapsSettings* offlineMapsSettings() const;
@@ -148,7 +153,6 @@ private:
     FlightMapSettings* _flightMapSettings = nullptr;
     FlightModeSettings* _flightModeSettings = nullptr;
     FlyViewSettings* _flyViewSettings = nullptr;
-    GeoViewSettings* _geoViewSettings = nullptr;
     GimbalControllerSettings* _gimbalControllerSettings = nullptr;
     MapsSettings* _mapsSettings = nullptr;
     OfflineMapsSettings* _offlineMapsSettings = nullptr;

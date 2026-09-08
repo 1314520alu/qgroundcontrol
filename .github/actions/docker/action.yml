@@ -1,6 +1,11 @@
 name: Docker Build
 description: Build QGC using Docker
 
+outputs:
+  image-digest:
+    description: Immutable digest of the built image
+    value: ${{ steps.build.outputs.digest }}
+
 inputs:
   target:
     description: Dockerfile build stage to target (linux, linux-cross, android)
@@ -19,7 +24,7 @@ inputs:
     required: false
     default: 'Release'
   fuse:
-    description: Enable FUSE support (required for AppImage builds)
+    description: Enable FUSE support for AppImageLint target mounting
     required: false
     default: 'false'
   docker-username:
@@ -87,6 +92,7 @@ runs:
           type=sha,prefix=${{ inputs.variant }}-,format=short,enable=${{ inputs.push-image != '' }}
 
     - name: Build Docker image
+      id: build
       if: contains(fromJSON('["linux", "linux-cross", "android"]'), inputs.target)
       uses: docker/build-push-action@v7
       with:
@@ -103,7 +109,7 @@ runs:
         # Avoid the OCI attestation manifest that renders as unknown/unknown on Docker Hub.
         provenance: false
         sbom: false
-        cache-from: ${{ github.event.pull_request.head.repo.fork != true && format('type=registry,ref={0}:{1}', steps.ghcr.outputs.ref, inputs.variant) || '' }}
+        cache-from: ${{ format('type=registry,ref={0}:{1}', steps.ghcr.outputs.ref, inputs.variant) }}
         cache-to: ${{ github.event_name != 'pull_request' && format('type=registry,ref={0}:{1},mode=max', steps.ghcr.outputs.ref, inputs.variant) || '' }}
 
     - name: Re-tag pushed image for local run

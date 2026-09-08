@@ -374,6 +374,7 @@ def _inject_prop(qml: str, prop_line: str) -> str:
 
 
 def _section_visible(sec: SectionDef) -> str:
+    # The untranslated title is the section ID (must match VehicleComponent::sectionIds())
     name_vis = f'sectionMatchesFilter("{sec.title}")'
     return f"{name_vis} && {sec.showWhen}" if sec.showWhen else name_vis
 
@@ -438,26 +439,10 @@ def _qml_repeat_section(sec: SectionDef, sec_idx: int, tr_context: str = "") -> 
     assert rep is not None
     ind = "                "
 
-    safe = _safe_id(sec.title)
-
-    # Match VehicleComponent::sections() names (untranslated), not the localized
-    # heading — otherwise zh/etc. filters like "Battery 1" never match "电池 1".
-    heading_base = sec.title.replace("{index}", '" + _displayIndex + "')
-    if "{index}" in sec.title:
-        heading_expr = qml_tr(heading_base, tr_context)
-        # No current pages use {index}; keep heading-based matching as fallback.
-        filter_name_expr = "heading"
-    else:
-        heading_expr = (
-            f'_{safe}Count > 1 ? {qml_tr(sec.title, tr_context)} + " " + _displayIndex '
-            f": {qml_tr(sec.title, tr_context)}"
-        )
-        filter_name_expr = (
-            f'_{safe}Count > 1 ? "{sec.title} " + _displayIndex : "{sec.title}"'
-        )
-
-    name_vis = f"sectionMatchesFilter({filter_name_expr})"
+    # Filter on the untranslated per-index section ID, not the translated heading
+    name_vis = f'sectionMatchesFilter(_sectionId, "{sec.title}")'
     show_vis = f"{name_vis} && {sec.showWhen}" if sec.showWhen else name_vis
+    safe = _safe_id(sec.title)
 
     if rep.enableParam:
         dv = rep.disabledParamValue
@@ -467,6 +452,15 @@ def _qml_repeat_section(sec: SectionDef, sec_idx: int, tr_context: str = "") -> 
         visible = f"{show_vis} && {enable_expr}"
     else:
         visible = show_vis
+
+    heading_base = sec.title.replace("{index}", '" + _displayIndex + "')
+    if "{index}" in sec.title:
+        heading_expr = qml_tr(heading_base, tr_context)
+    else:
+        heading_expr = (
+            f'_{safe}Count > 1 ? {qml_tr(sec.title, tr_context)} + " " + _displayIndex '
+            f": {qml_tr(sec.title, tr_context)}"
+        )
 
     apm_battery = rep.indexing == "apm_battery"
     if rep.firstIndexOmitsNumber:
@@ -493,6 +487,7 @@ def _qml_repeat_section(sec: SectionDef, sec_idx: int, tr_context: str = "") -> 
             ind=ind,
             safe=safe,
             visible=visible,
+            raw_title=sec.title,
             heading_expr=heading_expr,
             image=sec.image,
             apm_battery=apm_battery,
@@ -578,11 +573,11 @@ def _terms_entries(terms_map: dict) -> list[dict]:
     items = list(terms_map.items())
     return [
         {
-            "title": title,
+            "section_id": section_id,
             "terms": ", ".join(f'"{t}"' for t in terms),
             "comma": "," if i < len(items) - 1 else "",
         }
-        for i, (title, terms) in enumerate(items)
+        for i, (section_id, terms) in enumerate(items)
     ]
 
 

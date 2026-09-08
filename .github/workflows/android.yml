@@ -46,6 +46,11 @@ jobs:
     outputs:
       include: ${{ steps.build.outputs.include }}
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+
       - uses: actions/checkout@v7
         with:
           sparse-checkout: |
@@ -69,7 +74,19 @@ jobs:
     needs: [changes, build-matrix]
     if: needs.changes.outputs.should_build == 'true'
     # RunsOn runners only when the leg defines one, on mavlink, and not from a fork.
-    runs-on: ${{ github.repository_owner == 'mavlink' && matrix.runson_runner != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && format('runs-on={0}/runner={1}', github.run_id, matrix.runson_runner) || matrix.fallback_runner }}
+    runs-on: >-
+      ${{
+        github.repository_owner == 'mavlink' &&
+        matrix.runson_runner != '' &&
+        (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) &&
+        format('runs-on={0}/{1}', github.run_id,
+          matrix.host == 'windows' && vars.RUNS_ON_WINDOWS_POOL != '' &&
+            format('pool={0}', vars.RUNS_ON_WINDOWS_POOL) ||
+          matrix.host == 'linux' &&
+            format('runner={0}', vars.RUNS_ON_LINUX_BUILDER || matrix.runson_runner) ||
+          format('runner={0}', matrix.runson_runner)) ||
+        matrix.fallback_runner
+      }}
     timeout-minutes: 120
 
     # id-token/attestations scoped here: only the "Attest and Upload" step needs them.
@@ -102,17 +119,17 @@ jobs:
       HAS_PLAYSTORE_SECRET: ${{ secrets.GOOGLE_SERVICE_ACCOUNT != '' }}
 
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+
       - name: Enable RunsOn magic cache
         if: github.repository_owner == 'mavlink' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && matrix.host != 'mac'
         uses: runs-on/action@v2
         with:
           metrics: cpu,network,memory,disk,io
           show_costs: summary
-
-      - name: Harden Runner
-        uses: step-security/harden-runner@v2
-        with:
-          egress-policy: audit
 
       - name: Checkout repo
         uses: actions/checkout@v7
@@ -171,6 +188,7 @@ jobs:
         with:
           build-dir: ${{ runner.temp }}/build
           build-type: ${{ env.BUILD_TYPE }}
+          preset: ${{ env.BUILD_TYPE == 'Debug' && 'Android-debug' || 'Android' }}
           use-qt-cmake: 'false'
           extra-args: >-
             -DCMAKE_WARN_DEPRECATED=FALSE

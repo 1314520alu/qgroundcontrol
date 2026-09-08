@@ -25,8 +25,11 @@ qt_add_qml_module(
               FlyViewAdditionalCustomActionsList.qml
               FlyViewBottomRightRowLayout.qml
               FlyViewCustomLayer.qml
-              FlyViewGeo.qml
               FlyViewGeoMap.qml
+              FlyViewGeoMapAdapter.qml
+              FlyViewGeoMapChrome.qml
+              FlyViewGeoMapControls.qml
+              FlyViewGeoProximityRadar.qml
               FlyViewInsetViewer.qml
               FlyViewInstrumentPanel.qml
               FlyViewGripperButton.qml
@@ -37,10 +40,7 @@ qt_add_qml_module(
               FlyViewPayloadSideBar.qml
               FlyViewSatcomPanel.qml
               FlyViewMap.qml
-              TopotekGimbalPad.qml
-              TopotekGimbalPadButton.qml
-              TopotekZoomHoldButtons.qml
-              TopotekZoomHoldButton.qml
+              FlyViewMapClickDropPanel.qml
               FlyViewMissionCompleteDialog.qml
               FlyViewPreFlightChecklistPopup.qml
               FlyViewToolStrip.qml
@@ -77,7 +77,12 @@ qt_add_qml_module(
               SubChecklist.qml
               TelemetryValuesBar.qml
               TerrainProgress.qml
+              TopotekGimbalPad.qml
+              TopotekGimbalPadButton.qml
+              TopotekZoomHoldButton.qml
+              TopotekZoomHoldButtons.qml
               UnipodMt11MediaGallery.qml
+              VehicleWarnings.qml
               VirtualJoystick.qml
               VTOLChecklist.qml
     NO_PLUGIN

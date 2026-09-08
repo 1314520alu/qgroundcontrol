@@ -122,6 +122,7 @@ signals:
     void missingParametersChanged(bool missingParameters);
     void loadProgressChanged(float value);
     void cacheCheckOnlyFailed();
+    void initialParametersRequestFailed();      ///< Vehicle never responded to PARAM_REQUEST_LIST, all retries exhausted
     void pendingWritesChanged(bool pendingWrites);
     void parameterDownloadSkippedChanged();
     void factAdded(int componentId, Fact *fact);
@@ -237,4 +238,5 @@ private:
     Fact _defaultFact;   ///< Used to return default fact, when parameter not found
 
     bool _tryftp = false;
+    bool _ftpDownloadInProgress = false;        ///< true: @PARAM/param.pck transfer in flight
 };

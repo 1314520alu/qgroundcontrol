@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Detect drift between platform workflow display names and the places that
 match against them by literal string.
 
@@ -36,14 +35,20 @@ PLATFORM_FILES: dict[str, str] = {
     "Android": "android.yml",
 }
 
+# iOS produces release artifacts but is intentionally excluded from the
+# build-results workflow's regular PR platform set.
+RELEASE_PLATFORM_FILES: dict[str, str] = PLATFORM_FILES | {"iOS": "ios.yml"}
+
 
 def _workflow_name(path: Path) -> str:
     return yaml.safe_load(path.read_text(encoding="utf-8")).get("name", "")
 
 
 def _platform_workflows() -> list[str]:
-    raw = json.loads(BUILD_CONFIG_JSON.read_text(encoding="utf-8")).get("build", {}).get(
-        "platform_workflows", ""
+    raw = (
+        json.loads(BUILD_CONFIG_JSON.read_text(encoding="utf-8"))
+        .get("build", {})
+        .get("platform_workflows", "")
     )
     assert raw, "platform_workflows missing from build-config.json"
     return [n.strip() for n in raw.split(",") if n.strip()]
@@ -99,6 +104,15 @@ def test_build_results_trigger_matches_build_config() -> None:
         pytest.fail(" / ".join(msg_parts))
 
 
+def test_build_results_pr_number_uses_plain_string_output() -> None:
+    if not BUILD_RESULTS_YML.exists():
+        pytest.skip("build-results.yml not in checkout")
+    doc = yaml.safe_load(BUILD_RESULTS_YML.read_text(encoding="utf-8"))
+    steps = doc["jobs"]["post-pr-comment"]["steps"]
+    get_pr = next(step for step in steps if step.get("name") == "Get PR number")
+    assert get_pr["with"]["result-encoding"] == "string"
+
+
 def test_release_wait_for_builds_lists_match_platforms() -> None:
     if not RELEASE_YML.exists() or not BUILD_CONFIG_JSON.exists():
         pytest.skip("release.yml or build-config.json not in checkout")
@@ -107,15 +121,28 @@ def test_release_wait_for_builds_lists_match_platforms() -> None:
     wait = jobs.get("wait-for-builds") or {}
     steps = wait.get("steps") or []
     names_block: str | None = None
+    wait_inputs: dict[str, object] = {}
     for step in steps:
         with_ = step.get("with") or {}
-        if "workflow-names" in with_:
-            names_block = str(with_["workflow-names"])
+        if "filter-workflow-names" in with_:
+            names_block = str(with_["filter-workflow-names"])
+            wait_inputs = with_
             break
-    assert names_block is not None, "wait-for-builds step missing workflow-names"
+    assert names_block is not None, "wait-for-builds step missing filter-workflow-names"
     listed = {line.strip() for line in names_block.splitlines() if line.strip()}
-    expected = set(_platform_workflows())
+    expected = set(RELEASE_PLATFORM_FILES)
     assert listed == expected, (
-        f"release.yml wait-for-builds workflow-names {sorted(listed)} != "
-        f"build-config.json platform_workflows {sorted(expected)}"
+        f"release.yml filter-workflow-names {sorted(listed)} != "
+        f"release platform workflows {sorted(expected)}"
     )
+    assert wait_inputs["filter-workflow-events"] == "workflow_dispatch"
+    assert wait_inputs["sha"] == "${{ github.sha }}"
+    assert wait_inputs["initial-delay-seconds"] == 30
+    assert wait_inputs["period-seconds"] == 300
+
+    dispatch = next(
+        step for step in steps if step.get("name") == "Dispatch platform release builds"
+    )
+    assert dispatch["env"]["GH_REPO"] == "${{ github.repository }}"
+    for workflow_file in RELEASE_PLATFORM_FILES.values():
+        assert workflow_file in dispatch["run"]

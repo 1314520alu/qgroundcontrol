@@ -3,11 +3,45 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from typing import TYPE_CHECKING
 
+import pytest
 from _helpers import REPO_ROOT
 from plan_docker_builds import build_args_str, load_variants, plan_builds
 
 _DOCKER_DIR = REPO_ROOT / "deploy" / "docker"
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"fuse": "false"},
+        {"build_args": {"BASE_REF": 1}},
+        {"selector": "unknown"},
+        {"target": None},
+        {"ci_variant": ""},
+    ],
+)
+def test_variant_loader_rejects_invalid_fields(tmp_path: Path, change: dict) -> None:
+    variant = dict(load_variants()[0]) | change
+    manifest = tmp_path / "variants.json"
+    manifest.write_text(json.dumps({"variants": [variant]}))
+    with pytest.raises(ValueError):
+        load_variants(manifest)
+
+
+@pytest.mark.parametrize("field", ["id", "ci_variant"])
+def test_variant_loader_rejects_duplicate_identity(tmp_path: Path, field: str) -> None:
+    variants = load_variants()[:2]
+    variants[1][field] = variants[0][field]
+    manifest = tmp_path / "variants.json"
+    manifest.write_text(json.dumps({"variants": variants}))
+    with pytest.raises(ValueError, match="duplicates"):
+        load_variants(manifest)
+
 
 # Build-arg strings pinned independently of variants.json so a bad edit to the
 # JSON is caught here, not silently propagated into the CI matrix.
@@ -50,7 +84,7 @@ def test_plan_builds_pull_request_filters_by_changes():
             "variant": "linux",
             "build_args": "",
             "fuse": True,
-            "artifact_pattern": "*.AppImage",
+            "artifact_pattern": "QGroundControl-*.AppImage",
             "package_pattern": "*.deb",
         },
         {
@@ -59,7 +93,7 @@ def test_plan_builds_pull_request_filters_by_changes():
             "variant": "linux-2204",
             "build_args": _LINUX_2204_BUILD_ARGS,
             "fuse": True,
-            "artifact_pattern": "*.AppImage",
+            "artifact_pattern": "QGroundControl-*.AppImage",
             "package_pattern": "*.deb",
         },
         {
@@ -68,7 +102,7 @@ def test_plan_builds_pull_request_filters_by_changes():
             "variant": "linux-2604",
             "build_args": _LINUX_2604_BUILD_ARGS,
             "fuse": True,
-            "artifact_pattern": "*.AppImage",
+            "artifact_pattern": "QGroundControl-*.AppImage",
             "package_pattern": "*.deb",
         },
         {
@@ -77,7 +111,7 @@ def test_plan_builds_pull_request_filters_by_changes():
             "variant": "linux-debian",
             "build_args": _LINUX_DEBIAN_BUILD_ARGS,
             "fuse": True,
-            "artifact_pattern": "*.AppImage",
+            "artifact_pattern": "QGroundControl-*.AppImage",
             "package_pattern": "*.deb",
         },
         {
@@ -85,8 +119,8 @@ def test_plan_builds_pull_request_filters_by_changes():
             "target": "linux",
             "variant": "linux-fedora",
             "build_args": _LINUX_FEDORA_BUILD_ARGS,
-            "fuse": True,
-            "artifact_pattern": "*.AppImage",
+            "fuse": False,
+            "artifact_pattern": "QGroundControl-*.AppImage",
             "package_pattern": "*.rpm",
         },
         {
@@ -94,8 +128,8 @@ def test_plan_builds_pull_request_filters_by_changes():
             "target": "linux",
             "variant": "linux-arch",
             "build_args": _LINUX_ARCH_BUILD_ARGS,
-            "fuse": True,
-            "artifact_pattern": "*.AppImage",
+            "fuse": False,
+            "artifact_pattern": "QGroundControl-*.AppImage",
             "package_pattern": "*.pkg.tar.zst",
         },
         {
@@ -104,7 +138,7 @@ def test_plan_builds_pull_request_filters_by_changes():
             "variant": "linux-aarch64",
             "build_args": "",
             "fuse": False,
-            "artifact_pattern": "QGroundControl",
+            "artifact_pattern": "Release/QGroundControl",
             "package_pattern": "",
         },
     ]
@@ -121,6 +155,23 @@ def test_native_package_patterns_per_distro():
     assert pkg["Linux-Arch"] == "*.pkg.tar.zst"
     assert pkg["Linux-aarch64"] == ""
     assert pkg["Android"] == ""
+
+
+def test_artifact_patterns_exclude_packaging_tools_and_staging_copies():
+    include = plan_builds("push", linux_changed=False, android_changed=False)["matrix"]["include"]
+    artifact = {entry["platform"]: entry["artifact_pattern"] for entry in include}
+
+    native_linux = {
+        "Linux-Ubuntu-24.04",
+        "Linux-Ubuntu-22.04",
+        "Linux-Ubuntu-26.04",
+        "Linux-Debian",
+        "Linux-Fedora",
+        "Linux-Arch",
+    }
+    assert all(artifact[platform] == "QGroundControl-*.AppImage" for platform in native_linux)
+    assert artifact["Linux-aarch64"] == "Release/QGroundControl"
+    assert artifact["Android"] == "android-build/QGroundControl.apk"
 
 
 def test_2204_reuses_linux_target_with_distinct_cache_variant():
@@ -198,7 +249,7 @@ def test_variant_info_helper_matches_json():
     ).stdout
     assert "target=linux" in out
     assert "default_image=qgc-fedora-docker" in out
-    assert "fuse=1" in out
+    assert "fuse=0" in out
     assert "SETUP_BASE=setup-base-dnf.sh" in out
 
 

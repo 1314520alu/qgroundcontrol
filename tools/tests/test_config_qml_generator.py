@@ -1,9 +1,11 @@
 """Tests for the vehicle config QML page generator's JSON schema validation."""
 
 import json
+import sys
 from pathlib import Path
 
 import pytest
+from generators.config_qml.generate_pages import main as generate_config_pages
 from generators.config_qml.model import load_page_def
 
 from ._helpers import REPO_ROOT
@@ -109,6 +111,64 @@ class TestUnknownKeyRejection:
             load_page_def(_make_page_json(tmp_path, data))
 
 
+class TestQmlUnsafeStringRejection:
+    """Strings embedded in generated QML literals must not contain quote/backslash/newline."""
+
+    @pytest.mark.parametrize("bad_char", ['"', "\\", "\n"])
+    def test_unsafe_section_title_rejected(self, tmp_path: Path, bad_char: str):
+        data = _minimal_page()
+        data["sections"][0]["title"] = f"Bad{bad_char}Title"
+        with pytest.raises(ValueError, match="section title"):
+            load_page_def(_make_page_json(tmp_path, data))
+
+    def test_non_string_repeat_title_rejected(self, tmp_path: Path):
+        # Must raise the validator's ValueError, not a TypeError from the {index} check
+        data = _minimal_page()
+        data["sections"][0]["title"] = 42
+        data["sections"][0]["repeat"] = {"paramPrefix": "BATT", "probePostfix": "_MONITOR"}
+        with pytest.raises(ValueError, match="section title"):
+            load_page_def(_make_page_json(tmp_path, data))
+
+    def test_unsafe_disabled_heading_rejected(self, tmp_path: Path):
+        data = _minimal_page()
+        data["sections"][0]["repeat"] = {
+            "paramPrefix": "BATT",
+            "probePostfix": "_MONITOR",
+            "enableParam": "MONITOR",
+            "disabledParamValue": "0",
+            "disabledSection": {"heading": 'Disabled "Batteries"'},
+        }
+        with pytest.raises(ValueError, match="disabledSection heading"):
+            load_page_def(_make_page_json(tmp_path, data))
+
+    def test_unsafe_control_label_rejected(self, tmp_path: Path):
+        data = _minimal_page()
+        data["sections"][0]["controls"][0]["label"] = 'A "label"'
+        with pytest.raises(ValueError, match="control label"):
+            load_page_def(_make_page_json(tmp_path, data))
+
+    def test_unsafe_keyword_rejected(self, tmp_path: Path):
+        data = _minimal_page()
+        data["sections"][0]["keywords"] = ["esc\\motor"]
+        with pytest.raises(ValueError, match="section keyword"):
+            load_page_def(_make_page_json(tmp_path, data))
+
+    def test_index_placeholder_in_repeat_title_rejected(self, tmp_path: Path):
+        # C++ VehicleComponent::sectionIds() cannot expand {index}, so repeat
+        # titles using it would generate mismatched section IDs
+        data = _minimal_page()
+        data["sections"][0]["title"] = "Battery {index}"
+        data["sections"][0]["repeat"] = {"paramPrefix": "BATT", "probePostfix": "_MONITOR"}
+        with pytest.raises(ValueError, match="index"):
+            load_page_def(_make_page_json(tmp_path, data))
+
+    def test_safe_strings_accepted(self, tmp_path: Path):
+        data = _minimal_page()
+        data["sections"][0]["title"] = "ESC's & Motors (12-inch)"
+        page = load_page_def(_make_page_json(tmp_path, data))
+        assert page.sections[0].title == "ESC's & Motors (12-inch)"
+
+
 class TestRealPageDefinitions:
     """Audit: every VehicleConfig.json in the repo must load under strict validation."""
 
@@ -122,16 +182,26 @@ class TestRealPageDefinitions:
         assert page.sections
 
 
-class TestRepeatSectionFilterNames:
-    """Repeat section visibility must key off English sidebar names, not localized headings."""
+def test_cli_preserves_unchanged_output_timestamps(tmp_path: Path, monkeypatch) -> None:
+    output_dir = tmp_path / "generated"
+    pages_dir = tmp_path / "pages"
+    pages_dir.mkdir()
+    _make_page_json(pages_dir, _minimal_page())
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "generate_pages",
+            "--pages-dir",
+            str(pages_dir),
+            "--output-dir",
+            str(output_dir),
+        ],
+    )
 
-    def test_apm_power_filters_on_untranslated_battery_name(self, tmp_path: Path):
-        from generators.config_qml.emit import generate_config_page_qml
+    generate_config_pages()
+    timestamps = {path.name: path.stat().st_mtime_ns for path in output_dir.glob("*.qml")}
+    generate_config_pages()
 
-        page = load_page_def(
-            REPO_ROOT / "src/AutoPilotPlugins/APM/VehicleConfig/APMPower.VehicleConfig.json"
-        )
-        qml = generate_config_page_qml(page)
-        assert 'sectionMatchesFilter(_batteryCount > 1 ? "Battery " + _displayIndex : "Battery")' in qml
-        assert "sectionMatchesFilter(heading)" not in qml
-        assert 'qsTranslate("APMPower.VehicleConfig.json", sectionNameFilter)' in qml
+    assert timestamps
+    assert timestamps == {path.name: path.stat().st_mtime_ns for path in output_dir.glob("*.qml")}

@@ -31,6 +31,9 @@ Common commands are wrapped in a `justfile` (requires `just` >=1.30 for `home_di
 # One-time: install `just` (pulls rust-just into .venv via uv)
 python3 tools/setup/install_python.py dev
 
+# Windows PowerShell/cmd
+python tools/setup/install_python.py dev
+
 # or: brew install just / cargo install just / pipx install rust-just
 ```
 
@@ -52,6 +55,7 @@ reads shared version/config from `.github/build-config.json` (Qt/CMake/GStreamer
 ```text
 tools/
 ├── analyze.py               # Static analysis and formatting (clang-format, clang-tidy, cppcheck, clazy)
+├── android_mem_capture.py   # Sample Android app memory over adb (soak testing)
 ├── build_profile.py         # Summarize Ninja and Clang time-trace build hotspots
 ├── check_deps.py            # Check for outdated dependencies
 ├── clean.py                 # Clean build artifacts and caches
@@ -94,14 +98,15 @@ with no arguments to print this list from the tool itself.
 
 | Recipe            | Description                                                       |
 | ----------------- | ----------------------------------------------------------------- |
-| `just deps`       | Install system build dependencies (Debian/Ubuntu, via `sudo apt`) |
+| `just deps`       | Auto-detect and install system build dependencies                 |
 | `just submodules` | Initialize/update git submodules                                  |
+| `just vscode`     | Install missing VS Code workspace files from tracked templates    |
 
 ### Build
 
 | Recipe              | Description                                                                                      |
 | ------------------- | ------------------------------------------------------------------------------------------------ |
-| `just configure`    | Configure CMake build (Debug by default; pulls submodules first)                                 |
+| `just configure`    | Configure through the matching `default*` CMake preset (Debug by default)                        |
 | `just build`        | Build the project (uses all cores by default; override with `JOBS=N`)                            |
 | `just release`      | Configure and build in Release mode (testing disabled)                                           |
 | `just clean [ARGS]` | Clean the build directory; forwards `ARGS` to `tools/clean.py` (`--cache`, `--all`, `--dry-run`) |
@@ -138,16 +143,26 @@ just test "Slow" "Network"             # override via positional args (labels, e
 
 ### Utilities
 
-| Recipe            | Description                                                                          |
-| ----------------- | ------------------------------------------------------------------------------------ |
-| `just info`       | Print resolved build configuration (Qt version/dir, CMake min, GStreamer, jobs, ...) |
-| `just check-deps` | Check dependency and submodule versions (`tools/check_deps.py`)                      |
-| `just distclean`  | Clean build, caches, generated files, and `node_modules/`                            |
+| Recipe                 | Description                                                                          |
+| ---------------------- | ------------------------------------------------------------------------------------ |
+| `just info`            | Print resolved build configuration (Qt version/dir, CMake min, GStreamer, jobs, ...) |
+| `just check-deps`      | Check dependency and submodule versions (`tools/check_deps.py`)                      |
+| `just check-gstreamer` | Check the latest GStreamer patch common to all SDK platforms                         |
+| `just translations`    | Update translation sources with the host Python interpreter                          |
+| `just distclean`       | Clean build, caches, generated files, and `node_modules/`                            |
 
 ## Direct Script Usage
 
 Prefer `just` recipes for common tasks; call the underlying scripts directly for flags a recipe
 doesn't expose — see [Development Scripts](#development-scripts) for the per-script flag reference.
+
+Repository configure/build/test/workflow presets are rooted at [`../CMakePresets.json`](../CMakePresets.json).
+Use `CMakeUserPresets.json` for machine-local paths or derived presets; it is ignored by Git and
+preserved by `just clean`.
+The `just` recipes select `python3` on Unix and `python` on Windows. Qt's CMake wrapper is
+auto-detected by host architecture and Qt version; set `QT_DIR` or `QT_ROOT_DIR` to override it.
+`tools/configure.py` requires that kit's `qt-cmake` by default; use `--no-qt-cmake` only when
+supplying an explicit target toolchain, as Android CI does.
 
 ```bash
 # Run tools/ Python tests
@@ -196,10 +211,26 @@ python3 ./tools/build_profile.py -B build --json          # Machine-readable out
 For per-translation-unit trace details, configure with `-DQGC_TIME_TRACE=ON`, rebuild, then rerun
 the report — it scans the build dir for Clang `-ftime-trace` JSON and highlights the slowest events.
 
+### android_mem_capture.py
+
+Sample an Android app's memory (`dumpsys meminfo` PSS breakdown plus system `MemAvailable`) over
+adb at a fixed interval and write a CSV, for soak testing and before/after comparisons. Handles
+process restarts/LMK kills; press Enter during capture to drop a phase marker (POSIX terminals
+only). Defaults to the QGC package.
+
+```bash
+python3 tools/android_mem_capture.py --label geomap --interval 10   # Capture until Ctrl+C
+python3 tools/android_mem_capture.py --label soak --duration 30m    # Timed capture
+python3 tools/android_mem_capture.py --compare run-a.csv run-b.csv  # Summarize/compare runs
+```
+
+The compare summary reports start/peak/end and a second-half trend (kB/min) for total PSS,
+graphics, native heap, and system available memory.
+
 ### moccache.py
 
-Content-addressed cache for Qt's moc, wired in automatically as the `CMAKE_AUTOMOC_EXECUTABLE`
-(controlled by the `QGC_USE_MOCCACHE` CMake option, ON by default, non-Windows). Clean builds,
+Content-addressed cache for Qt's moc, wired in automatically through the `AUTOMOC_EXECUTABLE`
+target property (controlled by the `QGC_USE_MOCCACHE` CMake option, ON by default). Clean builds,
 branch switches, and sibling build trees reuse previous moc runs. Misses fall through to the
 real moc and never fail the build. See the
 [dev guide Build Caching section](../docs/en/qgc-dev-guide/getting_started/index.md#build-caching)
@@ -254,6 +285,8 @@ Check for outdated dependencies and submodules. Underlies `just check-deps`.
 python3 ./tools/check_deps.py              # Check all dependencies
 python3 ./tools/check_deps.py --submodules # Check git submodules only
 python3 ./tools/check_deps.py --qt         # Check Qt version
+python3 ./tools/check_deps.py --gstreamer  # Find latest patch common to all SDK platforms
+python3 ./tools/check_deps.py --gstreamer --fail-if-outdated  # CI/automation guard
 python3 ./tools/check_deps.py --update     # Update submodules to latest
 ```
 
@@ -285,6 +318,7 @@ Scripts in `setup/` help configure development environments. They read configura
 | `install_dependencies --platform windows` | Windows               | Install GStreamer (Vulkan SDK optional)                                       |
 | `install_python.py`                       | All                   | Install Python tools via uv or pip (see groups below)                         |
 | `install_qt.py`                           | All                   | Install Qt SDK via aqtinstall with QGC arch-directory resolution (used by CI) |
+| `setup_vscode.py`                         | All                   | Install missing VS Code workspace files from tracked templates                |
 | `build-gstreamer.py`                      | All                   | Build GStreamer from source (optional)                                        |
 | `build_android_openssl.py`                | Android               | Cross-compile OpenSSL as Qt-style Android libraries (optional)                |
 | `download_artifacts.py`                   | All                   | Download build artifacts (in `.github/scripts/`)                              |
@@ -454,11 +488,11 @@ Version numbers and build settings are centralized in `.github/build-config.json
 
 ```json
 {
-  "qt": { "version": "6.11.1", "modules": "qtgraphs qtlocation ..." },
-  "gstreamer": { "version": { "default": "1.28.4", ... }, ... },
-  "android": { "platform": "36", "ndk_full_version": "27.2.12479018", "java_version": "21", ... },
-  "apple": { "xcode_version": "16.x", "macos_deployment_target": "13.0", ... },
-  "build": { "cmake_minimum_version": "3.25", "platform_workflows": "Linux,Windows,MacOS,Android" }
+  "qt": { "version": "...", "modules": "..." },
+  "gstreamer": { "version": { "default": "..." }, "plugins": { "common": [] } },
+  "android": { "platform": "...", "ndk_full_version": "...", "java_version": "..." },
+  "apple": { "xcode_version": "...", "macos_deployment_target": "..." },
+  "build": { "cmake_minimum_version": "...", "platform_workflows": "..." }
 }
 ```
 

@@ -40,10 +40,6 @@ Rectangle {
     property int    _expandedRevision:       0
     property string _searchQuery:            ""
 
-    property var    _appSettings:            QGroundControl.settingsManager.appSettings
-    property var    _sidebarOrderedIndices:  []
-    property int    _sidebarOrderRevision:   0
-
     function _setExpanded(compIndex, value) {
         _expandedComponents[compIndex] = value
         _expandedRevision++
@@ -54,30 +50,25 @@ Rectangle {
         return !!_expandedComponents[compIndex]
     }
 
-    /// Translate a section name using the component's JSON filename as context.
-    /// Falls back to the raw name when no vehicleConfigJson is set.
-    /// Numbered repeat sections are stored as "Battery 1"; translate the base title.
-    function _translateSection(component, name) {
-        var context = _translationContext(component)
-        if (!context) return name
-        var translated = qsTranslate(context, name)
-        if (translated !== name) return translated
-        var space = name.lastIndexOf(" ")
-        if (space > 0) {
-            var base = name.substring(0, space)
-            var suffix = name.substring(space)
-            var baseTr = qsTranslate(context, base)
-            if (baseTr !== base) return baseTr + suffix
+    /// Translated display name for a section ID. JSON-driven components translate via the JSON
+    /// filename context; hand-coded components provide sectionDisplayName().
+    function _sectionDisplayName(component, sectionId) {
+        let context = _translationContext(component)
+        if (context) {
+            return qsTranslate(context, sectionId)
         }
-        return name
+        if (component && typeof component.sectionDisplayName === "function") {
+            return component.sectionDisplayName(sectionId)
+        }
+        return sectionId
     }
 
-    /// Get the section name for a sidebar entry.
-    function _sectionName(compIndex, sectionIndex) {
+    /// Get the section ID for a sidebar entry.
+    function _sectionId(compIndex, sectionIndex) {
         if (sectionIndex < 0 || !_fullParameterVehicleAvailable) return ""
         var components = _activeVehicle.autopilotPlugin.vehicleComponents
         if (compIndex < 0 || compIndex >= components.length) return ""
-        var secs = components[compIndex].sections
+        var secs = components[compIndex].sectionIds
         if (sectionIndex < secs.length) return secs[sectionIndex]
         return ""
     }
@@ -95,11 +86,14 @@ Rectangle {
         var query = _searchQuery.toLowerCase().trim()
         if (component.name.toLowerCase().indexOf(query) !== -1) return true
         var context = _translationContext(component)
-        var secs = component.sections
+        var secs = component.sectionIds
         if (secs) {
             for (var i = 0; i < secs.length; i++) {
                 if (secs[i].toLowerCase().indexOf(query) !== -1) return true
-                if (context && qsTranslate(context, secs[i]).toLowerCase().indexOf(query) !== -1) return true
+                let displayName = _sectionDisplayName(component, secs[i])
+                if (displayName !== secs[i] && displayName.toLowerCase().indexOf(query) !== -1) {
+                    return true
+                }
             }
         }
         var keywords = component.sectionKeywords
@@ -115,82 +109,24 @@ Rectangle {
         return false
     }
 
-    function _sectionMatchesSearch(component, sectionName) {
+    function _sectionMatchesSearch(component, sectionId) {
         if (_searchQuery.trim() === "") return true
         var query = _searchQuery.toLowerCase().trim()
-        if (sectionName.toLowerCase().indexOf(query) !== -1) return true
+        if (sectionId.toLowerCase().indexOf(query) !== -1) return true
         var context = _translationContext(component)
-        if (context && qsTranslate(context, sectionName).toLowerCase().indexOf(query) !== -1) return true
+        let displayName = _sectionDisplayName(component, sectionId)
+        if (displayName !== sectionId && displayName.toLowerCase().indexOf(query) !== -1) {
+            return true
+        }
         var keywords = component.sectionKeywords
-        if (keywords && keywords[sectionName]) {
-            var terms = keywords[sectionName]
+        if (keywords && keywords[sectionId]) {
+            var terms = keywords[sectionId]
             for (var i = 0; i < terms.length; i++) {
                 if (terms[i].toLowerCase().indexOf(query) !== -1) return true
                 if (context && qsTranslate(context, terms[i]).toLowerCase().indexOf(query) !== -1) return true
             }
         }
         return false
-    }
-
-    function _componentMenuId(component) {
-        if (!component || !_appSettings) {
-            return ""
-        }
-        return _appSettings.resolveVehicleSetupComponentId(
-                    component.setupSource.toString(),
-                    component.summaryQmlSource.toString())
-    }
-
-    function _rebuildSidebarOrderedIndices() {
-        void _sidebarOrderRevision
-        if (!_fullParameterVehicleAvailable || !_activeVehicle || !_activeVehicle.autopilotPlugin || !_appSettings) {
-            _sidebarOrderedIndices = []
-            return
-        }
-
-        const components = _activeVehicle.autopilotPlugin.vehicleComponents
-        const entries = []
-        for (let i = 0; i < components.length; i++) {
-            const comp = components[i]
-            if (!comp || comp.setupSource.toString() === "") {
-                continue
-            }
-            const menuId = _componentMenuId(comp)
-            if (!_appSettings.isVehicleSetupComponentVisible(menuId)) {
-                continue
-            }
-            if (!_componentMatchesSearch(comp)) {
-                continue
-            }
-            entries.push({
-                             index: i,
-                             sortKey: _appSettings.vehicleSetupComponentSortKey(menuId),
-                             name: comp.name
-                         })
-        }
-        entries.sort(function (a, b) {
-            if (a.sortKey !== b.sortKey) {
-                return a.sortKey - b.sortKey
-            }
-            return a.name.localeCompare(b.name)
-        })
-
-        const indices = []
-        for (let j = 0; j < entries.length; j++) {
-            indices.push(entries[j].index)
-        }
-        _sidebarOrderedIndices = indices
-        _ensureSelectedComponentStillVisible()
-    }
-
-    function _ensureSelectedComponentStillVisible() {
-        if (_selectedSpecial !== "" || _selectedComponentIndex < 0) {
-            return
-        }
-        if (_sidebarOrderedIndices.indexOf(_selectedComponentIndex) >= 0) {
-            return
-        }
-        _showSummaryPanel()
     }
 
     function showSummaryPanel() {
@@ -236,7 +172,7 @@ Rectangle {
         _selectedSpecial = ""
 
         // If component opts in and root was clicked, auto-select first section
-        if (sectionIndex < 0 && vehicleComponent.showFirstSectionOnRootClick && vehicleComponent.sections.length > 0) {
+        if (sectionIndex < 0 && vehicleComponent.showFirstSectionOnRootClick && vehicleComponent.sectionIds.length > 0) {
             sectionIndex = 0
         }
         _selectedSectionIndex = sectionIndex
@@ -260,8 +196,8 @@ Rectangle {
         }
 
         // Apply section filter
-        if (panelLoader.item && typeof panelLoader.item.sectionNameFilter !== "undefined") {
-            panelLoader.item.sectionNameFilter = _sectionName(compIndex, sectionIndex)
+        if (panelLoader.item && typeof panelLoader.item.sectionIdFilter !== "undefined") {
+            panelLoader.item.sectionIdFilter = _sectionId(compIndex, sectionIndex)
         }
     }
 
@@ -282,32 +218,7 @@ Rectangle {
         }
     }
 
-    Component.onCompleted: {
-        _rebuildSidebarOrderedIndices()
-        _showSummaryPanel()
-    }
-
-    Connections {
-        target: QGroundControl.multiVehicleManager
-        function onActiveVehicleChanged() { vehicleConfigView._rebuildSidebarOrderedIndices() }
-        function onParameterReadyVehicleAvailableChanged() { vehicleConfigView._rebuildSidebarOrderedIndices() }
-    }
-
-    Connections {
-        target: _activeVehicle && _activeVehicle.autopilotPlugin ? _activeVehicle.autopilotPlugin : null
-        function onVehicleComponentsChanged() { vehicleConfigView._rebuildSidebarOrderedIndices() }
-    }
-
-    Connections {
-        target: _appSettings && _appSettings.vehicleSetupVisibleComponents ? _appSettings.vehicleSetupVisibleComponents : null
-        function onRawValueChanged(value) {
-            vehicleConfigView._sidebarOrderRevision++
-            vehicleConfigView._rebuildSidebarOrderedIndices()
-        }
-    }
-
-    on_SearchQueryChanged: _rebuildSidebarOrderedIndices()
-    on_FullParameterVehicleAvailableChanged: _rebuildSidebarOrderedIndices()
+    Component.onCompleted: _showSummaryPanel()
 
     Connections {
         target: QGroundControl.corePlugin
@@ -330,8 +241,8 @@ Rectangle {
     Connections {
         target: panelLoader
         function onLoaded() {
-            if (panelLoader.item && typeof panelLoader.item.sectionNameFilter !== "undefined") {
-                panelLoader.item.sectionNameFilter = _sectionName(_selectedComponentIndex, _selectedSectionIndex)
+            if (panelLoader.item && typeof panelLoader.item.sectionIdFilter !== "undefined") {
+                panelLoader.item.sectionIdFilter = _sectionId(_selectedComponentIndex, _selectedSectionIndex)
             }
         }
     }
@@ -423,7 +334,7 @@ Rectangle {
 
     ColumnLayout {
         id:                 leftPanel
-        width:              _buttonWidth
+        width:              Math.max(buttonColumn.implicitWidth + _horizontalMargin, ScreenTools.defaultFontPixelWidth * 22)
         anchors.topMargin:  _verticalMargin
         anchors.top:        parent.top
         anchors.bottom:     parent.bottom
@@ -474,10 +385,10 @@ Rectangle {
                     visible: vehicleConfigView._searchQuery.trim() === ""
                 }
 
-                // Vehicle component tree (ordered + visibility-filtered)
+                // Vehicle component tree
                 Repeater {
                     id:     componentRepeater
-                    model:  vehicleConfigView._sidebarOrderedIndices
+                    model:  _fullParameterVehicleAvailable ? _activeVehicle.autopilotPlugin.vehicleComponents : 0
 
                     ColumnLayout {
                         id:             compColumn
@@ -487,23 +398,21 @@ Rectangle {
                         required property int index
                         required property var modelData
 
-                        property int    compIndex:      typeof modelData === "number" ? modelData : parseInt(modelData)
-                        property var    comp: {
-                            if (!_fullParameterVehicleAvailable || !_activeVehicle || !_activeVehicle.autopilotPlugin) {
-                                return null
-                            }
-                            const components = _activeVehicle.autopilotPlugin.vehicleComponents
-                            return (compIndex >= 0 && compIndex < components.length) ? components[compIndex] : null
-                        }
+                        property var    comp:           modelData
                         property string compName:       comp ? comp.name : ""
-                        property var    compSections:   comp ? comp.sections : []
-                        property bool   isSelected:     vehicleConfigView._selectedComponentIndex === compIndex && vehicleConfigView._selectedSpecial === ""
-                        property bool   hasSections:    compSections.length > 1
+                        property var    compSectionIds: comp ? comp.sectionIds : []
+                        property bool   isSelected:     vehicleConfigView._selectedComponentIndex === index && vehicleConfigView._selectedSpecial === ""
+                        property bool   hasSections:    compSectionIds.length > 1
                         property bool   isSearching:    vehicleConfigView._searchQuery.trim() !== ""
                         property bool   matchesSearch:  comp ? vehicleConfigView._componentMatchesSearch(comp) : false
-                        property bool   isExpanded:     hasSections && (isSearching ? matchesSearch : vehicleConfigView._isExpanded(compIndex))
+                        property bool   isExpanded:     hasSections && (isSearching ? matchesSearch : vehicleConfigView._isExpanded(index))
 
-                        visible: !!comp
+                        visible: {
+                            if (!comp) return false
+                            if (comp.setupSource.toString() === "") return false
+                            if (isSearching) return matchesSearch
+                            return true
+                        }
 
                         ConfigButton {
                             Layout.fillWidth:   true
@@ -516,12 +425,12 @@ Rectangle {
                             checked:            compColumn.isSelected && vehicleConfigView._selectedSectionIndex === -1
 
                             onClicked: {
-                                vehicleConfigView._navigateToComponent(compColumn.compIndex, -1)
+                                vehicleConfigView._navigateToComponent(compColumn.index, -1)
                                 if (compColumn.hasSections) {
                                     if (compColumn.isSelected && compColumn.isExpanded) {
-                                        vehicleConfigView._setExpanded(compColumn.compIndex, false)
+                                        vehicleConfigView._setExpanded(compColumn.index, false)
                                     } else if (!compColumn.isExpanded) {
-                                        vehicleConfigView._setExpanded(compColumn.compIndex, true)
+                                        vehicleConfigView._setExpanded(compColumn.index, true)
                                     }
                                 }
                             }
@@ -529,16 +438,16 @@ Rectangle {
                             onToggleExpand: {
                                 if (!mainWindow.allowViewSwitch()) return
                                 var expanding = !compColumn.isExpanded
-                                vehicleConfigView._setExpanded(compColumn.compIndex, expanding)
+                                vehicleConfigView._setExpanded(compColumn.index, expanding)
                                 if (!expanding && compColumn.isSelected) {
-                                    vehicleConfigView._navigateToComponent(compColumn.compIndex, -1)
+                                    vehicleConfigView._navigateToComponent(compColumn.index, -1)
                                 }
                             }
                         }
 
                         // Section sub-items
                         Repeater {
-                            model: compColumn.isExpanded ? compColumn.compSections : []
+                            model: compColumn.isExpanded ? compColumn.compSectionIds : []
 
                             Button {
                                 id:             sectionBtn
@@ -593,7 +502,7 @@ Rectangle {
                                     }
 
                                     QGCLabel {
-                                        text:  vehicleConfigView._translateSection(compColumn.comp, modelData)
+                                        text:  vehicleConfigView._sectionDisplayName(compColumn.comp, modelData)
                                         color: sectionBtn.textColor
                                         font.pointSize: ScreenTools.defaultFontPointSize * 0.9
                                         horizontalAlignment: Text.AlignLeft
@@ -602,7 +511,7 @@ Rectangle {
                                 }
 
                                 onClicked: {
-                                    vehicleConfigView._navigateToComponent(compColumn.compIndex, sectionIndex)
+                                    vehicleConfigView._navigateToComponent(compColumn.index, sectionIndex)
                                 }
                             }
                         }

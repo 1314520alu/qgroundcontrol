@@ -67,6 +67,7 @@ parse:
         GIT_SHALLOW: 1
         EXCLUDE_FROM_ALL: 1
         SOURCE_SUBDIR: 1
+        CUSTOM_CACHE_KEY: 1
         URL: 1
         URL_HASH: 1
         URL_MD5: 1
@@ -252,7 +253,6 @@ markup:
   fence_pattern: '^\s*([`~]{3}[`~]*)(.*)$'
   ruler_pattern: '^\s*[^\w\s]{3}.*[^\w\s]{3}$'
   hashruler_min_length: 10
-  canonical_bullet: '*'
 
 # -----------------------------------------------------------------------------
 # Linting
