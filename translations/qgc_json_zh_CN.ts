@@ -6840,20 +6840,45 @@
       <translation>载具,多旋翼,固定翼,垂直起降,无人车,潜水艇</translation>
     </message>
     <message>
+      <extracomment>.QGC.MetaData.Facts[aircraftModel].shortDesc</extracomment>
+      <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/Settings/App.SettingsGroup.json"/>
+      <source>Product airframe used by this ground station.</source>
+      <translation>本地面站使用的产品机型。</translation>
+    </message>
+    <message>
+      <extracomment>.QGC.MetaData.Facts[aircraftModel].longDesc</extracomment>
+      <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/Settings/App.SettingsGroup.json"/>
+      <source>Selects a Zhongyun airframe profile. This value is stored only; other features may read it later.</source>
+      <translation>选择中云机型配置。当前仅保存选择，其他功能稍后可读取。</translation>
+    </message>
+    <message>
+      <extracomment>.QGC.MetaData.Facts[aircraftModel].enumStrings</extracomment>
+      <translatorcomment>Only use english comma ',' to separate strings</translatorcomment>
+      <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/Settings/App.SettingsGroup.json"/>
+      <source>ZY-XF100,ZY-XF100 Tethered,ZY-XF200 Tethered,Default</source>
+      <translation>ZY-XF100,ZY-XF100系留,ZY-XF200系留,默认</translation>
+    </message>
+    <message>
+      <extracomment>.QGC.MetaData.Facts[aircraftModel].label</extracomment>
+      <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/Settings/App.SettingsGroup.json"/>
+      <source>Aircraft Model</source>
+      <translation>机型选择</translation>
+    </message>
+    <message>
       <extracomment>.QGC.MetaData.Facts[updateManifestUrl].label</extracomment>
-      <location filename="../src/Settings/App.SettingsGroup.json"/>
+      <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/Settings/App.SettingsGroup.json"/>
       <source>Update Manifest URL</source>
       <translation>更新清单地址</translation>
     </message>
     <message>
       <extracomment>.QGC.MetaData.Facts[updateManifestUrl].shortDesc</extracomment>
-      <location filename="../src/Settings/App.SettingsGroup.json"/>
+      <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/Settings/App.SettingsGroup.json"/>
       <source>HTTPS URL of latest.json on Aliyun OSS. Empty disables update checks.</source>
       <translation>阿里云 OSS 上 latest.json 的 HTTPS 地址。留空则关闭更新检查。</translation>
     </message>
     <message>
       <extracomment>.QGC.MetaData.Facts[updateManifestUrl].longDesc</extracomment>
-      <location filename="../src/Settings/App.SettingsGroup.json"/>
+      <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/Settings/App.SettingsGroup.json"/>
       <source>Full URL to the software-update manifest. Leave empty to skip checking. Android and macOS installer URLs are inside that JSON.</source>
       <translation>软件更新清单的完整 URL。留空则跳过检查。Android 与 macOS 安装包地址写在该 JSON 内。</translation>
     </message>
@@ -11323,8 +11348,14 @@
       <translation>测试</translation>
     </message>
     <message>
+      <extracomment>.groups[Aircraft Model].heading</extracomment>
+      <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/AppSettings/pages/General.SettingsUI.json"/>
+      <source>Aircraft Model</source>
+      <translation>机型选择</translation>
+    </message>
+    <message>
       <extracomment>.groups[Software Update].heading</extracomment>
-      <location filename="../src/AppSettings/pages/General.SettingsUI.json"/>
+      <location filename="/home/runner/work/qgroundcontrol/qgroundcontrol/src/AppSettings/pages/General.SettingsUI.json"/>
       <source>Software Update</source>
       <translation>软件更新</translation>
     </message>
