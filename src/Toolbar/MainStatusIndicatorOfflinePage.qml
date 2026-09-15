@@ -80,12 +80,11 @@ ToolIndicatorPage {
                     model: [
                         autoConnectSettings.autoConnectPixhawk,
                         autoConnectSettings.autoConnectSiKRadio,
-                        autoConnectSettings.autoConnectLibrePilot,
                         autoConnectSettings.autoConnectUDP,
                         autoConnectSettings.autoConnectRTKGPS,
                     ]
 
-                    property var names: [ qsTr("Pixhawk"), qsTr("SiK Radio"), qsTr("LibrePilot"), qsTr("UDP"), qsTr("RTK") ]
+                    property var names: [ qsTr("Pixhawk"), qsTr("SiK Radio"), qsTr("UDP"), qsTr("RTK") ]
 
                     FactCheckBoxSlider {
                         Layout.fillWidth:   true

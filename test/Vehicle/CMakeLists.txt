@@ -51,6 +51,8 @@ target_sources(
             VehicleDistanceSensorFactGroupTest.h
             VehicleLinkManagerTest.cc
             VehicleLinkManagerTest.h
+            EscTelemetryTemperatureTest.cc
+            EscTelemetryTemperatureTest.h
 )
 
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -84,3 +86,4 @@ add_qgc_test(StandardModesTest LABELS Integration Vehicle)
 add_qgc_test(TrajectoryPointsTest LABELS Unit Vehicle)
 add_qgc_test(VehicleDistanceSensorFactGroupTest LABELS Integration Vehicle)
 add_qgc_test(VehicleLinkManagerTest LABELS Integration Vehicle SERIAL)
+add_qgc_test(EscTelemetryTemperatureTest LABELS Unit Vehicle)

@@ -52,9 +52,9 @@ The Vehicle Messages indicator dropdown shows you messages which come from the v
 
 ### GPS / RTK GPS <img src="../../../assets/fly/toolbar/gps_indicator.png" alt="GPS / RTK GPS indicator" style="height: 1.15em; vertical-align: text-bottom;" />
 
-The GPS/RTK GPS indicator shows satellite and GNSS status in the toolbar, and the dropdown provides additional GPS details.
+The GPS/RTK GPS indicator shows a satellite icon, sat count, and HDOP. Icon and numbers use the same red / orange / yellow / green palette as the battery indicator, driven by GPS lock (with a yellow downgrade for weak 3D). A second GPS cluster appears when `GPS2_RAW` is present; each cluster is colored independently. Tap for details. A connected ground RTK base adds RTK status on the expanded page.
 
-With an active vehicle, the indicator shows vehicle GPS information (for example, satellite count and HDOP), and the expanded page provides access to RTK-related settings.
+Color table, dual-GPS layout, and thresholds: [GPS toolbar indicator notes](../../../../manuals/gcs-toolbar/gps-indicator.md).
 
 When there is no active vehicle but RTK is connected, the indicator switches to RTK status so you can still monitor the correction link.
 

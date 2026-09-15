@@ -38,6 +38,12 @@ SetupPage {
             property int  _totalErrors: _sumErrors()
             property bool _allHealthy: _hasTelemetry && _healthyCount === _escCount && _onlineCount === _escCount
 
+            property var  _appSettings: QGroundControl.settingsManager.appSettings
+            readonly property bool _h15EscTempLimits: _appSettings
+                                                      && _appSettings.aircraftModel.rawValue === Xf200TetheredPowerVisual.aircraftModelZyXf200Tethered
+            readonly property real _h15WarnC:  90
+            readonly property real _h15AlarmC: 105
+
             readonly property real _gap: Math.max(2, ScreenTools.defaultFontPixelWidth * 0.35)
             readonly property real _hPad: ScreenTools.defaultFontPixelWidth * 0.55
             readonly property real _panelRadius: ScreenTools.defaultBorderRadius
@@ -64,12 +70,55 @@ SetupPage {
             }
 
             function _isHealthy(esc) {
-                return _bitOnline(esc) && !_hasFaultFlags(esc) && _errorCount(esc) === 0
+                return _bitOnline(esc) && !_hasFaultFlags(esc) && _errorCount(esc) === 0 && _h15TempLevel(esc) === 0
+            }
+
+            function _tempDegC(esc) {
+                if (!esc) {
+                    return NaN
+                }
+                const raw = Number(esc.temperature.rawValue)
+                if (raw === 32767) {
+                    return NaN
+                }
+                return raw / 100
+            }
+
+            function _h15TempLevel(esc) {
+                if (!_h15EscTempLimits || !esc) {
+                    return 0
+                }
+                const t = _tempDegC(esc)
+                if (isNaN(t)) {
+                    return 0
+                }
+                if (t >= _h15AlarmC) {
+                    return 2
+                }
+                if (t >= _h15WarnC) {
+                    return 1
+                }
+                return 0
+            }
+
+            function _tempColor(esc) {
+                const level = _h15TempLevel(esc)
+                if (level === 2) {
+                    return qgcPal.colorRed
+                }
+                if (level === 1) {
+                    return qgcPal.colorOrange
+                }
+                return qgcPal.text
             }
 
             function _rowFill(index, esc) {
-                if (!_bitOnline(esc) || _hasFaultFlags(esc) || _errorCount(esc) > 0) {
-                    return (!_bitOnline(esc) || _hasFaultFlags(esc)) ? _rowFault : _rowWarn
+                const tempLevel = _h15TempLevel(esc)
+                if (!_bitOnline(esc) || _hasFaultFlags(esc) || tempLevel === 2) {
+                    return _rowFault
+                }
+                if (_errorCount(esc) > 0 || tempLevel === 1) {
+                    return _rowWarn
                 }
                 return (index % 2 === 1) ? _rowAlt : "transparent"
             }
@@ -81,7 +130,11 @@ SetupPage {
                 if (emphasizeError) {
                     return qgcPal.colorRed
                 }
-                if (_hasFaultFlags(esc)) {
+                const tempLevel = _h15TempLevel(esc)
+                if (tempLevel === 2) {
+                    return qgcPal.colorRed
+                }
+                if (tempLevel === 1 || _hasFaultFlags(esc)) {
                     return qgcPal.colorOrange
                 }
                 return qgcPal.text
@@ -124,6 +177,18 @@ SetupPage {
                 return n
             }
 
+            function _sumPowerKw() {
+                if (!_escs) {
+                    return 0
+                }
+                let watts = 0
+                for (let i = 0; i < _escCount; i++) {
+                    const esc = _escs.get(i)
+                    watts += Number(esc.voltage.rawValue) * Number(esc.current.rawValue)
+                }
+                return watts / 1000
+            }
+
             function _protocolLabel() {
                 if (!_escs || _rawCount === 0) {
                     return qsTr("—")
@@ -142,6 +207,19 @@ SetupPage {
                     return qsTr("—")
                 }
                 return (raw / 100).toFixed(1) + " °C"
+            }
+
+            function _voltText(esc) {
+                return Number(esc.voltage.rawValue).toFixed(1) + " V"
+            }
+
+            function _ampText(esc) {
+                return Number(esc.current.rawValue).toFixed(1) + " A"
+            }
+
+            function _powerText(esc) {
+                const watts = Number(esc.voltage.rawValue) * Number(esc.current.rawValue)
+                return (watts / 1000).toFixed(2) + " kW"
             }
 
             function _failureText(esc) {
@@ -167,7 +245,11 @@ SetupPage {
                 if (!_bitOnline(esc)) {
                     return qgcPal.colorRed
                 }
-                if (_hasFaultFlags(esc) || _errorCount(esc) > 0) {
+                const tempLevel = _h15TempLevel(esc)
+                if (tempLevel === 2 || _hasFaultFlags(esc)) {
+                    return qgcPal.colorRed
+                }
+                if (tempLevel === 1 || _errorCount(esc) > 0) {
                     return qgcPal.colorOrange
                 }
                 return qgcPal.buttonHighlight
@@ -238,6 +320,11 @@ SetupPage {
 
                     SummaryChip {
                         visible: _hasTelemetry
+                        text: qsTr("总功率 %1 kW").arg(pageRoot._sumPowerKw().toFixed(1))
+                    }
+
+                    SummaryChip {
+                        visible: _hasTelemetry
                         text: qsTr("在线 %1").arg(_onlineCount)
                     }
                 }
@@ -285,6 +372,13 @@ SetupPage {
                             border.width: 1
                             border.color: {
                                 const esc = _escs.get(index)
+                                const tempLevel = pageRoot._h15TempLevel(esc)
+                                if (tempLevel === 2) {
+                                    return qgcPal.colorRed
+                                }
+                                if (tempLevel === 1) {
+                                    return qgcPal.colorOrange
+                                }
                                 return pageRoot._isHealthy(esc) ? qgcPal.colorGreen : qgcPal.colorRed
                             }
 
@@ -332,13 +426,20 @@ SetupPage {
                                     QGCLabel { text: esc.rpm.valueString; font.bold: true }
 
                                     QGCLabel { text: qsTr("电压"); opacity: 0.55; font.pointSize: ScreenTools.smallFontPointSize }
-                                    QGCLabel { text: esc.voltage.valueString + " V"; font.bold: true }
+                                    QGCLabel { text: pageRoot._voltText(esc); font.bold: true }
 
                                     QGCLabel { text: qsTr("电流"); opacity: 0.55; font.pointSize: ScreenTools.smallFontPointSize }
-                                    QGCLabel { text: esc.current.valueString + " A"; font.bold: true }
+                                    QGCLabel { text: pageRoot._ampText(esc); font.bold: true }
+
+                                    QGCLabel { text: qsTr("功率"); opacity: 0.55; font.pointSize: ScreenTools.smallFontPointSize }
+                                    QGCLabel { text: pageRoot._powerText(esc); font.bold: true }
 
                                     QGCLabel { text: qsTr("温度"); opacity: 0.55; font.pointSize: ScreenTools.smallFontPointSize }
-                                    QGCLabel { text: pageRoot._tempText(esc); font.bold: true }
+                                    QGCLabel {
+                                        text: pageRoot._tempText(esc)
+                                        font.bold: true
+                                        color: pageRoot._tempColor(esc)
+                                    }
 
                                     QGCLabel { text: qsTr("错误"); opacity: 0.55; font.pointSize: ScreenTools.smallFontPointSize }
                                     QGCLabel {
@@ -381,16 +482,17 @@ SetupPage {
                     radius: pageRoot._panelRadius
                     clip: true
 
-                    readonly property real _units: 18 + 36 + 36 + 36 + 36 + 28 + 56
-                    readonly property real _innerW: Math.max(1, width - 2 - pageRoot._hPad * 2 - pageRoot._gap * 6)
+                    readonly property real _units: 18 + 32 + 32 + 32 + 34 + 32 + 24 + 48
+                    readonly property real _innerW: Math.max(1, width - 2 - pageRoot._hPad * 2 - pageRoot._gap * 7)
                     readonly property real _u: _innerW / _units
                     readonly property real _colIndex: 18 * _u
-                    readonly property real _colRpm:   36 * _u
-                    readonly property real _colV:     36 * _u
-                    readonly property real _colA:     36 * _u
-                    readonly property real _colT:     36 * _u
-                    readonly property real _colErr:   28 * _u
-                    readonly property real _colFault: 56 * _u
+                    readonly property real _colRpm:   32 * _u
+                    readonly property real _colV:     32 * _u
+                    readonly property real _colA:     32 * _u
+                    readonly property real _colP:     34 * _u
+                    readonly property real _colT:     32 * _u
+                    readonly property real _colErr:   24 * _u
+                    readonly property real _colFault: 48 * _u
                     readonly property real _headerH: Math.max(16, ScreenTools.defaultFontPixelHeight * 1.05)
                     readonly property real _rowH: {
                         const budget = Math.max(1, (height - 2 - _headerH) / Math.max(1, _escCount))
@@ -423,6 +525,7 @@ SetupPage {
                                 QGCLabel { width: matrixPanel._colRpm; anchors.verticalCenter: parent.verticalCenter; text: qsTr("转速"); font.bold: true; font.pointSize: matrixPanel._fontPt }
                                 QGCLabel { width: matrixPanel._colV; anchors.verticalCenter: parent.verticalCenter; text: qsTr("电压"); font.bold: true; font.pointSize: matrixPanel._fontPt }
                                 QGCLabel { width: matrixPanel._colA; anchors.verticalCenter: parent.verticalCenter; text: qsTr("电流"); font.bold: true; font.pointSize: matrixPanel._fontPt }
+                                QGCLabel { width: matrixPanel._colP; anchors.verticalCenter: parent.verticalCenter; text: qsTr("功率"); font.bold: true; font.pointSize: matrixPanel._fontPt }
                                 QGCLabel { width: matrixPanel._colT; anchors.verticalCenter: parent.verticalCenter; text: qsTr("温度"); font.bold: true; font.pointSize: matrixPanel._fontPt }
                                 QGCLabel { width: matrixPanel._colErr; anchors.verticalCenter: parent.verticalCenter; text: qsTr("错误"); font.bold: true; font.pointSize: matrixPanel._fontPt }
                                 QGCLabel { width: matrixPanel._colFault; anchors.verticalCenter: parent.verticalCenter; text: qsTr("故障"); font.bold: true; font.pointSize: matrixPanel._fontPt }
@@ -494,7 +597,7 @@ SetupPage {
                                     QGCLabel {
                                         width: matrixPanel._colV
                                         anchors.verticalCenter: parent.verticalCenter
-                                        text: online ? (esc.voltage.valueString + " V") : pageRoot._dash()
+                                        text: online ? pageRoot._voltText(esc) : pageRoot._dash()
                                         font.pointSize: matrixPanel._fontPt
                                         font.bold: true
                                         color: pageRoot._valueColor(esc, false)
@@ -504,7 +607,17 @@ SetupPage {
                                     QGCLabel {
                                         width: matrixPanel._colA
                                         anchors.verticalCenter: parent.verticalCenter
-                                        text: online ? (esc.current.valueString + " A") : pageRoot._dash()
+                                        text: online ? pageRoot._ampText(esc) : pageRoot._dash()
+                                        font.pointSize: matrixPanel._fontPt
+                                        font.bold: true
+                                        color: pageRoot._valueColor(esc, false)
+                                        elide: Text.ElideRight
+                                        opacity: online ? 1 : 0.45
+                                    }
+                                    QGCLabel {
+                                        width: matrixPanel._colP
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: online ? pageRoot._powerText(esc) : pageRoot._dash()
                                         font.pointSize: matrixPanel._fontPt
                                         font.bold: true
                                         color: pageRoot._valueColor(esc, false)
@@ -517,7 +630,7 @@ SetupPage {
                                         text: online ? pageRoot._tempText(esc) : pageRoot._dash()
                                         font.pointSize: matrixPanel._fontPt
                                         font.bold: true
-                                        color: pageRoot._valueColor(esc, false)
+                                        color: online ? pageRoot._tempColor(esc) : pageRoot._valueColor(esc, false)
                                         elide: Text.ElideRight
                                         opacity: online ? 1 : 0.45
                                     }
