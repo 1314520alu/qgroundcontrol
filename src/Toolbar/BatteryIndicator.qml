@@ -12,13 +12,15 @@ Item {
     objectName:     "toolbar_batteryIndicator"
     anchors.top:    parent.top
     anchors.bottom: parent.bottom
-    width:          batteryIndicatorRow.width
-
-    property bool       showIndicator:      _activeVehicle && _activeVehicle.batteries.count > 0
-    property bool       waitForParameters:  false
-    property Component  expandedPageComponent
 
     property var    _activeVehicle:     QGroundControl.multiVehicleManager.activeVehicle
+    property var    _appSettings:       QGroundControl.settingsManager.appSettings
+    property bool   _xf200Tethered:     _appSettings.aircraftModel.rawValue === Xf200TetheredPowerVisual.aircraftModelZyXf200Tethered
+    property bool       showIndicator:      _activeVehicle && (_xf200Tethered || _activeVehicle.batteries.count > 0)
+    property bool       waitForParameters:  false
+    property Component  expandedPageComponent
+    property int        _xf200DrawerSlotId: 1
+
     property var    _batterySettings:   QGroundControl.settingsManager.batteryIndicatorSettings
     property Fact   _indicatorDisplay:  _batterySettings.valueDisplay
     property bool   _showPercentage:    _indicatorDisplay.rawValue === 0
@@ -29,6 +31,39 @@ Item {
     // Properties to hold the thresholds
     property int threshold1: _batterySettings.threshold1.rawValue
     property int threshold2: _batterySettings.threshold2.rawValue
+
+    width: _xf200Tethered ? xf200IndicatorRow.width : batteryIndicatorRow.width
+
+    function _xf200Color(kind) {
+        switch (kind) {
+        case Xf200TetheredPowerVisual.Normal:
+            return qgcPal.colorGreen
+        case Xf200TetheredPowerVisual.Warn:
+            return qgcPal.colorYellow
+        case Xf200TetheredPowerVisual.Low:
+            return qgcPal.colorOrange
+        case Xf200TetheredPowerVisual.Critical:
+        case Xf200TetheredPowerVisual.Emergency:
+            return qgcPal.colorRed
+        default:
+            return qgcPal.text
+        }
+    }
+
+    function _xf200PowerText(watts) {
+        if (isNaN(watts)) {
+            return qsTr("—")
+        }
+        if (Math.abs(watts) < 1000) {
+            return Number(watts).toFixed(1) + " W"
+        }
+        return Number(watts / 1000).toFixed(1) + " kW"
+    }
+
+    function _xf200OpenSlot(slotId) {
+        _xf200DrawerSlotId = slotId
+        mainWindow.showIndicatorDrawer(xf200Popup, control)
+    }
 
     function _recalcLowestBatteryIdFromVoltage() {
         if (_activeVehicle) {
@@ -170,6 +205,7 @@ Item {
         anchors.top:    parent.top
         anchors.bottom: parent.bottom
         spacing:        ScreenTools.defaultFontPixelWidth / 2
+        visible:        !_xf200Tethered
 
         Repeater {
             model: _activeVehicle ? _activeVehicle.batteries : 0
@@ -184,8 +220,111 @@ Item {
         }
     }
 
+    RowLayout {
+        id:                 xf200IndicatorRow
+        objectName:         "toolbar_xf200PowerIndicator"
+        anchors.top:        parent.top
+        anchors.bottom:     parent.bottom
+        spacing:            ScreenTools.defaultFontPixelWidth / 3
+        visible:            _xf200Tethered
+
+        Repeater {
+            model: [1, 2, 3, 4, 5]
+
+            Item {
+                id:                 slotChip
+                Layout.fillHeight:  true
+                implicitWidth:      slotRow.implicitWidth
+                implicitHeight:     parent.height
+
+                required property int modelData
+
+                property int mavlinkId: Xf200TetheredPowerVisual.mavlinkBatteryId(modelData)
+                property var battery: {
+                    if (!control._activeVehicle) {
+                        return null
+                    }
+                    var n = control._activeVehicle.batteries.count
+                    for (var i = 0; i < n; i++) {
+                        var candidate = control._activeVehicle.batteries.get(i)
+                        if (candidate.id.rawValue === mavlinkId) {
+                            return candidate
+                        }
+                    }
+                    return null
+                }
+                property double voltage:     battery ? battery.voltage.rawValue : NaN
+                property double powerWatts:  battery ? battery.instantPower.rawValue : NaN
+                property int    chargeState: battery ? battery.chargeState.rawValue : MAVLinkEnums.MAV_BATTERY_CHARGE_STATE_UNDEFINED
+                property int    kind:        Xf200TetheredPowerVisual.kind(voltage, chargeState)
+                property bool   isPsu:       modelData <= 4
+
+                RowLayout {
+                    id:              slotRow
+                    anchors.top:     parent.top
+                    anchors.bottom:  parent.bottom
+                    spacing:         ScreenTools.defaultFontPixelWidth / 6
+
+                    Item {
+                        Layout.alignment:       Qt.AlignVCenter
+                        Layout.fillHeight:      true
+                        Layout.preferredWidth:  height
+                        Layout.minimumWidth:    height
+
+                        QGCColoredImage {
+                            anchors.fill:           parent
+                            sourceSize.height:      height
+                            fillMode:               Image.PreserveAspectFit
+                            source:                 slotChip.isPsu
+                                                    ? Xf200TetheredPowerVisual.psuSvg(slotChip.kind)
+                                                    : Xf200TetheredPowerVisual.batterySvg(slotChip.kind)
+                            color:                  control._xf200Color(slotChip.kind)
+                        }
+
+                        QGCLabel {
+                            anchors.centerIn:   parent
+                            visible:            slotChip.isPsu
+                            text:               slotChip.modelData
+                            font.bold:          true
+                            font.pointSize:     ScreenTools.smallFontPointSize
+                            color:              control._xf200Color(slotChip.kind)
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.alignment:   Qt.AlignVCenter
+                        spacing:            0
+
+                        QGCLabel {
+                            Layout.alignment:   Qt.AlignHCenter
+                            text:               isNaN(slotChip.voltage)
+                                                ? qsTr("—")
+                                                : Number(slotChip.voltage).toFixed(1) + " V"
+                            font.pointSize:     ScreenTools.smallFontPointSize
+                            color:              qgcPal.text
+                        }
+
+                        QGCLabel {
+                            Layout.alignment:   Qt.AlignHCenter
+                            text:               control._xf200PowerText(slotChip.powerWatts)
+                            font.pointSize:     ScreenTools.smallFontPointSize
+                            color:              qgcPal.text
+                            visible:            slotChip.isPsu
+                        }
+                    }
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked:    control._xf200OpenSlot(slotChip.modelData)
+                }
+            }
+        }
+    }
+
     MouseArea {
         anchors.fill:   parent
+        visible:        !_xf200Tethered
         onClicked:      mainWindow.showIndicatorDrawer(batteryPopup, control)
     }
 
@@ -198,6 +337,81 @@ Item {
             expandedComponentWaitForParameters: true
             contentComponent:   batteryContentComponent
             expandedComponent:  batteryExpandedComponent
+        }
+    }
+
+    Component {
+        id: xf200Popup
+
+        ToolIndicatorPage {
+            showExpand:                         expandedComponent ? true : false
+            waitForParameters:                  false
+            expandedComponentWaitForParameters: true
+            contentComponent:                   xf200SlotContentComponent
+            expandedComponent:                  batteryExpandedComponent
+        }
+    }
+
+    Component {
+        id: xf200SlotContentComponent
+
+        ColumnLayout {
+            spacing: ScreenTools.defaultFontPixelHeight / 4
+
+            property int slotId: control._xf200DrawerSlotId
+            property int mavlinkId: Xf200TetheredPowerVisual.mavlinkBatteryId(slotId)
+            property var battery: {
+                if (!control._activeVehicle) {
+                    return null
+                }
+                var n = control._activeVehicle.batteries.count
+                for (var i = 0; i < n; i++) {
+                    var candidate = control._activeVehicle.batteries.get(i)
+                    if (candidate.id.rawValue === mavlinkId) {
+                        return candidate
+                    }
+                }
+                return null
+            }
+            property int chargeState: battery ? battery.chargeState.rawValue : MAVLinkEnums.MAV_BATTERY_CHARGE_STATE_UNDEFINED
+            property double voltage: battery ? battery.voltage.rawValue : NaN
+            property double currentA: battery ? battery.current.rawValue : NaN
+            property double powerWatts: battery ? battery.instantPower.rawValue : NaN
+            property double temperatureC: battery ? battery.temperature.rawValue : NaN
+
+            QGCLabel {
+                font.bold: true
+                text: slotId <= 4 ? qsTr("Power %1").arg(slotId) : qsTr("Bus")
+            }
+
+            GridLayout {
+                columns: 2
+                columnSpacing: ScreenTools.defaultFontPixelWidth
+                rowSpacing: ScreenTools.defaultFontPixelHeight / 6
+
+                QGCLabel { text: qsTr("State") }
+                QGCLabel {
+                    text: chargeState === MAVLinkEnums.MAV_BATTERY_CHARGE_STATE_UNDEFINED
+                          ? qsTr("—")
+                          : battery.chargeState.enumStringValue
+                }
+                QGCLabel { text: qsTr("Voltage") }
+                QGCLabel {
+                    text: isNaN(voltage) ? qsTr("—") : Number(voltage).toFixed(1) + " V"
+                }
+                QGCLabel { text: qsTr("Current") }
+                QGCLabel {
+                    text: isNaN(currentA) ? qsTr("—") : Number(currentA).toFixed(1) + " A"
+                }
+                QGCLabel { text: qsTr("Power") }
+                QGCLabel {
+                    text: control._xf200PowerText(powerWatts)
+                }
+                QGCLabel { text: qsTr("Temperature") }
+                QGCLabel {
+                    text: isNaN(temperatureC) ? qsTr("—") : Number(temperatureC).toFixed(1) + " °C"
+                }
+            }
         }
     }
 
@@ -267,7 +481,7 @@ Item {
                         return battery.percentRemaining.valueString + battery.percentRemaining.units
                     }
                 } else if (!isNaN(battery.voltage.rawValue)) {
-                    return battery.voltage.valueString + battery.voltage.units
+                    return Number(battery.voltage.rawValue).toFixed(1) + " V"
                 } else if (battery.chargeState.rawValue !== MAVLinkEnums.MAV_BATTERY_CHARGE_STATE_UNDEFINED) {
                     return battery.chargeState.enumStringValue
                 }
@@ -276,7 +490,7 @@ Item {
 
             function getBatteryVoltageText() {
                 if (!isNaN(battery.voltage.rawValue)) {
-                    return battery.voltage.valueString + battery.voltage.units
+                    return Number(battery.voltage.rawValue).toFixed(1) + " V"
                 } else if (battery.chargeState.rawValue !== MAVLinkEnums.MAV_BATTERY_CHARGE_STATE_UNDEFINED) {
                     return battery.chargeState.enumStringValue
                 }
@@ -350,83 +564,237 @@ Item {
     Component {
         id: batteryContentComponent
 
-        ColumnLayout {
-            spacing: ScreenTools.defaultFontPixelHeight / 2
+        Item {
+            id: batteryTableRoot
+            implicitWidth: tableWidth
+            implicitHeight: tableCol.implicitHeight
+            width: implicitWidth
+            height: implicitHeight
 
-            Component {
-                id: batteryValuesAvailableComponent
+            readonly property int colCount: 7
+            readonly property real colGap: ScreenTools.defaultFontPixelWidth * 1.5
+            readonly property real cellPadH: ScreenTools.defaultFontPixelWidth * 0.4
+            readonly property real rowPad: ScreenTools.defaultFontPixelHeight / 5
+            readonly property real fontPt: ScreenTools.defaultFontPointSize
+            readonly property real chevronPad: ScreenTools.largeFontPixelHeight
 
-                QtObject {
-                    property bool functionAvailable:         battery.function.rawValue !== MAVLinkEnums.MAV_BATTERY_FUNCTION_UNKNOWN
-                    property bool showFunction:              functionAvailable && battery.function.rawValue != MAVLinkEnums.MAV_BATTERY_FUNCTION_ALL
-                    property bool temperatureAvailable:      !isNaN(battery.temperature.rawValue)
-                    property bool currentAvailable:          !isNaN(battery.current.rawValue)
-                    property bool mahConsumedAvailable:      !isNaN(battery.mahConsumed.rawValue)
-                    property bool timeRemainingAvailable:    !isNaN(battery.timeRemaining.rawValue)
-                    property bool percentRemainingAvailable: !isNaN(battery.percentRemaining.rawValue)
-                    property bool chargeStateAvailable:      battery.chargeState.rawValue !== MAVLinkEnums.MAV_BATTERY_CHARGE_STATE_UNDEFINED
+            FontMetrics {
+                id: headerFontMetrics
+                font.family: ScreenTools.normalFontFamily
+                font.pointSize: batteryTableRoot.fontPt
+                font.bold: true
+            }
+
+            FontMetrics {
+                id: cellFontMetrics
+                font.family: ScreenTools.normalFontFamily
+                font.pointSize: batteryTableRoot.fontPt
+            }
+
+            function _headerAt(col) {
+                switch (col) {
+                case 0: return qsTr("Battery")
+                case 1: return qsTr("State")
+                case 2: return qsTr("Remaining")
+                case 3: return qsTr("Voltage")
+                case 4: return qsTr("Current")
+                case 5: return qsTr("Power")
+                case 6: return qsTr("Temperature")
                 }
+                return ""
+            }
+
+            function _chargeStateText(battery) {
+                if (battery.chargeState.rawValue === MAVLinkEnums.MAV_BATTERY_CHARGE_STATE_UNDEFINED) {
+                    return qsTr("—")
+                }
+                return battery.chargeState.enumStringValue
+            }
+
+            function _remainingText(battery) {
+                if (!isNaN(battery.percentRemaining.rawValue)) {
+                    return battery.percentRemaining.valueString + battery.percentRemaining.units
+                }
+                if (!isNaN(battery.timeRemaining.rawValue)) {
+                    return battery.timeRemainingStr.value
+                }
+                return qsTr("—")
+            }
+
+            function _voltageText(battery) {
+                if (!isNaN(battery.voltage.rawValue)) {
+                    return Number(battery.voltage.rawValue).toFixed(1) + " V"
+                }
+                return qsTr("—")
+            }
+
+            function _currentText(battery) {
+                if (!isNaN(battery.current.rawValue)) {
+                    return Number(battery.current.rawValue).toFixed(1) + " A"
+                }
+                return qsTr("—")
+            }
+
+            function _powerText(battery) {
+                if (isNaN(battery.instantPower.rawValue)) {
+                    return qsTr("—")
+                }
+                var watts = battery.instantPower.rawValue
+                if (Math.abs(watts) < 1000) {
+                    return Number(watts).toFixed(0) + " W"
+                }
+                return Number(watts / 1000).toFixed(2) + " kW"
+            }
+
+            function _temperatureText(battery) {
+                if (!isNaN(battery.temperature.rawValue)) {
+                    return Number(battery.temperature.rawValue).toFixed(1) + " °C"
+                }
+                return qsTr("—")
+            }
+
+            function _cellText(battery, col) {
+                if (!battery) {
+                    return qsTr("—")
+                }
+                switch (col) {
+                case 0:
+                    return _activeVehicle && _activeVehicle.batteries.count === 1
+                           ? qsTr("Status") : battery.id.rawValue
+                case 1: return _chargeStateText(battery)
+                case 2: return _remainingText(battery)
+                case 3: return _voltageText(battery)
+                case 4: return _currentText(battery)
+                case 5: return _powerText(battery)
+                case 6: return _temperatureText(battery)
+                }
+                return qsTr("—")
+            }
+
+            function _isAbnormalBattery(battery) {
+                switch (battery.chargeState.rawValue) {
+                case MAVLinkEnums.MAV_BATTERY_CHARGE_STATE_LOW:
+                case MAVLinkEnums.MAV_BATTERY_CHARGE_STATE_CRITICAL:
+                case MAVLinkEnums.MAV_BATTERY_CHARGE_STATE_EMERGENCY:
+                case MAVLinkEnums.MAV_BATTERY_CHARGE_STATE_FAILED:
+                case MAVLinkEnums.MAV_BATTERY_CHARGE_STATE_UNHEALTHY:
+                    return true
+                }
+                if (!isNaN(battery.percentRemaining.rawValue) &&
+                        battery.percentRemaining.rawValue <= control.threshold2) {
+                    return true
+                }
+                return false
+            }
+
+            function _rowBackground(index, battery) {
+                if (_isAbnormalBattery(battery)) {
+                    return Qt.rgba(qgcPal.colorRed.r, qgcPal.colorRed.g, qgcPal.colorRed.b, 0.35)
+                }
+                return index % 2 ? qgcPal.windowShade : "transparent"
+            }
+
+            // Size columns from headers + worst-case samples, not live telemetry.
+            // Measuring BATTERY_STATUS values here retriggered layout on every
+            // voltage/current/power tick, which stuttered the UI and made the
+            // modal drawer jump so taps outside would not close it.
+            function _widthSamples(col) {
+                switch (col) {
+                case 0: return [qsTr("Status"), "99"]
+                case 1: return [qsTr("Unhealthy"), qsTr("Emergency"), qsTr("Charging"), qsTr("Critical")]
+                case 2: return ["100%", "0:00:00"]
+                case 3: return ["999.9 V"]
+                case 4: return ["999.9 A"]
+                case 5: return ["99.99 kW", "999 W"]
+                case 6: return ["99.9 °C"]
+                }
+                return []
+            }
+
+            function _columnWidth(col) {
+                var w = headerFontMetrics.advanceWidth(_headerAt(col))
+                var samples = _widthSamples(col)
+                for (var i = 0; i < samples.length; i++) {
+                    w = Math.max(w, cellFontMetrics.advanceWidth(samples[i]))
+                }
+                return Math.ceil(w + cellPadH * 2)
+            }
+
+            readonly property var colWidths: [
+                _columnWidth(0), _columnWidth(1), _columnWidth(2),
+                _columnWidth(3), _columnWidth(4), _columnWidth(5),
+                _columnWidth(6)
+            ]
+
+            readonly property real bodyWidth: {
+                var s = 0
+                for (var i = 0; i < colCount; i++) {
+                    s += colWidths[i]
+                }
+                return s + colGap * (colCount - 1)
+            }
+
+            readonly property real tableWidth: bodyWidth + chevronPad
+
+            Column {
+                id: tableCol
+                width: batteryTableRoot.bodyWidth
+                spacing: ScreenTools.defaultFontPixelHeight / 6
+
+            Row {
+                spacing: batteryTableRoot.colGap
+                width: batteryTableRoot.bodyWidth
+
+                Repeater {
+                    model: batteryTableRoot.colCount
+
+                    QGCLabel {
+                        width: batteryTableRoot.colWidths[index]
+                        font.pointSize: batteryTableRoot.fontPt
+                        font.bold: true
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.NoWrap
+                        text: batteryTableRoot._headerAt(index)
+                    }
+                }
+            }
+
+            Rectangle {
+                width: batteryTableRoot.bodyWidth
+                height: 1
+                color: qgcPal.groupBorder
             }
 
             Repeater {
                 model: _activeVehicle ? _activeVehicle.batteries : 0
 
-                SettingsGroupLayout {
-                    heading:        qsTr("Battery %1").arg(_activeVehicle.batteries.length === 1 ? qsTr("Status") : object.id.rawValue)
-                    contentSpacing: 0
-                    showDividers:   false
+                Rectangle {
+                    property var battery: object
+                    width: batteryTableRoot.bodyWidth
+                    height: batteryRow.implicitHeight + batteryTableRoot.rowPad * 2
+                    radius: ScreenTools.defaultFontPixelWidth / 4
+                    color: batteryTableRoot._rowBackground(index, battery)
 
-                    property var batteryValuesAvailable: batteryValuesAvailableLoader.item
+                    Row {
+                        id: batteryRow
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: batteryTableRoot.colGap
 
-                    Loader {
-                        id:                 batteryValuesAvailableLoader
-                        sourceComponent:    batteryValuesAvailableComponent
+                        Repeater {
+                            model: batteryTableRoot.colCount
 
-                        property var battery: object
-                    }
-
-                    LabelledLabel {
-                        label:  qsTr("Charge State")
-                        labelText:  object.chargeState.enumStringValue
-                        visible:    batteryValuesAvailable.chargeStateAvailable
-                    }
-
-                    LabelledLabel {
-                        label:      qsTr("Remaining")
-                        labelText:  object.timeRemainingStr.value
-                        visible:    batteryValuesAvailable.timeRemainingAvailable
-                    }
-
-                    LabelledLabel {
-                        label:      qsTr("Remaining")
-                        labelText:  object.percentRemaining.valueString + " " + object.percentRemaining.units
-                        visible:    batteryValuesAvailable.percentRemainingAvailable
-                    }
-
-                    LabelledLabel {
-                        label:      qsTr("Voltage")
-                        labelText:  object.voltage.valueString + " " + object.voltage.units
-                    }
-
-                    LabelledLabel {
-                        label:      qsTr("Consumed")
-                        labelText:  object.mahConsumed.valueString + " " + object.mahConsumed.units
-                        visible:    batteryValuesAvailable.mahConsumedAvailable
-                    }
-
-                    LabelledLabel {
-                        label:      qsTr("Temperature")
-                        labelText:  object.temperature.valueString + " " + object.temperature.units
-                        visible:    batteryValuesAvailable.temperatureAvailable
-                    }
-
-                    LabelledLabel {
-                        label:      qsTr("Function")
-                        labelText:  object.function.enumStringValue
-                        visible:    batteryValuesAvailable.showFunction
+                            QGCLabel {
+                                width: batteryTableRoot.colWidths[index]
+                                font.pointSize: batteryTableRoot.fontPt
+                                horizontalAlignment: Text.AlignHCenter
+                                wrapMode: Text.NoWrap
+                                text: batteryTableRoot._cellText(battery, index)
+                            }
+                        }
                     }
                 }
             }
+        }
         }
     }
 
@@ -443,6 +811,7 @@ Item {
             SettingsGroupLayout {
                 heading:            qsTr("Battery Display")
                 Layout.fillWidth:   true
+                visible:            !control._xf200Tethered
 
                 FactCheckBoxSlider {
                     Layout.fillWidth:   true

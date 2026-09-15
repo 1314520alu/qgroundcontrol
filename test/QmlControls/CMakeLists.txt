@@ -17,6 +17,8 @@ target_sources(
             ScreenToolsControllerTest.cc
             ScreenToolsControllerTest.h
             TestDirtyObject.h
+            Xf200TetheredPowerVisualTest.cc
+            Xf200TetheredPowerVisualTest.h
 )
 
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -27,3 +29,4 @@ add_qgc_test(ObjectListModelBaseTest LABELS Unit)
 add_qgc_test(QmlObjectListModelTest LABELS Unit)
 add_qgc_test(QmlObjectTreeModelTest LABELS Unit)
 add_qgc_test(ScreenToolsControllerTest LABELS Unit)
+add_qgc_test(Xf200TetheredPowerVisualTest LABELS Unit)

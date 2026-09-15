@@ -370,6 +370,11 @@ void QGroundControlQmlGlobal::testAudioOutput()
     AudioOutput::instance()->testAudioOutput();
 }
 
+void QGroundControlQmlGlobal::say(const QString& text)
+{
+    AudioOutput::instance()->say(text.toLower());
+}
+
 void QGroundControlQmlGlobal::copyToClipboard(const QString& text)
 {
     QGuiApplication::clipboard()->setText(text);

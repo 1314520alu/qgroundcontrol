@@ -164,6 +164,9 @@ public:
     // Test audio output
     Q_INVOKABLE void testAudioOutput();
 
+    /// Speak text via TTS (respects mute / volume settings).
+    Q_INVOKABLE void say(const QString& text);
+
     /// Copy text to the system clipboard
     Q_INVOKABLE static void copyToClipboard(const QString& text);
 
