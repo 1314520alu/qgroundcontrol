@@ -106,27 +106,6 @@
             "name": "Help",
             "qml": "HelpSettings.qml",
             "icon": "qrc:/InstrumentValueIcons/question.svg"
-        },
-        {
-            "divider": true
-        },
-        {
-            "name": "Mock Link",
-            "qml": "MockLink.qml",
-            "icon": "qrc:/InstrumentValueIcons/drone.svg",
-            "visible": "ScreenTools.isDebug"
-        },
-        {
-            "name": "Debug",
-            "qml": "DebugWindow.qml",
-            "icon": "qrc:/InstrumentValueIcons/bug.svg",
-            "visible": "ScreenTools.isDebug"
-        },
-        {
-            "name": "Palette Test",
-            "qml": "QmlTest.qml",
-            "icon": "qrc:/InstrumentValueIcons/photo.svg",
-            "visible": "ScreenTools.isDebug"
         }
     ]
 }

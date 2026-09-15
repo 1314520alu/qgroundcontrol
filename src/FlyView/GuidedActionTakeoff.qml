@@ -4,7 +4,10 @@ import QGroundControl.FlyView
 GuidedToolStripAction {
     text:       _guidedController.takeoffTitle
     iconSource: "/res/takeoff.svg"
-    visible:    _guidedController.showTakeoff || !_guidedController.showLand
+    // Hidden when Fly View payload overlay hosts takeoff at left-bar bottom
+    visible:    (_guidedController.showTakeoff || !_guidedController.showLand) && !forceHidden
     enabled:    _guidedController.showTakeoff
     actionID:   _guidedController.actionTakeoff
+
+    property bool forceHidden: false
 }

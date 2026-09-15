@@ -1,11 +1,14 @@
 import QtQuick
 
 import QGroundControl
+import QGroundControl.Controls
 
 Item {
     id: root
     anchors.fill: parent
     property var showText: obstacleDistance._showText
+    // Video HUD: only show sectors closer than this (meters). Far hits like max-range stay hidden.
+    readonly property real _maxDisplayDistanceM: 15
 
     function drawSegment(ctx, range, centerX, centerY, lengthFrom, lengthTo, radFrom, radTo, grad) {
         // Qt expects the angles to be in respect of the X axis, The Incoming Angles are in FRD From Front goind Clockwise
@@ -48,17 +51,19 @@ Item {
     }
 
     function paintObstacleOverlay(ctx) {
+        const topSafe = ScreenTools.toolbarHeight + ScreenTools.defaultFontPixelHeight * 2
+        const bottomSafe = ScreenTools.defaultFontPixelHeight * 2.5
+        const safeHeight = Math.max(1, root.height - topSafe - bottomSafe)
         const centerX = root.width / 2
-        const centerY = root.height / 2
-        const maxRadiusPixels = 0.9 * root.height / 2 // Max pixels to center
-        const minRadiusPixels = maxRadiusPixels * 0.2 // Min radius in pixels to center
-        const minGradPixels = minRadiusPixels
-        const maxGradPixels = maxRadiusPixels
+        const centerY = topSafe + safeHeight / 2
+        const maxRadiusPixels = 0.9 * safeHeight / 2
+        const minRadiusPixels = maxRadiusPixels * 0.2
         const segmentHeightPixels = minRadiusPixels / 8
-        const levelMeters = 10
-        const levelNum = obstacleDistance._maxRadiusMeters / levelMeters
+        const levelMeters = 5
+        const displayMax = root._maxDisplayDistanceM
+        const levelNum = Math.max(1, displayMax / levelMeters)
 
-        var grad = ctx.createRadialGradient(centerX, centerY, maxGradPixels - segmentHeightPixels * levelNum * 2, centerX, centerY, maxGradPixels)
+        var grad = ctx.createRadialGradient(centerX, centerY, maxRadiusPixels - segmentHeightPixels * levelNum * 2, centerX, centerY, maxRadiusPixels)
         grad.addColorStop(0, Qt.rgba(1, 0, 0, 0.9))
         grad.addColorStop(0.1, Qt.rgba(1, 0, 0, 0.3))
         grad.addColorStop(0.5, Qt.rgba(1, 0.64, 0, 0.3))
@@ -82,18 +87,23 @@ Item {
                     rangeMin = r
             }
 
+            // Only show obstacles closer than 15 m on video.
+            if (!(rangeMin > 0 && rangeMin < displayMax)) {
+                continue
+            }
+
             const lengthFrom = maxRadiusPixels
             const radFrom = rad
             const radTo = radFrom + incDeg * Math.PI / 180.0 - 0.03
-            var range = obstacleDistance._maxRadiusMeters
-            for (var ii = 0; ii < levelNum; ++ii) {
-                const from = lengthFrom - ii * segmentHeightPixels * 2
+            var range = displayMax
+            for (var jj = 0; jj < levelNum; ++jj) {
+                const from = lengthFrom - jj * segmentHeightPixels * 2
                 const to = from - segmentHeightPixels
-                const rangeInLevel = obstacleDistance._maxRadiusMeters - (ii + 1) * levelMeters
-                const isLast = ii >= levelNum - 1
+                const rangeInLevel = displayMax - (jj + 1) * levelMeters
+                const isLast = jj >= levelNum - 1
                 if (rangeMin > rangeInLevel || isLast)
                     range = rangeMin
-                const rangeToShow = showText && range < obstacleDistance._maxRadiusMeters ? range : 0
+                const rangeToShow = showText ? range : 0
                 drawSegment(ctx, rangeToShow, centerX, centerY, from, to, radFrom, radTo, grad)
                 if (range == rangeMin)
                     break

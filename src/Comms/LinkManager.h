@@ -116,8 +116,8 @@ public:
     void startAutoConnectedLinks();
 
     /// Drop the dynamic UDP AutoConnect listener (default 14550) when a dedicated
-    /// UDP telemetry link is already connected, so the same vehicle is not attached
-    /// as a flaky secondary. Safe to call from QML after connecting a remote preset.
+    /// UDP telemetry link is configured or connected, so the same vehicle is not
+    /// attached as a flaky secondary. Safe to call from QML after connecting a remote preset.
     Q_INVOKABLE void syncUdpAutoConnectLink();
 
     static bool isBluetoothAvailable();
@@ -146,6 +146,9 @@ private:
     bool _hasConnectedDedicatedUdpLink();
     /// Live UDP interface already bound to `port`, or empty. Port 0 (ephemeral) is ignored.
     SharedLinkInterfacePtr _existingUdpLinkForPort(quint16 port);
+    /// Live UDP interface that would collide with `udpConfig` (same bind port, same name, or same
+    /// target hosts). Needed for UniRC-style presets that use localPort 0 (ephemeral bind).
+    SharedLinkInterfacePtr _existingUdpLinkForConfig(const UDPConfiguration* udpConfig);
     void _addMAVLinkForwardingLink();
     void _reconnectAutoConnectLinks();
     void _createDynamicForwardLink(const char* linkName, const QString& hostName);

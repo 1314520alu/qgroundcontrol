@@ -63,11 +63,17 @@ void FlightModeNameTranslatorTest::_testChineseUnknownLeftInEnglish()
     QCOMPARE(FlightModeNameTranslator::translate(unknown, false, chinese), unknown);
 }
 
-void FlightModeNameTranslatorTest::_testChineseDuplicateSuffixPreserved()
+void FlightModeNameTranslatorTest::_testDuplicateSuffixStripped()
 {
     const QLocale chinese(QStringLiteral("zh_CN"));
+    const QLocale english(QLocale::English, QLocale::UnitedStates);
+
     QCOMPARE(FlightModeNameTranslator::translate(QStringLiteral("Loiter (1)"), false, chinese),
-             QStringLiteral("定点悬停 (1)"));
+             QStringLiteral("定点悬停"));
+    QCOMPARE(FlightModeNameTranslator::translate(QStringLiteral("Loiter (8)"), false, chinese),
+             QStringLiteral("定点悬停"));
+    QCOMPARE(FlightModeNameTranslator::translate(QStringLiteral("Loiter (8)"), false, english),
+             QStringLiteral("Loiter"));
 }
 
 void FlightModeNameTranslatorTest::_testNamesMatchEnglishAndChinese()

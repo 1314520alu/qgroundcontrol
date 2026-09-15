@@ -53,18 +53,30 @@ MapQuickItem {
         return Math.min(requestedDiameter, _maximumDiameter)
     }
 
+    function _sectorVisible(sectorIndex) {
+        return !isNaN(proximityValues.rgRotationValues[sectorIndex])
+    }
+
     function _sectorRadius(sectorIndex) {
         var sectorDistance = proximityValues.rgRotationValues[sectorIndex]
+        if (!_sectorVisible(sectorIndex)) {
+            return 0
+        }
         // Clamp for the same reason as _clampedDiameter: keep geometry coordinates sane at deep zoom
-        return isNaN(sectorDistance) ? 0 : _clampedDiameter(sectorDistance * _ratio * 2) / 2
+        return _clampedDiameter(sectorDistance * _ratio * 2) / 2
     }
 
     function _sectorColor(sectorIndex) {
-        return isNaN(proximityValues.rgRotationValues[sectorIndex]) ? Qt.rgba(0, 0, 0, 0) : Qt.rgba(1, 0, 0, 1)
+        return _sectorVisible(sectorIndex) ? Qt.rgba(1, 0, 0, 1) : Qt.rgba(0, 0, 0, 0)
     }
 
     function _sectorStartAngle(sectorIndex) {
         return _firstSectorStartAngle + (sectorIndex * _sectorSweepAngle)
+    }
+
+    function _sectorMidAngleRad(sectorIndex) {
+        // PathAngleArc: 0° = 3 o'clock, clockwise; sector 0 mid = forward (-90°).
+        return (_sectorStartAngle(sectorIndex) + _sectorSweepAngle / 2) * Math.PI / 180
     }
 
     ProximityRadarValues {
@@ -91,25 +103,40 @@ MapQuickItem {
         id:         vehicleItem
         width:      detectionLimitCircle.width
         height:     detectionLimitCircle.height
-        opacity:    0.5
 
         Component.onCompleted: calcSize()
 
-        // Sensor arcs are drawn with Shape rather than Canvas since Shape renders as scene graph
-        // geometry and doesn't require a backing store allocation which scales with item size.
-        // Each 45 degree sector is centered on its rotation direction: sector 0 is vehicle-forward.
-        Shape {
-            id:                 vehicleSensors
-            anchors.fill:       detectionLimitCircle
+        readonly property real _headingAngle: isNaN(heading) ? 0 : heading
+
+        Rectangle {
+            id:                 detectionLimitCircle
+            width:              _clampedDiameter(proximityValues.maxDistance * 2 * _ratio)
+            height:             width
+            color:              Qt.rgba(1, 1, 1, 0)
+            border.color:       Qt.rgba(1, 1, 1, 1)
+            border.width:       _strokeWidth
+            radius:             width * 0.5
+            opacity:            0.5
 
             transform: Rotation {
                 origin.x:       detectionLimitCircle.width  / 2
                 origin.y:       detectionLimitCircle.height / 2
-                angle:          isNaN(heading) ? 0 : heading
+                angle:          vehicleItem._headingAngle
+            }
+        }
+
+        // Sensor arcs — semi-transparent
+        Shape {
+            id:                 vehicleSensors
+            anchors.fill:       detectionLimitCircle
+            opacity:            0.5
+
+            transform: Rotation {
+                origin.x:       vehicleSensors.width  / 2
+                origin.y:       vehicleSensors.height / 2
+                angle:          vehicleItem._headingAngle
             }
 
-            // ShapePath is not an Item so a Repeater can't be used; an Instantiator which appends
-            // to the Shape's data list creates the equivalent of one ShapePath per sensor sector.
             Instantiator {
                 model: 8
 
@@ -134,21 +161,38 @@ MapQuickItem {
             }
         }
 
-        Rectangle {
-            id:                 detectionLimitCircle
-            width:              _clampedDiameter(proximityValues.maxDistance * 2 * _ratio)
-            height:             width
-            color:              Qt.rgba(1,1,1,0)
-            border.color:       Qt.rgba(1,1,1,1)
-            border.width:       _strokeWidth
-            radius:             width * 0.5
+        // Small distance labels beside each red arc (full opacity for readability)
+        Item {
+            anchors.fill: detectionLimitCircle
 
             transform: Rotation {
-                origin.x:       detectionLimitCircle.width  / 2
-                origin.y:       detectionLimitCircle.height / 2
-                angle:          isNaN(heading) ? 0 : heading
+                origin.x: detectionLimitCircle.width / 2
+                origin.y: detectionLimitCircle.height / 2
+                angle:    vehicleItem._headingAngle
+            }
+
+            Repeater {
+                model: 8
+
+                QGCLabel {
+                    required property int index
+
+                    visible:            _sectorVisible(index)
+                    text:               proximityValues.rgRotationValueStrings[index]
+                    font.pointSize:     ScreenTools.defaultFontPointSize * 0.7
+                    font.bold:          true
+                    color:              "white"
+                    style:              Text.Outline
+                    styleColor:         "black"
+
+                    x: detectionLimitCircle.width / 2
+                       + _sectorRadius(index) * Math.cos(_sectorMidAngleRad(index))
+                       - width / 2
+                    y: detectionLimitCircle.height / 2
+                       + _sectorRadius(index) * Math.sin(_sectorMidAngleRad(index))
+                       - height / 2
+                }
             }
         }
-
     }
 }

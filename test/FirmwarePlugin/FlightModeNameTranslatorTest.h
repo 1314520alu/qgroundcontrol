@@ -12,7 +12,7 @@ private slots:
     void _testChineseCopterModeAliases();
     void _testChinesePlaneLoiter();
     void _testChineseUnknownLeftInEnglish();
-    void _testChineseDuplicateSuffixPreserved();
+    void _testDuplicateSuffixStripped();
     void _testNamesMatchEnglishAndChinese();
     void _testIsHiddenCopterDailyModes();
 };
