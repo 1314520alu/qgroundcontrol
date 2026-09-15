@@ -182,6 +182,7 @@ qt_add_qml_module(
               ToolStrip.qml
               ToolStripDropPanel.qml
               ToolStripHoverButton.qml
+              UpdateAvailableDialog.qml
               ValueSlider.qml
               VehicleRotationCal.qml
               VehicleSummaryRow.qml

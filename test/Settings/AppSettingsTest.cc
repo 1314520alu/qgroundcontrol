@@ -1,5 +1,7 @@
 #include "AppSettingsTest.h"
 
+#include <QtCore/QScopeGuard>
+
 #include "AppSettings.h"
 #include "FirmwarePluginManager.h"
 #include "QGCMAVLink.h"
@@ -10,6 +12,19 @@ UT_REGISTER_TEST(AppSettingsTest, TestLabel::Unit)
 void AppSettingsTest::_preferredFirmwareClassEnumFiltered()
 {
     _verifyFirmwareClassEnumFiltered(SettingsManager::instance()->appSettings()->preferredFirmwareClass());
+}
+
+void AppSettingsTest::_updateManifestUrlDefaultEmpty()
+{
+    AppSettings* const appSettings = SettingsManager::instance()->appSettings();
+    QVERIFY(appSettings);
+    Fact* const fact = appSettings->updateManifestUrl();
+    QVERIFY(fact);
+    QCOMPARE(fact->rawValue().toString(), QString());
+    const QVariant saved = fact->rawValue();
+    const auto guard = qScopeGuard([fact, saved] { fact->setRawValue(saved); });
+    fact->setRawValue(QStringLiteral("https://example.com/latest.json"));
+    QCOMPARE(fact->rawValue().toString(), QStringLiteral("https://example.com/latest.json"));
 }
 
 void AppSettingsTest::_offlineEditingFirmwareClassEnumFiltered()

@@ -18,6 +18,7 @@ public:
 
     DEFINE_SETTINGFACT(preferredFirmwareClass)
     DEFINE_SETTINGFACT(preferredVehicleClass)
+    DEFINE_SETTINGFACT(updateManifestUrl)
     DEFINE_SETTINGFACT(offlineEditingFirmwareClass)
     DEFINE_SETTINGFACT(offlineEditingVehicleClass)
     DEFINE_SETTINGFACT(offlineEditingCruiseSpeed)

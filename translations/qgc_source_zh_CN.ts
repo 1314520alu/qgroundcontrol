@@ -22040,4 +22040,47 @@ If a vehicle still has this key configured, you will no longer be able to commun
       <translation type="unfinished">Invalid stress test count (must be &gt; 0): %1</translation>
     </message>
   </context>
+
+<context>
+    <name>UpdateChecker</name>
+    <message>
+        <location filename="../src/Utilities/UpdateChecker.cc" />
+        <source>Saved to %1. Install it from Files.</source>
+        <translation>已保存到 %1。请在「文件」中安装。</translation>
+    </message>
+</context>
+
+<context>
+    <name>UpdateAvailableDialog</name>
+    <message>
+        <location filename="../src/QmlControls/UpdateAvailableDialog.qml" />
+        <source>New Version Available</source>
+        <translation>发现新版本</translation>
+    </message>
+    <message>
+        <location filename="../src/QmlControls/UpdateAvailableDialog.qml" />
+        <source>Later</source>
+        <translation>稍后</translation>
+    </message>
+    <message>
+        <location filename="../src/QmlControls/UpdateAvailableDialog.qml" />
+        <source>Download</source>
+        <translation>下载</translation>
+    </message>
+    <message>
+        <location filename="../src/QmlControls/UpdateAvailableDialog.qml" />
+        <source>Retry</source>
+        <translation>重试</translation>
+    </message>
+    <message>
+        <location filename="../src/QmlControls/UpdateAvailableDialog.qml" />
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <location filename="../src/QmlControls/UpdateAvailableDialog.qml" />
+        <source>Install</source>
+        <translation>安装</translation>
+    </message>
+</context>
 </TS>

@@ -25,6 +25,15 @@
             "keywords": "vehicle,multirotor,fixed wing,vtol,rover,sub"
         },
         {
+            "name": "updateManifestUrl",
+            "shortDesc": "HTTPS URL of latest.json on Aliyun OSS. Empty disables update checks.",
+            "longDesc": "Full URL to the software-update manifest. Leave empty to skip checking. Android and macOS installer URLs are inside that JSON.",
+            "type": "string",
+            "default": "",
+            "label": "Update Manifest URL",
+            "keywords": "update,oss,latest.json,software update"
+        },
+        {
             "name": "offlineEditingFirmwareClass",
             "shortDesc": "Offline editing firmware class",
             "type": "uint32",

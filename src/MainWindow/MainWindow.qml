@@ -251,6 +251,46 @@ ApplicationWindow {
         }
     }
 
+    property var _updateDialog: null
+
+    function _openUpdateAvailableDialog() {
+        if (!QGroundControl.updateChecker.dialogVisible || _updateDialog) {
+            return
+        }
+        _updateDialog = updateAvailableDialogFactory.open()
+        if (_updateDialog) {
+            _updateDialog.closed.connect(function() {
+                _updateDialog = null
+            })
+        }
+    }
+
+    QGCPopupDialogFactory {
+        id: updateAvailableDialogFactory
+        dialogComponent: updateAvailableDialogComponent
+    }
+
+    Component {
+        id: updateAvailableDialogComponent
+
+        UpdateAvailableDialog {
+        }
+    }
+
+    Connections {
+        target: QGroundControl.updateChecker
+
+        function onDialogVisibleChanged() {
+            if (QGroundControl.updateChecker.dialogVisible) {
+                mainWindow._openUpdateAvailableDialog()
+            } else if (mainWindow._updateDialog) {
+                mainWindow._updateDialog.close()
+            }
+        }
+
+        Component.onCompleted: mainWindow._openUpdateAvailableDialog()
+    }
+
     property bool _forceClose: false
     property bool suppressCriticalVehicleMessages: false
 

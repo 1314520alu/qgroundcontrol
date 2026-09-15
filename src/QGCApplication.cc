@@ -4,7 +4,6 @@
 #include <QtCore/QFile>
 #include <QtCore/QMetaMethod>
 #include <QtCore/QMetaObject>
-#include <QtCore/QRegularExpression>
 #include <QtCore/private/qthread_p.h>
 #include <QtGui/QFontDatabase>
 #include <QtGui/QIcon>
@@ -32,13 +31,13 @@
 #include "PositionManager.h"
 #include "QGCCommandLineParser.h"
 #include "QGCCorePlugin.h"
-#include "QGCFileDownload.h"
 #include "QGCImageProvider.h"
 #include "QGCLoggingCategory.h"
 #include "QGCLoggingCategoryManager.h"
 #include "QGCNetworkHelper.h"
 #include "SatcomAntennaController.h"
 #include "SettingsManager.h"
+#include "UpdateChecker.h"
 #include "Vehicle.h"
 #include "VideoManager.h"
 #include "qgc_version.h"
@@ -168,10 +167,6 @@ QGCApplication::QGCApplication(int& argc, char* argv[], const QGCCommandLinePars
 
     // Force old SVG Tiny 1.2 behavior for compatibility
     QSvgRenderer::setDefaultOptions(QtSvg::Tiny12FeaturesOnly);
-
-#ifndef QGC_DAILY_BUILD
-    _checkForNewVersion();
-#endif
 }
 
 void QGCApplication::setLanguage()
@@ -231,6 +226,9 @@ QGCApplication::~QGCApplication() {}
 void QGCApplication::init()
 {
     SettingsManager::instance()->init();
+    if (!_runningUnitTests) {
+        UpdateChecker::instance()->checkOnStartup();
+    }
     if (_systemId > 0) {
         qCDebug(QGCApplicationLog) << "Setting MAVLink System ID to:" << _systemId;
         SettingsManager::instance()->mavlinkSettings()->gcsMavlinkSystemID()->setRawValue(_systemId);
@@ -536,74 +534,6 @@ void QGCApplication::qmlAttemptWindowClose()
     if (_rootQmlObject()) {
         QMetaObject::invokeMethod(_rootQmlObject(), "attemptWindowClose");
     }
-}
-
-void QGCApplication::_checkForNewVersion()
-{
-    if (_runningUnitTests) {
-        return;
-    }
-
-    if (!_parseVersionText(applicationVersion(), _majorVersion, _minorVersion, _buildVersion)) {
-        return;
-    }
-
-    const QString versionCheckFile = QGCCorePlugin::instance()->stableVersionCheckFileUrl();
-    if (!versionCheckFile.isEmpty()) {
-        QGCFileDownload* const download = new QGCFileDownload(this);
-        (void) connect(download, &QGCFileDownload::finished, this,
-                       &QGCApplication::_qgcCurrentStableVersionDownloadComplete);
-        if (!download->start(versionCheckFile)) {
-            qCDebug(QGCApplicationLog) << "Download QGC stable version failed to start" << download->errorString();
-            download->deleteLater();
-        }
-    }
-}
-
-void QGCApplication::_qgcCurrentStableVersionDownloadComplete(bool success, const QString& localFile,
-                                                              const QString& errorMsg)
-{
-    if (success) {
-        QFile versionFile(localFile);
-        if (versionFile.open(QIODevice::ReadOnly)) {
-            QTextStream textStream(&versionFile);
-            const QString version = textStream.readLine();
-
-            qCDebug(QGCApplicationLog) << version;
-
-            int majorVersion, minorVersion, buildVersion;
-            if (_parseVersionText(version, majorVersion, minorVersion, buildVersion)) {
-                if (_majorVersion < majorVersion ||
-                    ((_majorVersion == majorVersion) && (_minorVersion < minorVersion)) ||
-                    ((_majorVersion == majorVersion) && (_minorVersion == minorVersion) &&
-                     (_buildVersion < buildVersion))) {
-                    showAppMessage(tr("There is a newer version of %1 available. You can download it from %2.")
-                                       .arg(applicationName())
-                                       .arg(QGCCorePlugin::instance()->stableDownloadLocation()),
-                                   tr("New Version Available"));
-                }
-            }
-        }
-    } else if (!errorMsg.isEmpty()) {
-        qCDebug(QGCApplicationLog) << "Download QGC stable version failed" << errorMsg;
-    }
-
-    sender()->deleteLater();
-}
-
-bool QGCApplication::_parseVersionText(const QString& versionString, int& majorVersion, int& minorVersion,
-                                       int& buildVersion)
-{
-    static const QRegularExpression regExp("v(\\d+)\\.(\\d+)\\.(\\d+)");
-    const QRegularExpressionMatch match = regExp.match(versionString);
-    if (match.hasMatch() && match.lastCapturedIndex() == 3) {
-        majorVersion = match.captured(1).toInt();
-        minorVersion = match.captured(2).toInt();
-        buildVersion = match.captured(3).toInt();
-        return true;
-    }
-
-    return false;
 }
 
 QString QGCApplication::cachedParameterMetaDataFile()

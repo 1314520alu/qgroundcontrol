@@ -17,6 +17,7 @@
 #include "QGCMapEngineManager.h"
 #include "SatcomAntennaController.h"
 #include "SettingsManager.h"
+#include "UpdateChecker.h"
 #include "VideoManager.h"
 #ifndef QGC_NO_SERIAL_LINK
 #include "GPSManager.h"
@@ -50,6 +51,7 @@ QGroundControlQmlGlobal::QGroundControlQmlGlobal(QObject* parent)
       _mavlinkSigningKeys(MAVLinkSigningKeys::instance()),
       _videoManager(VideoManager::instance()),
       _linkManager(LinkManager::instance()),
+      _updateChecker(UpdateChecker::instance()),
       _multiVehicleManager(MultiVehicleManager::instance()),
       _settingsManager(SettingsManager::instance()),
       _corePlugin(QGCCorePlugin::instance()),

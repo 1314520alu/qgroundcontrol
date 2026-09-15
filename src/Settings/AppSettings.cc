@@ -182,6 +182,7 @@ DECLARE_SETTINGGROUP(App, "")
 
 DECLARE_SETTINGSFACT(AppSettings, preferredFirmwareClass)
 DECLARE_SETTINGSFACT(AppSettings, preferredVehicleClass)
+DECLARE_SETTINGSFACT(AppSettings, updateManifestUrl)
 DECLARE_SETTINGSFACT(AppSettings, offlineEditingFirmwareClass)
 DECLARE_SETTINGSFACT(AppSettings, offlineEditingVehicleClass)
 DECLARE_SETTINGSFACT(AppSettings, offlineEditingCruiseSpeed)
