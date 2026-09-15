@@ -6,7 +6,7 @@
         "autoStreamConfig": "QGroundControl.videoManager.autoStreamConfigured",
         "sourceDisabled": "videoSource === QGroundControl.settingsManager.videoSettings.disabledVideoSource",
         "isStreamSource": "QGroundControl.videoManager.isStreamSource",
-        "isPresetRtspSource": "videoSource === QGroundControl.settingsManager.videoSettings.unipodMT11VideoSource || videoSource === QGroundControl.settingsManager.videoSettings.siyiR1MVideoSource || videoSource === QGroundControl.settingsManager.videoSettings.siyiA8MiniVideoSource || videoSource === QGroundControl.settingsManager.videoSettings.topotekTq10NVideoSource",
+        "isPresetRtspSource": "videoSource === QGroundControl.settingsManager.videoSettings.unipodMT11VideoSource || videoSource === QGroundControl.settingsManager.videoSettings.siyiR1MVideoSource || videoSource === QGroundControl.settingsManager.videoSettings.siyiA8MiniVideoSource || videoSource === QGroundControl.settingsManager.videoSettings.siyiZr10VideoSource || videoSource === QGroundControl.settingsManager.videoSettings.topotekTq10NVideoSource",
         "rtpLatencyVisible": "!QGroundControl.settingsManager.videoSettings.lowLatencyMode.rawValue"
     },
     "groups": [

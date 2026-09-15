@@ -1,5 +1,7 @@
 #include "QGCCameraManager.h"
 
+#include <QtCore/QtNumeric>
+
 #include <cmath>
 #include <numbers>
 
@@ -40,6 +42,7 @@ constexpr int kUnipodStartRetryMaxTicks = 60;
 constexpr int kTopotekStartRetryMs = 1000;
 constexpr int kTopotekStartSlowRetryMs = 5000;
 constexpr int kTopotekStartRetryMaxTicks = 60;
+constexpr int kSiyiZoomHudHideMs = 5000;
 
 bool isUnipodVideoSource()
 {
@@ -61,9 +64,24 @@ bool isSiyiA8MiniVideoSource()
            QLatin1String(VideoSettings::videoSourceSiyiA8Mini);
 }
 
+bool isSiyiZr10VideoSource()
+{
+    SettingsManager* settingsManager = SettingsManager::instance();
+    if (!settingsManager || !settingsManager->videoSettings() || !settingsManager->videoSettings()->videoSource()) {
+        return false;
+    }
+    return settingsManager->videoSettings()->videoSource()->rawValue().toString() ==
+           QLatin1String(VideoSettings::videoSourceSiyiZr10);
+}
+
+bool isSiyiGimbalVideoSource()
+{
+    return isSiyiA8MiniVideoSource() || isSiyiZr10VideoSource();
+}
+
 bool isSiyiUdpVideoSource()
 {
-    return isUnipodVideoSource() || isSiyiA8MiniVideoSource();
+    return isUnipodVideoSource() || isSiyiGimbalVideoSource();
 }
 
 bool isTopotekVideoSource()
@@ -159,6 +177,10 @@ QGCCameraManager::QGCCameraManager(Vehicle* vehicle)
     _topotekStartRetryTimer.setInterval(kTopotekStartRetryMs);
     (void) connect(&_topotekStartRetryTimer, &QTimer::timeout, this, &QGCCameraManager::_onTopotekStartRetry);
 
+    _siyiZoomHudHideTimer.setSingleShot(true);
+    _siyiZoomHudHideTimer.setInterval(kSiyiZoomHudHideMs);
+    (void) connect(&_siyiZoomHudHideTimer, &QTimer::timeout, this, &QGCCameraManager::_hideSiyiZoomHud);
+
     // After ethernet-loss stop(), the client may stay _active so setActive(true) is a no-op.
     // Re-run sync to call start() again and re-arm the retry window.
     (void) connect(_unipodClient, &UnipodMt11Client::readyChanged, this, [this]() {
@@ -168,6 +190,8 @@ QGCCameraManager::QGCCameraManager(Vehicle* vehicle)
         }
         _syncSiyiUdpCamera();
     });
+    (void) connect(_unipodClient, &UnipodMt11Client::zoomLevelChanged, this,
+                   &QGCCameraManager::_onUnipodZoomLevelChanged);
 
     (void) connect(_topotekClient, &TopotekTq10Client::readyChanged, this, [this]() {
         emit currentCameraChanged();
@@ -176,7 +200,7 @@ QGCCameraManager::QGCCameraManager(Vehicle* vehicle)
 
     // Manual streams (RTSP/UDP) record via SimulatedCameraControl; keep it available
     // even after a MAVLink camera appears, and re-select it when the current camera can't capture.
-    // UniPod MT11 / A8 Mini must not fall through to that Simulated DIGICAM / local GST path.
+    // UniPod MT11 / A8 Mini / ZR10 must not fall through to that Simulated DIGICAM / local GST path.
     if (Fact* videoSource = SettingsManager::instance()->videoSettings()->videoSource()) {
         (void) connect(videoSource, &Fact::rawValueChanged, this, [this](const QVariant&) {
             _syncSiyiUdpCamera();
@@ -358,13 +382,13 @@ void QGCCameraManager::_handleHeartbeat(const mavlink_message_t& message)
 
 MavlinkCameraControlInterface* QGCCameraManager::currentCameraInstance()
 {
-    // While UniPod MT11 / SIYI A8 Mini / Topotek is the selected video source, always
+    // While UniPod MT11 / SIYI A8 Mini / ZR10 / Topotek is the selected video source, always
     // expose that control so PhotoVideoControl does not fall through to Simulated.
     if (_unipodCameraControl && isUnipodVideoSource()) {
         return _unipodCameraControl;
     }
 
-    if (_siyiA8CameraControl && isSiyiA8MiniVideoSource()) {
+    if (_siyiA8CameraControl && isSiyiGimbalVideoSource()) {
         return _siyiA8CameraControl;
     }
 
@@ -459,7 +483,7 @@ void QGCCameraManager::_ensureSimulatedCameraForLocalRecord()
     if (!_simulatedCameraControl) {
         return;
     }
-    // UniPod MT11 / A8 Mini / Topotek TQ10N onboard capture must own the strip; do not re-select Simulated.
+    // UniPod MT11 / A8 Mini / ZR10 / Topotek TQ10N onboard capture must own the strip; do not re-select Simulated.
     if (isSiyiUdpVideoSource() || isTopotekVideoSource()) {
         return;
     }
@@ -495,7 +519,7 @@ void QGCCameraManager::_syncPayloadCameraList()
     MavlinkCameraControlInterface* wanted = nullptr;
     if (isUnipodVideoSource()) {
         wanted = _unipodCameraControl;
-    } else if (isSiyiA8MiniVideoSource()) {
+    } else if (isSiyiGimbalVideoSource()) {
         wanted = _siyiA8CameraControl;
     } else if (isTopotekVideoSource()) {
         wanted = _topotekCameraControl;
@@ -514,6 +538,9 @@ void QGCCameraManager::_syncPayloadCameraList()
             if (idx < 0) {
                 _cameras.append(cam);
                 _cameraLabels.append(cam->modelName());
+                changed = true;
+            } else if (_cameraLabels.value(idx) != cam->modelName()) {
+                _cameraLabels[idx] = cam->modelName();
                 changed = true;
             }
         } else if (idx >= 0) {
@@ -1288,6 +1315,65 @@ void QGCCameraManager::_setCurrentZoomLevel(int level)
     }
     _zoomValueCurrent = level;
     emit currentZoomLevelChanged();
+}
+
+void QGCCameraManager::_onUnipodZoomLevelChanged()
+{
+    if (!_unipodClient) {
+        return;
+    }
+    const double zoom = _unipodClient->zoomLevel();
+    if (!(zoom > 0.0)) {
+        return;
+    }
+    const qreal level = static_cast<qreal>(zoom);
+    if (!qIsNaN(_siyiZoomLevel) && _siyiZoomLevel > 0 && qFuzzyCompare(_siyiZoomLevel, level)) {
+        return;
+    }
+    // First sample only primes so connect does not flash the HUD. Later RC/SBUS
+    // changes show it from C++ so QML does not re-read a cached property.
+    const bool primed = _siyiZoomLevel > 0;
+    _siyiZoomLevel = level;
+    emit siyiZoomLevelChanged(_siyiZoomLevel);
+    _updateSiyiZoomHudText();
+    if (primed) {
+        showSiyiZoomHud();
+    }
+}
+
+void QGCCameraManager::showSiyiZoomHud()
+{
+    if (!(_siyiZoomLevel > 0)) {
+        _siyiZoomLevel = 1.0;
+        emit siyiZoomLevelChanged(_siyiZoomLevel);
+    }
+    _updateSiyiZoomHudText();
+    _setSiyiZoomHudVisible(true);
+    _siyiZoomHudHideTimer.start();
+}
+
+void QGCCameraManager::_hideSiyiZoomHud()
+{
+    _setSiyiZoomHudVisible(false);
+}
+
+void QGCCameraManager::_setSiyiZoomHudVisible(bool visible)
+{
+    if (_siyiZoomHudVisible == visible) {
+        return;
+    }
+    _siyiZoomHudVisible = visible;
+    emit siyiZoomHudVisibleChanged(_siyiZoomHudVisible);
+}
+
+void QGCCameraManager::_updateSiyiZoomHudText()
+{
+    const QString text = (_siyiZoomLevel > 0) ? tr("%1×").arg(_siyiZoomLevel, 0, 'f', 1) : QString();
+    if (_siyiZoomHudText == text) {
+        return;
+    }
+    _siyiZoomHudText = text;
+    emit siyiZoomHudTextChanged(_siyiZoomHudText);
 }
 
 int QGCCameraManager::currentZoomLevel() const

@@ -8,6 +8,7 @@
 #include <gst/gst.h>
 
 #include "GstSourceFactory.h"
+#include "GstVideoReceiver.h"
 
 namespace {
 
@@ -387,6 +388,21 @@ void GStreamerTest::_testSourceFactoryDynamicRtpLinkFailureCleansJitterBuffer()
              "a failed dynamic RTP pad link must remove its temporary jitterbuffer");
 }
 
+void GStreamerTest::_testLiveDisplayQueueAndSinkSync()
+{
+    // Buffered (low-latency off): meter the sink, keep a 12-frame reservoir, and never
+    // drop late frames after an HEVC IDR. Processing-deadline stays 20 ms so it is not
+    // added on top of the jitter buffer. Low-latency stays unsynced with a tiny queue.
+    QCOMPARE(GstVideoReceiver::videoSinkSync(false), true);
+    QCOMPARE(GstVideoReceiver::decoderQueueMaxBuffers(false), 12);
+    QCOMPARE(GstVideoReceiver::videoSinkProcessingDeadlineNs(false), quint64(20000000));
+    QCOMPARE(GstVideoReceiver::videoSinkMaxLatenessNs(false), qint64(-1));
+    QCOMPARE(GstVideoReceiver::videoSinkSync(true), false);
+    QCOMPARE(GstVideoReceiver::decoderQueueMaxBuffers(true), 2);
+    QCOMPARE(GstVideoReceiver::videoSinkProcessingDeadlineNs(true), quint64(20000000));
+    QCOMPARE(GstVideoReceiver::videoSinkMaxLatenessNs(true), qint64(20000000));
+}
+
 void GStreamerTest::_testEffectiveRtspLatencyMs()
 {
     using GStreamer::SourceFactory::JitterBuffer;
@@ -396,6 +412,7 @@ void GStreamerTest::_testEffectiveRtspLatencyMs()
     QCOMPARE(GStreamer::SourceFactory::effectiveRtspLatencyMs(80, true, JitterBuffer::Buffered), 180);
     QCOMPARE(GStreamer::SourceFactory::effectiveRtspLatencyMs(120, true, JitterBuffer::DropOnLatency), 180);
     QCOMPARE(GStreamer::SourceFactory::effectiveRtspLatencyMs(250, true, JitterBuffer::Buffered), 250);
+    QCOMPARE(GStreamer::SourceFactory::effectiveRtspLatencyMs(500, true, JitterBuffer::Buffered), 500);
     QCOMPARE(GStreamer::SourceFactory::effectiveRtspLatencyMs(-10, true, JitterBuffer::Buffered), 180);
 }
 
@@ -421,9 +438,12 @@ void GStreamerTest::_testSourceFactoryRadioEthernetFloorsLatency()
 
     guint latency = 0;
     gboolean dropOnLatency = TRUE;
-    g_object_get(src, "latency", &latency, "drop-on-latency", &dropOnLatency, nullptr);
+    gboolean doRetransmission = TRUE;
+    g_object_get(src, "latency", &latency, "drop-on-latency", &dropOnLatency, "do-retransmission", &doRetransmission,
+                 nullptr);
     QCOMPARE(latency, 180u);
     QCOMPARE(dropOnLatency, FALSE);
+    QCOMPARE(doRetransmission, FALSE);
 }
 
 #endif

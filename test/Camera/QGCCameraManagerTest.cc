@@ -3,10 +3,12 @@
 #include <QtCore/QLoggingCategory>
 #include <QtCore/QRegularExpression>
 #include <QtCore/QScopeGuard>
+#include <QtTest/QSignalSpy>
 
 #include "CameraMetaData.h"
 #include "MAVLinkLib.h"
 #include "QGCCameraManager.h"
+#include "UnipodMt11Client.h"
 #include "Vehicle.h"
 
 void QGCCameraManagerTest::_testCameraList()
@@ -41,9 +43,8 @@ void QGCCameraManagerTest::_testLostCameraCleanupWithPendingRequest()
     // process-global filter rules are restored even on early test failure.
     const QByteArray oldLoggingRules = qgetenv("QT_LOGGING_RULES");
     QLoggingCategory::setFilterRules(QStringLiteral("Camera.QGCCameraManager.debug=true"));
-    const auto restoreLoggingRules = qScopeGuard([oldLoggingRules]() {
-        QLoggingCategory::setFilterRules(QString::fromUtf8(oldLoggingRules));
-    });
+    const auto restoreLoggingRules =
+        qScopeGuard([oldLoggingRules]() { QLoggingCategory::setFilterRules(QString::fromUtf8(oldLoggingRules)); });
 
     // Ensure MockLink never responds to the camera info request so it stays pending
     // and eventually times out.
@@ -52,14 +53,10 @@ void QGCCameraManagerTest::_testLostCameraCleanupWithPendingRequest()
     // Inject a camera component heartbeat. The camera manager creates a CameraStruct
     // and immediately requests CAMERA_INFORMATION with the struct as handler data.
     mavlink_message_t msg{};
-    (void) mavlink_msg_heartbeat_pack_chan(vehicle()->id(),
-                                           MAV_COMP_ID_CAMERA,
-                                           mockLink()->mavlinkChannel(),
-                                           &msg,
-                                           MAV_TYPE_CAMERA,
-                                           MAV_AUTOPILOT_INVALID,
-                                           0,   // base_mode
-                                           0,   // custom_mode
+    (void) mavlink_msg_heartbeat_pack_chan(vehicle()->id(), MAV_COMP_ID_CAMERA, mockLink()->mavlinkChannel(), &msg,
+                                           MAV_TYPE_CAMERA, MAV_AUTOPILOT_INVALID,
+                                           0,  // base_mode
+                                           0,  // custom_mode
                                            MAV_STATE_ACTIVE);
     mockLink()->respondWithMavlinkMessage(msg);
 
@@ -82,6 +79,43 @@ void QGCCameraManagerTest::_testLostCameraCleanupWithPendingRequest()
     // manager-owned request context, finds the camera gone, and bails out.
     QTRY_VERIFY_WITH_TIMEOUT(!vehicle()->isMavCommandPending(MAV_COMP_ID_CAMERA, MAV_CMD_REQUEST_MESSAGE),
                              TestTimeout::longMs());
+}
+
+void QGCCameraManagerTest::_testSiyiZoomLevelFollowsUdpClient()
+{
+    QGCCameraManager* cameraManager = vehicle()->cameraManager();
+    QVERIFY(cameraManager);
+    UnipodMt11Client* client = cameraManager->unipodClient();
+    QVERIFY(client);
+
+    QCOMPARE(cameraManager->siyiZoomLevel(), 0);
+    QVERIFY(!cameraManager->siyiZoomHudVisible());
+
+    QSignalSpy spy(cameraManager, &QGCCameraManager::siyiZoomLevelChanged);
+    client->_setZoomLevel(3.2);
+
+    QCOMPARE(spy.count(), 1);
+    const QList<QVariant> args = spy.takeFirst();
+    QCOMPARE(args.size(), 1);
+    QCOMPARE(args.at(0).toReal(), 3.2);
+    QCOMPARE(cameraManager->siyiZoomLevel(), 3.2);
+    QCOMPARE(cameraManager->readSiyiZoomLevel(), 3.2);
+    QVERIFY(!cameraManager->siyiZoomHudVisible());
+
+    client->_setZoomLevel(5.2);
+    QCOMPARE(spy.count(), 1);
+    QCOMPARE(spy.takeFirst().at(0).toReal(), 5.2);
+    QCOMPARE(cameraManager->readSiyiZoomLevel(), 5.2);
+    QVERIFY(cameraManager->siyiZoomHudVisible());
+    QCOMPARE(cameraManager->siyiZoomHudText(), QStringLiteral("5.2×"));
+
+    client->_setZoomLevel(5.3);
+    QCOMPARE(cameraManager->readSiyiZoomLevel(), 5.3);
+    QVERIFY(cameraManager->siyiZoomHudVisible());
+    QCOMPARE(cameraManager->siyiZoomHudText(), QStringLiteral("5.3×"));
+
+    cameraManager->showSiyiZoomHud();
+    QVERIFY(cameraManager->siyiZoomHudVisible());
 }
 
 UT_REGISTER_TEST(QGCCameraManagerTest, TestLabel::Integration, TestLabel::Vehicle)

@@ -116,7 +116,7 @@ public:
 
     bool paramComplete() const override { return true; }
 
-    qreal zoomLevel() const override { return 1.0; }
+    qreal zoomLevel() const override;
 
     qreal focusLevel() const override { return 1.0; }
 
@@ -209,6 +209,10 @@ public:
     void handleVideoStreamStatus(const mavlink_video_stream_status_t& /*videoStreamStatus*/) override {}
 
     bool hasGimbalPad() const override;
+    bool hasGimbalRecenter() const override;
+    bool hasGimbalLookDown() const override;
+    bool hasGimbalYawRecenter() const override;
+    bool hasGimbalPitchDown() const override;
     bool hasLensSwitch() const override;
     bool hasLaserRange() const override;
     bool hasAiRecognition() const override;
@@ -226,6 +230,10 @@ public:
     Q_INVOKABLE void ptzStart(int direction);
     Q_INVOKABLE void ptzStop();
     Q_INVOKABLE void ptzHome();
+    void gimbalRecenter() override;
+    void gimbalLookDown() override;
+    void gimbalYawRecenter() override;
+    void gimbalPitchDown() override;
     Q_INVOKABLE void setVideoLayout(int mainMode, int secondaryMode);
     Q_INVOKABLE void setLaserEnabled(bool enabled);
     Q_INVOKABLE void requestLaserDistance();

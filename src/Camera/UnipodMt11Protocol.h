@@ -29,8 +29,40 @@ bool parseFrame(const QByteArray& datagram, quint8* ctrlOut, quint16* seqOut, qu
 QByteArray buildPhotoCommand(quint16 seq);
 QByteArray buildRecordToggleCommand(quint16 seq);
 QByteArray buildSystemInfoRequest(quint16 seq);
-/// Continuous zoom: +1 in, -1 out, 0 stop (CMD 0x05).
+/// Continuous zoom: +1 in / 0 stop / -1 out (CMD 0x05). Hold zoom uses 0x0F.
 QByteArray buildZoomCommand(quint16 seq, qint8 zoom);
+/// Absolute zoom integer + one decimal digit (CMD 0x0F).
+QByteArray buildAbsoluteZoomCommand(quint16 seq, double zoom);
+/// Request max zoom range (CMD 0x16).
+QByteArray buildZoomRangeRequest(quint16 seq);
+/// Request current zoom multiple (CMD 0x18).
+QByteArray buildCurrentZoomRequest(quint16 seq);
+/// Parse CMD 0x05 ACK: zoom_multiple / 10 (one decimal).
+bool parseZoomMultipleAck(const QByteArray& payload, double* zoomOut);
+/// Parse CMD 0x18 / 0x16 ACK: zoom_int + zoom_float / 10.
+bool parseCurrentZoomAck(const QByteArray& payload, double* zoomOut);
+/// Request gimbal attitude (CMD 0x0D). Empty payload.
+QByteArray buildGimbalAttitudeRequest(quint16 seq);
+/// Parse CMD 0x0D ACK: little-endian int16 at offset 2, / 10.0 = pitch degrees.
+/// Needs at least 4 bytes (yaw + pitch). Velocities optional.
+bool parseGimbalAttitudeAck(const QByteArray& payload, double* pitchDegOut);
+
+static constexpr double kHoldZoomMin = 1.0;
+static constexpr double kHoldZoomMaxDefault = 11.0;
+static constexpr double kHoldZoomRatioPerSec = 1.4;
+static constexpr double kHoldZoomMaxLeadRatio = 1.25;
+static constexpr int kHoldZoomActualFreshMs = 400;
+static constexpr int kCurrentZoomPollIntervalMs = 150;
+static constexpr int kCurrentZoomHoldPollIntervalMs = 80;
+
+/// Next 0x0F target while a zoom button is held. Log-space rate so FOV change stays even;
+/// a fresh `actual` reading caps how far the command may lead the lens.
+double nextHoldZoomCommand(double startZoom, double elapsedSec, double actual, int actualAgeMs, int direction,
+                           double ratioPerSec, double maxLeadRatio, double minZoom, double maxZoom);
+/// CMD 0x05 hold should stop at optical min/max so digital zoom does not sprint.
+bool holdZoomShouldStopMotor(int direction, double zoom, double minZoom, double maxZoom);
+/// True when the zoom timer should send CMD 0x18 (idle RC/SBUS and overlay hold).
+bool shouldRequestCurrentZoomOnPoll(int holdDirection, bool holdMotorStopped);
 /// Manual focus: +1 far, -1 near, 0 stop (CMD 0x06).
 QByteArray buildFocusCommand(quint16 seq, qint8 focus);
 /// Gimbal speed yaw/pitch in -100..100 (CMD 0x07).

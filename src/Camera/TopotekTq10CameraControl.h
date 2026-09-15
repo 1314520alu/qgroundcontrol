@@ -203,11 +203,13 @@ public:
     void handleVideoStreamStatus(const mavlink_video_stream_status_t& /*videoStreamStatus*/) override {}
 
     bool hasGimbalPad() const override;
+    bool hasGimbalRecenter() const override;
     bool hasExposureAuto() const override;
 
     Q_INVOKABLE void ptzStart(int direction);
     Q_INVOKABLE void ptzStop();
     Q_INVOKABLE void ptzHome();
+    void gimbalRecenter() override;
 
 protected slots:
 

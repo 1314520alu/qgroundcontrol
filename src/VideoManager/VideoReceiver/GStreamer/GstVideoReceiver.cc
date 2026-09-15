@@ -92,6 +92,30 @@ GstVideoReceiver::~GstVideoReceiver()
     qCDebug(GstVideoReceiverLog) << this;
 }
 
+int GstVideoReceiver::decoderQueueMaxBuffers(bool lowLatency)
+{
+    // 12 frames ≈ 400 ms at 30 fps: covers a typical HEVC IDR decode spike without
+    // leaking the following P-frames. Still leaky so the tee cannot stall recording.
+    return lowLatency ? 2 : 12;
+}
+
+bool GstVideoReceiver::videoSinkSync(bool lowLatency)
+{
+    // Buffered: meter at 30 fps so the queue can act as a reservoir across an IDR.
+    // Low-latency: show as soon as decoded (no clock wait).
+    return !lowLatency;
+}
+
+quint64 GstVideoReceiver::videoSinkProcessingDeadlineNs([[maybe_unused]] bool lowLatency)
+{
+    return 20'000'000ull;
+}
+
+qint64 GstVideoReceiver::videoSinkMaxLatenessNs(bool lowLatency)
+{
+    return lowLatency ? 20'000'000ll : -1;
+}
+
 void GstVideoReceiver::start(uint32_t timeout)
 {
     if (_needDispatch()) {
@@ -112,7 +136,10 @@ void GstVideoReceiver::start(uint32_t timeout)
     }
 
     _timeout = timeout;
-    _buffer = lowLatency() ? -1 : 0;
+    // -1 = no jitterbuffer (low latency). Otherwise keep late frames so RF jitter (MK22 relay,
+    // radio ethernet) does not become visible stutter/snow. DropOnLatency (_buffer == 0) is unused
+    // from this path; it is still valid for SourceFactory callers that want bounded playout.
+    _buffer = lowLatency() ? -1 : 1;
 
     qCDebug(GstVideoReceiverLog) << "Starting" << _uri << ", lowLatency" << lowLatency() << ", timeout" << _timeout;
 
@@ -164,11 +191,10 @@ void GstVideoReceiver::start(uint32_t timeout)
             break;
         }
 
-        // leaky=downstream (2) + tiny depth: the live-display branch must drop the oldest
-        // buffer on backpressure, not stall the streaming thread. Recording branch (below)
-        // keeps default non-leaky semantics so every frame reaches the muxer.
-        g_object_set(decoderQueue, "leaky", 2, "max-size-buffers", 2, "max-size-bytes", 0, "max-size-time",
-                     G_GUINT64_CONSTANT(0), nullptr);
+        // leaky=downstream so backpressure cannot stall the tee/recording branch. Depth comes
+        // from decoderQueueMaxBuffers(): 2 in low-latency (drop), 12 when buffered (absorb IDR).
+        g_object_set(decoderQueue, "leaky", 2, "max-size-buffers", decoderQueueMaxBuffers(lowLatency()),
+                     "max-size-bytes", 0, "max-size-time", G_GUINT64_CONSTANT(0), nullptr);
 
         _decoderValve = gst_element_factory_make("valve", nullptr);
         if (!_decoderValve) {
@@ -1037,15 +1063,16 @@ void GstVideoReceiver::_logDecodebin3SelectedCodec(GstElement* decodebin3)
                     << (isHardwareDecoder ? "(HW)" : "(SW)") << ":" << rank;
 
                 const QString newName = QString::fromUtf8(featureName);
-                bool nameChanged = false;
+                bool statsChanged = false;
                 {
                     QMutexLocker locker(&_decoderNameMutex);
-                    if (newName != _decoderName) {
+                    if (newName != _decoderName || isHardwareDecoder != _decoderIsHardware) {
                         _decoderName = newName;
-                        nameChanged = true;
+                        _decoderIsHardware = isHardwareDecoder;
+                        statsChanged = true;
                     }
                 }
-                if (nameChanged) {
+                if (statsChanged) {
                     emit decoderStatsChanged();
                 }
 
@@ -1126,7 +1153,19 @@ void GstVideoReceiver::_ensureVideoSinkInPipeline()
         return;
     }
 
-    g_object_set(_videoSink, "sync", (_buffer >= 0), NULL);
+    const bool lowLat = lowLatency();
+    g_object_set(_videoSink, "sync", videoSinkSync(lowLat) ? TRUE : FALSE, "qos", FALSE, "processing-deadline",
+                 static_cast<guint64>(videoSinkProcessingDeadlineNs(lowLat)), nullptr);
+    if (GST_IS_BIN(_videoSink)) {
+        if (GstElement* inner = gst_bin_get_by_name(GST_BIN(_videoSink), "qgcqvideosink")) {
+            g_object_set(inner, "max-lateness", static_cast<gint64>(videoSinkMaxLatenessNs(lowLat)), nullptr);
+            gst_object_unref(inner);
+        }
+    }
+    qCInfo(GstVideoReceiverLog) << "live sink sync=" << videoSinkSync(lowLat)
+                                << "queueMax=" << decoderQueueMaxBuffers(lowLat)
+                                << "deadlineNs=" << videoSinkProcessingDeadlineNs(lowLat)
+                                << "maxLatenessNs=" << videoSinkMaxLatenessNs(lowLat);
 
     (void) gst_object_ref(_videoSink);
     (void) gst_bin_add(GST_BIN(_pipeline), _videoSink);

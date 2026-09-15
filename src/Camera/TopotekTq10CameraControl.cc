@@ -194,6 +194,13 @@ void TopotekTq10CameraControl::ptzHome()
     }
 }
 
+void TopotekTq10CameraControl::gimbalRecenter()
+{
+    if (_client && hasGimbalRecenter()) {
+        _client->ptzHome();
+    }
+}
+
 quint32 TopotekTq10CameraControl::recordTime() const
 {
     return (_videoRecordTimeUpdateTimer.isActive() ? static_cast<quint32>(_videoRecordTimeElapsedTimer.elapsed()) : 0);
@@ -217,6 +224,11 @@ bool TopotekTq10CameraControl::hasZoom() const
 bool TopotekTq10CameraControl::hasGimbalPad() const
 {
     return topotekOverlayHas("gimbal");
+}
+
+bool TopotekTq10CameraControl::hasGimbalRecenter() const
+{
+    return hasGimbalPad();
 }
 
 bool TopotekTq10CameraControl::hasExposureAuto() const

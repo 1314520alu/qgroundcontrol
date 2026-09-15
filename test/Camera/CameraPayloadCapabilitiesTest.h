@@ -12,5 +12,6 @@ private slots:
     void testTopotekHasGimbalPad();
     void testUnipodPhase1Flags();
     void testA8Phase1Flags();
+    void testZr10CatalogPhase1();
     void testUnipodMediaLibraryFollowsReady();
 };

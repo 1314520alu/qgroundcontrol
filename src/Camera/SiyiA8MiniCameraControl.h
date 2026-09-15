@@ -9,7 +9,7 @@ class QGCVideoStreamInfo;
 class UnipodMt11Client;
 class Vehicle;
 
-/// Camera control for SIYI A8 Mini via the shared SIYI UDP SDK client (same stack as UniPod).
+/// Camera control for SIYI A8 Mini / ZR10 via the shared SIYI UDP SDK client (same stack as UniPod).
 class SiyiA8MiniCameraControl : public MavlinkCameraControlInterface
 {
     Q_OBJECT
@@ -54,7 +54,7 @@ public:
 
     int version() const override { return 0; }
 
-    QString modelName() const override { return QStringLiteral("SIYI A8 Mini"); }
+    QString modelName() const override;
 
     QString vendor() const override { return QStringLiteral("SIYI"); }
 
@@ -110,7 +110,7 @@ public:
 
     bool paramComplete() const override { return true; }
 
-    qreal zoomLevel() const override { return 1.0; }
+    qreal zoomLevel() const override;
 
     qreal focusLevel() const override { return 1.0; }
 
@@ -203,11 +203,19 @@ public:
     void handleVideoStreamStatus(const mavlink_video_stream_status_t& /*videoStreamStatus*/) override {}
 
     bool hasGimbalPad() const override;
+    bool hasGimbalRecenter() const override;
+    bool hasGimbalLookDown() const override;
+    bool hasGimbalYawRecenter() const override;
+    bool hasGimbalPitchDown() const override;
     bool hasExposureAuto() const override;
 
     Q_INVOKABLE void ptzStart(int direction);
     Q_INVOKABLE void ptzStop();
     Q_INVOKABLE void ptzHome();
+    void gimbalRecenter() override;
+    void gimbalLookDown() override;
+    void gimbalYawRecenter() override;
+    void gimbalPitchDown() override;
 
 protected slots:
 
@@ -219,6 +227,7 @@ private:
     void _onSendFailed(const QString& reason);
     bool _isRecording() const;
     bool _isSelectedVideoSource() const;
+    bool _overlayHas(const char* feature) const;
 
     UnipodMt11Client* _client = nullptr;
     QElapsedTimer _videoRecordTimeElapsedTimer;
