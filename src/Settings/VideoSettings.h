@@ -45,6 +45,7 @@ public:
     Q_PROPERTY(QString unipodMT11VideoSource READ unipodMT11VideoSource CONSTANT)
     Q_PROPERTY(QString siyiR1MVideoSource READ siyiR1MVideoSource CONSTANT)
     Q_PROPERTY(QString siyiA8MiniVideoSource READ siyiA8MiniVideoSource CONSTANT)
+    Q_PROPERTY(QString siyiZr10VideoSource READ siyiZr10VideoSource CONSTANT)
     Q_PROPERTY(QString topotekTq10NVideoSource READ topotekTq10NVideoSource CONSTANT)
 
     bool streamConfigured();
@@ -66,6 +67,8 @@ public:
     QString siyiR1MVideoSource() { return videoSourceSiyiR1M; }
 
     QString siyiA8MiniVideoSource() { return videoSourceSiyiA8Mini; }
+
+    QString siyiZr10VideoSource() { return videoSourceSiyiZr10; }
 
     QString topotekTq10NVideoSource() { return videoSourceTopotekTq10N; }
 
@@ -89,6 +92,7 @@ public:
     static constexpr const char* videoSourceUnipodMT11 = QT_TRANSLATE_NOOP("VideoSettings", "UniPod MT11");
     static constexpr const char* videoSourceSiyiR1M = QT_TRANSLATE_NOOP("VideoSettings", "SIYI R1M");
     static constexpr const char* videoSourceSiyiA8Mini = QT_TRANSLATE_NOOP("VideoSettings", "SIYI A8 Mini");
+    static constexpr const char* videoSourceSiyiZr10 = QT_TRANSLATE_NOOP("VideoSettings", "SIYI ZR10");
     static constexpr const char* videoSourceTopotekTq10N = QT_TRANSLATE_NOOP("VideoSettings", "Topotek TQ10N");
 
     /// Default primary RTSP URL from UniPod MT11 manual (192.168.144.25 / video1).
@@ -97,12 +101,17 @@ public:
     static constexpr const char* siyiR1MRtspUrl = "rtsp://192.168.144.25:8554/main.264";
     /// Pre-ZT30 gimbal RTSP (A8 mini / ZR10 / …) — same path as R1M per A8 mini User Manual §4.6.
     static constexpr const char* siyiA8MiniRtspUrl = "rtsp://192.168.144.25:8554/main.264";
+    static constexpr const char* siyiZr10RtspUrl = siyiA8MiniRtspUrl;
     /// Default RTSP URL from Topotek QGC/VLC guide (TQ10N on 192.168.144.108).
     /// Keep rtsp:// scheme; GstSourceFactory forces TCP interleaved on 192.168.144.x.
     static constexpr const char* topotekTq10NRtspUrl = "rtsp://192.168.144.108:554/stream=0";
 
     /// True for preset sources that live on the SIYI radio ethernet (192.168.144.x).
     static bool usesSiyiRadioEthernet(const QString& source);
+
+    /// RTP jitter latency the pipeline will actually use for this source/URL.
+    /// Radio-ethernet RTSP floors at 180 ms unless low-latency mode is on.
+    static int effectiveRtpJitterLatencyMs(int requestedMs, bool lowLatency, const QString& source, const QString& url);
 
 signals:
     void streamConfiguredChanged(bool configured);
@@ -113,7 +122,8 @@ private slots:
 private:
     void _setDefaults();
     void _setForceVideoDecodeList();
+    void _syncRtpJitterFloor(bool notifyOnReject);
 
-private:
     bool _noVideo = false;
+    bool _syncingRtpJitterFloor = false;
 };

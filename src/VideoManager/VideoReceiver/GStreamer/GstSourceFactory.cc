@@ -161,13 +161,17 @@ bool validPort(int port)
 
 namespace GStreamer::SourceFactory {
 
+bool isRadioEthernetHost(const QString& host)
+{
+    return host.startsWith(QLatin1String("192.168.144."));
+}
+
 int effectiveRtspLatencyMs(int requestedMs, bool radioEthernetHost, JitterBuffer jitterBuffer)
 {
     const int clamped = std::max(0, requestedMs);
     if (!radioEthernetHost || (jitterBuffer == JitterBuffer::None)) {
         return clamped;
     }
-    constexpr int kRadioEthernetMinLatencyMs = 180;
     return std::max(clamped, kRadioEthernetMinLatencyMs);
 }
 
@@ -327,7 +331,7 @@ GstElement* buildRtspSource(const QString& uri, const QUrl& sourceUrl, const Con
     // - host is on radio ethernet 192.168.144.x (Skydroid H30 / SIYI remotes are dual-homed;
     //   UDP RTP often never returns and GStreamer reports Could not read/write to resource).
     const QString host = sourceUrl.host();
-    const bool radioEthernetHost = host.startsWith(QLatin1String("192.168.144."));
+    const bool radioEthernetHost = isRadioEthernetHost(host);
     const bool forceTcp =
         (sourceUrl.scheme().compare(QLatin1String("rtspt"), Qt::CaseInsensitive) == 0) || radioEthernetHost;
     const GstRTSPLowerTrans kRtspProtocols =
@@ -339,8 +343,10 @@ GstElement* buildRtspSource(const QString& uri, const QUrl& sourceUrl, const Con
 
     // rtspsrc always owns an internal jitterbuffer, so None maps to zero playout latency and no retransmission.
     const guint rtspLatencyMs = (config.jitterBuffer == JitterBuffer::None) ? 0u : latencyMs;
+    // RFC 4588 RTX is UDP-only. Interleaved TCP already retransmits; asking rtspsrc for RTX
+    // around large HEVC IDRs produces periodic stalls that look like a 1 s hitch.
     const gboolean doRetransmission =
-        ((config.jitterBuffer != JitterBuffer::None) && config.doRetransmission) ? TRUE : FALSE;
+        (!forceTcp && (config.jitterBuffer != JitterBuffer::None) && config.doRetransmission) ? TRUE : FALSE;
     const gboolean dropOnLatency = (config.jitterBuffer == JitterBuffer::Buffered) ? FALSE : TRUE;
     g_object_set(source, "location", cleanLocation.constData(), "latency", rtspLatencyMs, "do-rtcp", doRtcp,
                  "do-retransmission", doRetransmission, "tcp-timeout", kRtspTcpTimeoutUs, "udp-reconnect",
@@ -555,7 +561,7 @@ GstElement* create(const QString& uri, const Config& config)
 
     const QUrl sourceUrl(uri);
     const QString scheme = sourceUrl.scheme().toLower();
-    const bool radioEthernetHost = sourceUrl.host().startsWith(QLatin1String("192.168.144."));
+    const bool radioEthernetHost = isRadioEthernetHost(sourceUrl.host());
     const int appliedLatencyMs = scheme.startsWith(QLatin1String("rtsp"))
                                      ? effectiveRtspLatencyMs(config.latencyMs, radioEthernetHost, config.jitterBuffer)
                                      : std::max(0, config.latencyMs);
