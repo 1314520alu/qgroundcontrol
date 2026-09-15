@@ -386,6 +386,47 @@ class TestGeneratePageQml:
         assert "LabelledFactComboBox {" in qml
         assert "indexModel: false" in qml
 
+    def test_radiogroup_generates_radio_buttons(self, settings_dir: Path):
+        page = PageDef(
+            groups=[
+                GroupDef(
+                    controls=[
+                        ControlDef(setting="appSettings.colorScheme", control="radiogroup"),
+                    ]
+                ),
+            ]
+        )
+        qml = generate_page_qml(page, settings_dir)
+        assert "QGCRadioButton {" in qml
+        assert "enumStrings" in qml
+        assert "enumIndex" in qml
+        assert "autoExclusive: false" in qml
+        assert "LabelledFactComboBox" not in qml
+        assert 'objectName: "settingsRadioGroup_colorScheme"' in qml
+
+    def test_radiogroup_requires_enum(self, settings_dir: Path):
+        page = PageDef(
+            groups=[
+                GroupDef(
+                    controls=[
+                        ControlDef(setting="appSettings.maxAlt", control="radiogroup"),
+                    ]
+                ),
+            ]
+        )
+        with pytest.raises(ValueError, match="radiogroup"):
+            generate_page_qml(page, settings_dir)
+
+    def test_enum_without_radiogroup_still_combobox(self, settings_dir: Path):
+        page = PageDef(
+            groups=[
+                GroupDef(controls=[ControlDef(setting="appSettings.colorScheme")]),
+            ]
+        )
+        qml = generate_page_qml(page, settings_dir)
+        assert "LabelledFactComboBox {" in qml
+        assert "QGCRadioButton {" not in qml
+
     def test_numeric_generates_textfield(self, settings_dir: Path):
         page = PageDef(
             groups=[
@@ -1078,12 +1119,12 @@ class TestGeneratePagesModelQml:
         assert "property QtObject _page0SectionState: QtObject" in qml
         assert "property var advancedMode: QGroundControl.corePlugin.showAdvancedUI" in qml
         assert "property bool pageVisible: advancedMode && !unusedBinding" in qml
-        assert "property var unusedBinding: QGroundControl.settingsManager.appSettings.y.userVisible" in qml
-        assert "visible: _page0SectionState._sectionVisibility[0]" in qml
         assert (
-            "(pageVisible) && "
-            "(QGroundControl.settingsManager.appSettings.x.userVisible)" in qml
+            "property var unusedBinding: QGroundControl.settingsManager.appSettings.y.userVisible"
+            in qml
         )
+        assert "visible: _page0SectionState._sectionVisibility[0]" in qml
+        assert "(pageVisible) && (QGroundControl.settingsManager.appSettings.x.userVisible)" in qml
         assert "(QGroundControl.settingsManager.appSettings.y.userVisible)" in qml
         assert "visible: _page0SectionState._sectionVisibility[2]" in qml
 
@@ -1215,7 +1256,9 @@ class TestQmlUnsafeStringRejection:
     def test_unsafe_group_heading_rejected(self, tmp_path: Path, bad_char: str):
         data = {
             "version": 1,
-            "groups": [{"heading": f"Bad{bad_char}Heading", "controls": [{"setting": "appSettings.x"}]}],
+            "groups": [
+                {"heading": f"Bad{bad_char}Heading", "controls": [{"setting": "appSettings.x"}]}
+            ],
         }
         with pytest.raises(ValueError, match="group heading"):
             load_page_def(_make_page_json(tmp_path, data))
@@ -1281,14 +1324,15 @@ class TestQmlUnsafeStringRejection:
         page = load_page_def(_make_page_json(tmp_path, data))
         assert page.groups[0].heading == "Fly View (What's Shown)"
 
+
 class TestRealPageDefinitions:
     """Test against real QGC page definition files if available."""
 
     @pytest.fixture
     def repo_root(self) -> Path:
-        if (REPO_ROOT / "src" / "Settings").is_dir():
-            return REPO_ROOT
-        pytest.skip("Not running from QGC repo root")
+        if not (REPO_ROOT / "src" / "Settings").is_dir():
+            pytest.skip("Not running from QGC repo root")
+        return REPO_ROOT
 
     def test_all_page_defs_load(self, repo_root: Path):
         pages_dir = repo_root / "src" / "AppSettings" / "pages"
@@ -1455,7 +1499,9 @@ class TestCustomOverlay:
         qml = generate_pages_model_qml(pages_path, custom_pages_dir=custom_dir)
         assert qml.index('nameKey: "Gamma"') < qml.index('nameKey: "Alpha"')
 
-    def test_multiple_insert_after_same_anchor_preserves_order(self, stock_setup: tuple[Path, Path]):
+    def test_multiple_insert_after_same_anchor_preserves_order(
+        self, stock_setup: tuple[Path, Path]
+    ):
         pages_path, custom_dir = stock_setup
         gamma = self._gamma_entry(custom_dir, insertAfter="Alpha")
         delta = {
@@ -1505,13 +1551,20 @@ class TestCustomOverlay:
             "version": 1,
             "groups": [{"heading": "Replaced Section", "controls": [{"setting": "appSettings.x"}]}],
         }
-        (custom_dir / "AlphaCustom.SettingsUI.json").write_text(json.dumps(page_def), encoding="utf-8")
-        self._write_overlay(custom_dir, [{
-            "name": "Alpha",
-            "qml": "Alpha.qml",
-            "icon": "qrc:/alpha-custom.svg",
-            "pageDefinition": "AlphaCustom.SettingsUI.json",
-        }])
+        (custom_dir / "AlphaCustom.SettingsUI.json").write_text(
+            json.dumps(page_def), encoding="utf-8"
+        )
+        self._write_overlay(
+            custom_dir,
+            [
+                {
+                    "name": "Alpha",
+                    "qml": "Alpha.qml",
+                    "icon": "qrc:/alpha-custom.svg",
+                    "pageDefinition": "AlphaCustom.SettingsUI.json",
+                }
+            ],
+        )
         qml = generate_pages_model_qml(pages_path, custom_pages_dir=custom_dir)
         assert qml.count('nameKey: "Alpha"') == 1
         assert "qrc:/alpha-custom.svg" in qml
@@ -1551,13 +1604,18 @@ class TestCustomOverlay:
 
     def test_replace_with_position_key_rejected(self, stock_setup: tuple[Path, Path]):
         pages_path, custom_dir = stock_setup
-        self._write_overlay(custom_dir, [{
-            "name": "Alpha",
-            "qml": "Alpha.qml",
-            "icon": "qrc:/alpha.svg",
-            "pageDefinition": "Alpha.SettingsUI.json",
-            "insertAfter": "Beta",
-        }])
+        self._write_overlay(
+            custom_dir,
+            [
+                {
+                    "name": "Alpha",
+                    "qml": "Alpha.qml",
+                    "icon": "qrc:/alpha.svg",
+                    "pageDefinition": "Alpha.SettingsUI.json",
+                    "insertAfter": "Beta",
+                }
+            ],
+        )
         with pytest.raises(ValueError, match="replace"):
             generate_pages_model_qml(pages_path, custom_pages_dir=custom_dir)
 
@@ -1601,7 +1659,9 @@ class TestCustomOverlay:
 
     def test_pages_model_qml_name_reserved(self, stock_setup: tuple[Path, Path]):
         pages_path, custom_dir = stock_setup
-        self._write_overlay(custom_dir, [self._gamma_entry(custom_dir, qml="settingsPagesModel.qml")])
+        self._write_overlay(
+            custom_dir, [self._gamma_entry(custom_dir, qml="settingsPagesModel.qml")]
+        )
         with pytest.raises(ValueError, match=re.escape("SettingsPagesModel.qml")):
             generate_pages_model_qml(pages_path, custom_pages_dir=custom_dir)
 
@@ -1631,7 +1691,9 @@ class TestCustomOverlay:
         with pytest.raises(ValueError, match="insertAfter"):
             generate_pages_model_qml(pages_path)
 
-    def test_cli_list_outputs(self, stock_setup: tuple[Path, Path], tmp_path: Path, monkeypatch, capsys):
+    def test_cli_list_outputs(
+        self, stock_setup: tuple[Path, Path], tmp_path: Path, monkeypatch, capsys
+    ):
         pages_path, custom_dir = stock_setup
         self._write_overlay(custom_dir, [self._gamma_entry(custom_dir), {"remove": "Beta"}])
         settings_dir = _make_settings_dir(
@@ -1691,14 +1753,18 @@ class TestCustomOverlay:
             [
                 "generate_pages",
                 "--list-outputs",
-                "--custom-pages-dir", str(custom_dir),
-                "--custom-settings-dir", str(custom_settings_dir),
+                "--custom-pages-dir",
+                str(custom_dir),
+                "--custom-settings-dir",
+                str(custom_settings_dir),
             ],
         )
         with pytest.raises(ValueError, match="appSettings"):
             settings_generator.main()
 
-    def test_cli_generates_custom_page(self, stock_setup: tuple[Path, Path], tmp_path: Path, monkeypatch):
+    def test_cli_generates_custom_page(
+        self, stock_setup: tuple[Path, Path], tmp_path: Path, monkeypatch
+    ):
         pages_path, custom_dir = stock_setup
         self._write_overlay(custom_dir, [self._gamma_entry(custom_dir)])
         settings_dir = _make_settings_dir(
@@ -1713,8 +1779,10 @@ class TestCustomOverlay:
             "argv",
             [
                 "generate_pages",
-                "--output-dir", str(output_dir),
-                "--custom-pages-dir", str(custom_dir),
+                "--output-dir",
+                str(output_dir),
+                "--custom-pages-dir",
+                str(custom_dir),
             ],
         )
         assert settings_generator.main() == 0
@@ -1747,9 +1815,11 @@ class TestCustomSettingsMetadata:
         custom_dir = _make_settings_dir(
             custom_root, {"Custom": [{"name": "z", "type": "bool", "shortDesc": "Z", "label": "Z"}]}
         )
-        page = PageDef(groups=[
-            GroupDef(heading="G", controls=[ControlDef(setting="customSettings.z")]),
-        ])
+        page = PageDef(
+            groups=[
+                GroupDef(heading="G", controls=[ControlDef(setting="customSettings.z")]),
+            ]
+        )
         qml = generate_page_qml(page, (stock_dir, custom_dir))
         assert "FactCheckBoxSlider" in qml
         assert "QGroundControl.settingsManager.customSettings.z" in qml
@@ -1802,8 +1872,10 @@ class TestCustomSettingsMetadata:
         for sub, stem in (("custom1", "ABC"), ("custom2", "Abc")):
             root = tmp_path / sub
             root.mkdir()
-            dirs.append(_make_settings_dir(
-                root, {stem: [{"name": "z", "type": "bool", "shortDesc": "Z", "label": "Z"}]}
-            ))
+            dirs.append(
+                _make_settings_dir(
+                    root, {stem: [{"name": "z", "type": "bool", "shortDesc": "Z", "label": "Z"}]}
+                )
+            )
         with pytest.raises(ValueError, match="abcSettings"):
             load_settings_metadata((stock_dir, *dirs))

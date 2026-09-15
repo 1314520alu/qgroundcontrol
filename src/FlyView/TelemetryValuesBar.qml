@@ -19,7 +19,10 @@ Item {
         id:         backgroundRect
         width:      control.width + extraWidth
         height:     control.height
-        color:      qgcPal.windowTransparent
+        // Light frosted glass: translucent enough to show video underneath.
+        color:      Qt.rgba(1, 1, 1, 0.42)
+        border.width: 1
+        border.color: Qt.rgba(1, 1, 1, 0.35)
         radius:     ScreenTools.defaultFontPixelWidth / 2
     }
 
@@ -50,6 +53,7 @@ Item {
 
         HorizontalFactValueGrid {
             id: factValueGrid
+            fontScale: 1.5
         }
     }
 

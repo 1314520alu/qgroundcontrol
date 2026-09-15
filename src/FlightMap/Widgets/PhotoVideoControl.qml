@@ -36,6 +36,9 @@ Rectangle {
         if (current && current.modelName === "SIYI A8 Mini") {
             return current
         }
+        if (current && current.modelName === "SIYI ZR10") {
+            return current
+        }
         if (current && current.modelName === "Topotek TQ10N") {
             return current
         }

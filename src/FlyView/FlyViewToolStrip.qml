@@ -7,6 +7,9 @@ import QGroundControl.FlyView
 ToolStrip {
     id: _root
 
+    // Relocate takeoff / land / RTL into payload overlay left strip
+    property alias hidePrimaryGuided: flyViewToolStripActionList.hidePrimaryGuided
+
     signal displayPreFlightChecklist
 
     FlyViewToolStripActionList {

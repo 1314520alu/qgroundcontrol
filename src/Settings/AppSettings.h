@@ -18,6 +18,8 @@ public:
 
     DEFINE_SETTINGFACT(preferredFirmwareClass)
     DEFINE_SETTINGFACT(preferredVehicleClass)
+    DEFINE_SETTINGFACT(aircraftModel)
+    DEFINE_SETTINGFACT(updateManifestUrl)
     DEFINE_SETTINGFACT(offlineEditingFirmwareClass)
     DEFINE_SETTINGFACT(offlineEditingVehicleClass)
     DEFINE_SETTINGFACT(offlineEditingCruiseSpeed)
@@ -113,6 +115,10 @@ public:
     Q_INVOKABLE QString resolveVehicleSetupComponentId(const QString& setupSource, const QString& summarySource) const;
     /// Lower sort key = earlier in sidebar after Summary. Unknown ids sort last.
     Q_INVOKABLE int vehicleSetupComponentSortKey(const QString& id) const;
+    /// Original indices of setup pages that belong in the Vehicle Setup sidebar, in display order.
+    Q_INVOKABLE QVariantList visibleVehicleSetupComponentIndices(const QStringList& setupSources,
+                                                                 const QStringList& summarySources,
+                                                                 const QStringList& names) const;
 
     // Application wide file extensions
     static constexpr const char* parameterFileExtension = "params";

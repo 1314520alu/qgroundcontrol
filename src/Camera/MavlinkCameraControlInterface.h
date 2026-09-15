@@ -43,6 +43,10 @@ class MavlinkCameraControlInterface : public FactGroup
     Q_PROPERTY(bool hasVideoStream READ hasVideoStream NOTIFY infoChanged)
     Q_PROPERTY(bool hasTracking READ hasTracking NOTIFY infoChanged)
     Q_PROPERTY(bool hasGimbalPad READ hasGimbalPad NOTIFY infoChanged)
+    Q_PROPERTY(bool hasGimbalRecenter READ hasGimbalRecenter NOTIFY infoChanged)
+    Q_PROPERTY(bool hasGimbalLookDown READ hasGimbalLookDown NOTIFY infoChanged)
+    Q_PROPERTY(bool hasGimbalYawRecenter READ hasGimbalYawRecenter NOTIFY infoChanged)
+    Q_PROPERTY(bool hasGimbalPitchDown READ hasGimbalPitchDown NOTIFY infoChanged)
     Q_PROPERTY(bool hasLensSwitch READ hasLensSwitch NOTIFY infoChanged)
     Q_PROPERTY(bool hasLaserRange READ hasLaserRange NOTIFY infoChanged)
     Q_PROPERTY(bool hasAiRecognition READ hasAiRecognition NOTIFY infoChanged)
@@ -173,6 +177,10 @@ public:
     Q_INVOKABLE virtual void stepZoom(int direction) = 0;
     Q_INVOKABLE virtual void startZoom(int direction) = 0;
     Q_INVOKABLE virtual void stopZoom() = 0;
+
+    /// Bypass QML property cache; always calls the C++ getter.
+    Q_INVOKABLE qreal readZoomLevel() const { return zoomLevel(); }
+
     Q_INVOKABLE virtual void stepFocus(int direction) = 0;
     Q_INVOKABLE virtual void startFocus(int direction) = 0;
     Q_INVOKABLE virtual void stopFocus() = 0;
@@ -181,6 +189,14 @@ public:
     Q_INVOKABLE virtual void startTrackingRect(QRectF rec) = 0;
     Q_INVOKABLE virtual void startTrackingPoint(QPointF point, double radius) = 0;
     Q_INVOKABLE virtual void stopTracking() = 0;
+
+    Q_INVOKABLE virtual void gimbalRecenter() {}
+
+    Q_INVOKABLE virtual void gimbalLookDown() {}
+
+    Q_INVOKABLE virtual void gimbalYawRecenter() {}
+
+    Q_INVOKABLE virtual void gimbalPitchDown() {}
 
     virtual int version() const = 0;
     virtual QString modelName() const = 0;
@@ -197,6 +213,14 @@ public:
     virtual bool hasTracking() const = 0;
 
     virtual bool hasGimbalPad() const { return false; }
+
+    virtual bool hasGimbalRecenter() const { return false; }
+
+    virtual bool hasGimbalLookDown() const { return false; }
+
+    virtual bool hasGimbalYawRecenter() const { return false; }
+
+    virtual bool hasGimbalPitchDown() const { return false; }
 
     virtual bool hasLensSwitch() const { return false; }
 

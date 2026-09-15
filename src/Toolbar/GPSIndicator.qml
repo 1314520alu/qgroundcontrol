@@ -25,7 +25,38 @@ Item {
 
         property var    gpsFactGroup
         property bool   showRtkLabel: false
-        property string indexLabel:   ""
+
+        // Lock type drives color (same palette as the battery icon). 3D with
+        // few sats or poor HDOP is downgraded so a "3D" lock still looks weak.
+        readonly property color statusColor: {
+            var gps = cluster.gpsFactGroup
+            if (!gps || !gps.telemetryAvailable) {
+                return qgcPal.text
+            }
+            var lock = gps.lock.rawValue
+            var sats = gps.count.value
+            var hdop = gps.hdop.value
+            var weak3d = sats < 6 || (!isNaN(hdop) && hdop > 2.0)
+            switch (lock) {
+            case 0:     // None
+                return qgcPal.text
+            case 1:     // No Fix
+                return qgcPal.colorRed
+            case 2:     // 2D Lock
+                return qgcPal.colorOrange
+            case 3:     // 3D Lock
+                return weak3d ? qgcPal.colorYellow : qgcPal.colorGreen
+            case 4:     // DGPS
+                return qgcPal.colorGreen
+            case 5:     // RTK float
+                return qgcPal.colorYellowGreen
+            case 6:     // RTK fixed
+            case 7:     // Static
+                return qgcPal.colorGreen
+            default:
+                return qgcPal.text
+            }
+        }
 
         width:          clusterRow.width
         anchors.top:    parent.top
@@ -44,10 +75,10 @@ Item {
 
                 QGCLabel {
                     rotation:               90
-                    text:                   cluster.showRtkLabel ? qsTr("RTK") : cluster.indexLabel
-                    color:                  qgcPal.text
+                    text:                   qsTr("RTK")
+                    color:                  cluster.statusColor
                     anchors.verticalCenter: parent.verticalCenter
-                    visible:                cluster.showRtkLabel || cluster.indexLabel.length > 0
+                    visible:                cluster.showRtkLabel
                 }
 
                 QGCColoredImage {
@@ -57,26 +88,27 @@ Item {
                     source:             "/qmlimages/Gps.svg"
                     fillMode:           Image.PreserveAspectFit
                     sourceSize.height:  height
-                    opacity:            (cluster.gpsFactGroup && cluster.gpsFactGroup.count.value >= 0) ? 1 : 0.5
-                    color:              qgcPal.text
+                    opacity:            (cluster.gpsFactGroup && cluster.gpsFactGroup.telemetryAvailable) ? 1 : 0.5
+                    color:              cluster.statusColor
                 }
             }
 
             Column {
                 anchors.verticalCenter: parent.verticalCenter
-                visible:                cluster.gpsFactGroup && !isNaN(cluster.gpsFactGroup.hdop.value)
+                visible:                cluster.gpsFactGroup
                 spacing:                0
 
                 QGCLabel {
-                    anchors.horizontalCenter: hdopValue.horizontalCenter
-                    color:                    qgcPal.text
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    color:                    cluster.statusColor
                     text:                     cluster.gpsFactGroup ? cluster.gpsFactGroup.count.valueString : ""
                 }
 
                 QGCLabel {
-                    id:     hdopValue
-                    color:  qgcPal.text
-                    text:   cluster.gpsFactGroup ? cluster.gpsFactGroup.hdop.value.toFixed(1) : ""
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    color:                    cluster.statusColor
+                    visible:                  cluster.gpsFactGroup && !isNaN(cluster.gpsFactGroup.hdop.value)
+                    text:                     cluster.gpsFactGroup ? cluster.gpsFactGroup.hdop.value.toFixed(1) : ""
                 }
             }
         }
@@ -96,7 +128,6 @@ Item {
         GpsCluster {
             visible:        control._gps2Available
             gpsFactGroup:   control._gps2
-            indexLabel:     "2"
         }
     }
 

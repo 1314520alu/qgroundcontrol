@@ -21,6 +21,8 @@ target_sources(
             TopotekTq10ProtocolTest.h
             CameraPayloadCapabilitiesTest.cc
             CameraPayloadCapabilitiesTest.h
+            CameraGimbalQuickActionsTest.cc
+            CameraGimbalQuickActionsTest.h
 )
 
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -33,3 +35,4 @@ add_qgc_test(UnipodMt11ProtocolTest LABELS Unit Camera)
 add_qgc_test(UnipodMt11MediaClientTest LABELS Unit Camera)
 add_qgc_test(TopotekTq10ProtocolTest LABELS Unit Camera)
 add_qgc_test(CameraPayloadCapabilitiesTest LABELS Unit Camera)
+add_qgc_test(CameraGimbalQuickActionsTest LABELS Unit Camera)

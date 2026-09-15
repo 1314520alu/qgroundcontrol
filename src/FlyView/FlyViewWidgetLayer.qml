@@ -50,7 +50,7 @@ Item {
         topEdgeCenterInset:     mapScaleRow.topEdgeCenterInset
         topEdgeRightInset:      topRightPanel.visible ? topRightPanel.topEdgeRightInset : topRightColumnLayout.topEdgeRightInset
         bottomEdgeLeftInset:    virtualJoystickMultiTouch.visible ? virtualJoystickMultiTouch.bottomEdgeLeftInset : parentToolInsets.bottomEdgeLeftInset
-        bottomEdgeCenterInset:  bottomRightRowLayout.bottomEdgeCenterInset
+        bottomEdgeCenterInset:  Math.max(bottomRightRowLayout.bottomEdgeCenterInset, telemetrySlot.bottomEdgeCenterInset)
         bottomEdgeRightInset:   virtualJoystickMultiTouch.visible ? virtualJoystickMultiTouch.bottomEdgeRightInset : bottomRightRowLayout.bottomEdgeRightInset
     }
 
@@ -79,11 +79,36 @@ Item {
         property real rightEdgeCenterInset: rightEdgeTopInset
     }
 
+    // Slot between map PIP (left) and compass (right); bar sits toward the right of that gap.
+    Item {
+        id:                         telemetrySlot
+        anchors.left:               parent.left
+        anchors.leftMargin:         parentToolInsets.leftEdgeBottomInset + _toolsMargin
+        anchors.right:              bottomRightRowLayout.left
+        anchors.rightMargin:        ScreenTools.defaultFontPixelWidth * 3
+        anchors.bottom:             parent.bottom
+        anchors.bottomMargin:       _toolsMargin
+        height:                     telemetryValuesBar.height
+        z:                          QGroundControl.zOrderWidgets
+        visible:                    !QGroundControl.videoManager.fullScreen
+
+        TelemetryValuesBar {
+            id:                     telemetryValuesBar
+            anchors.right:          parent.right
+            anchors.bottom:         parent.bottom
+            settingsGroup:          factValueGrid.telemetryBarSettingsGroup
+            specificVehicleForCard: null
+        }
+
+        property real bottomEdgeCenterInset: height + _layoutMargin
+    }
+
     FlyViewBottomRightRowLayout {
         id:                 bottomRightRowLayout
         anchors.bottom:     parent.bottom
         anchors.right:      parent.right
-        spacing:            _layoutSpacing
+        anchors.margins:    _toolsMargin
+        z:                  QGroundControl.zOrderWidgets
 
         property real bottomEdgeRightInset:     height + _layoutMargin
         property real bottomEdgeCenterInset:    bottomEdgeRightInset
@@ -163,7 +188,10 @@ Item {
         anchors.top:            parent.top
         z:                      QGroundControl.zOrderWidgets
         maxHeight:              parent.height - y - parentToolInsets.bottomEdgeLeftInset - _toolsMargin
+        // Video main: free the left edge for payload sidebar; map keeps ToolStrip (takeoff/RTL)
         visible:                !QGroundControl.videoManager.fullScreen
+                                && !payloadOverlay.hidePrimaryGuidedOnVideo
+        hidePrimaryGuided:      payloadOverlay.hidePrimaryGuidedOnVideo
 
         onDisplayPreFlightChecklist: {
             if (!preFlightChecklistLoader.active) {

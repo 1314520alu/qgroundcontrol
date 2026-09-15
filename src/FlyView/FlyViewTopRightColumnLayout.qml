@@ -13,8 +13,15 @@ ColumnLayout {
 
     spacing: ScreenTools.defaultFontPixelHeight / 2
 
-    TerrainProgress {
+    Item {
         Layout.fillWidth: true
+        Layout.preferredHeight: hideWhenPayloadOverlay ? 0 : terrainProgress.implicitHeight
+        visible: !root.hideWhenPayloadOverlay
+        // Wrapper keeps TerrainProgress from forcing itself visible over the right sidebar
+        TerrainProgress {
+            id: terrainProgress
+            anchors.right: parent.right
+        }
     }
 
     // We use a Loader to load the photoVideoControlComponent only when we have an active vehicle and a camera manager.

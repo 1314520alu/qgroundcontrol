@@ -49,11 +49,11 @@ The Flight Status indicator dropdown also gives you access to:
 
 ### GPS / RTK GPS <img src="../../../assets/fly/toolbar/gps_indicator.png" alt="GPS / RTK GPS indicator" style="height: 1.15em; vertical-align: text-bottom;" />
 
-The GPS/RTK GPS indicator shows satellite and GNSS status in the toolbar, and the dropdown provides additional GPS details.
+顶栏显示卫星图标、星数和 HDOP。图标与数字用颜色表示锁定质量（与电池同一套红 / 橙 / 黄 / 绿）。有第二路 GPS 遥测时并排两套，各自着色。点开可看详细状态；连着地面 RTK 基站时还可看改正链路。
 
-With an active vehicle, the indicator shows vehicle GPS information (for example, satellite count and HDOP), and the expanded page provides access to RTK-related settings.
+完整颜色表、双 GPS 显示规则和弱 3D 判定见 [顶栏 GPS 指示器说明](../../../../manuals/gcs-toolbar/gps-indicator.md)。
 
-When there is no active vehicle but RTK is connected, the indicator switches to RTK status so you can still monitor the correction link.
+没有飞机、只有地面 RTK 时，指示器改为显示 RTK 状态。
 
 ### GPS Resilience
 

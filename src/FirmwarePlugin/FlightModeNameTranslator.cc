@@ -157,11 +157,12 @@ QString FlightModeNameTranslator::translate(const QString& name, bool fixedWing)
 
 QString FlightModeNameTranslator::translate(const QString& name, bool fixedWing, const QLocale& locale)
 {
-    if (name.isEmpty() || !_shouldTranslate(locale)) {
-        return name;
+    const QString base = _stripDuplicateSuffix(name);
+    if (base.isEmpty() || !_shouldTranslate(locale)) {
+        return base;
     }
 
-    const QString translated = _translateChinese(name, fixedWing);
+    const QString translated = _translateChinese(base, fixedWing);
     if (translated != name) {
         qCDebug(FlightModeNameTranslatorLog) << name << "->" << translated;
     }
@@ -182,13 +183,19 @@ QString FlightModeNameTranslator::_normalizedKey(const QString& name)
     return key;
 }
 
-QString FlightModeNameTranslator::_canonicalKey(const QString& name)
+QString FlightModeNameTranslator::_stripDuplicateSuffix(const QString& name)
 {
     QString base = name.trimmed();
     const QRegularExpressionMatch match = duplicateSuffixRe().match(base);
     if (match.hasMatch()) {
         base.chop(match.captured(0).size());
     }
+    return base;
+}
+
+QString FlightModeNameTranslator::_canonicalKey(const QString& name)
+{
+    const QString base = _stripDuplicateSuffix(name);
     if (base.isEmpty()) {
         return {};
     }
@@ -228,23 +235,15 @@ bool FlightModeNameTranslator::isHidden(const QString& displayedName, const QStr
 
 QString FlightModeNameTranslator::_translateChinese(const QString& name, bool fixedWing)
 {
-    QString base = name;
-    QString suffix;
-    const QRegularExpressionMatch match = duplicateSuffixRe().match(name);
-    if (match.hasMatch()) {
-        suffix = match.captured(0);
-        base.chop(suffix.size());
-    }
-
-    const QString key = _normalizedKey(base);
+    const QString key = _normalizedKey(name);
     if (key == QLatin1String("loiter")) {
         // Copter/rover GPS hold vs airplane circling. Plane plugins mark fixedWing.
-        return (fixedWing ? QStringLiteral("盘旋") : QStringLiteral("定点悬停")) + suffix;
+        return fixedWing ? QStringLiteral("盘旋") : QStringLiteral("定点悬停");
     }
 
     const QString translated = chineseNames().value(key);
     if (translated.isEmpty()) {
         return name;
     }
-    return translated + suffix;
+    return translated;
 }

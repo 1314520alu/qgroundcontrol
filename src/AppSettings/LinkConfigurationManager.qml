@@ -14,9 +14,9 @@ SettingsGroupLayout {
     property var _linkManager: QGroundControl.linkManager
 
     // Remote controller one-tap presets (on-device Android QGC).
-    // SIYI UniRC: manuals list 192.168.144.20:19856, but that IP only exists when the
-    // radio Ethernet interface is up. On-device the SIYI UDP service listens on *:19856
-    // (reachable via 127.0.0.1) — UniGCS uses that path when eth .20 is absent.
+    // SIYI UniRC: udpservice binds *:19856 as IPv6. IPv4 127.0.0.1:19856 gets no MAVLink;
+    // UniGCS downlink is on the radio ethernet address (typically 192.168.144.20:19856).
+    // Host is filled at apply time via _siyiUnircTelemetryParams when eth0 is up.
     // SIYI MK15/MK32: manuals use Port 19856 + 192.168.144.12
     // Skydroid: two MAVLink paths (chosen at apply time via skydroidUsesDirectRadioEthernetTelemetry):
     // - G20/G16 (ar_net0): listen 14551, peer 127.0.0.1:14552 (on-device UDP bridge).
@@ -26,13 +26,13 @@ SettingsGroupLayout {
             name:       "UniRC 10 Pro",
             linkType:   LinkConfiguration.TypeUdp,
             localPort:  0,
-            host:       "127.0.0.1:19856"
+            host:       "192.168.144.20:19856"
         },
         {
             name:       "UniRC 7",
             linkType:   LinkConfiguration.TypeUdp,
             localPort:  0,
-            host:       "127.0.0.1:19856"
+            host:       "192.168.144.20:19856"
         },
         {
             name:       "MK15",
@@ -96,6 +96,10 @@ SettingsGroupLayout {
         return preset && preset.name.indexOf("云卓") === 0
     }
 
+    function _isUnircPreset(preset) {
+        return preset && preset.name.indexOf("UniRC") === 0
+    }
+
     function _skydroidTelemetryParams() {
         if (ScreenToolsController.skydroidUsesDirectRadioEthernetTelemetry()) {
             return { localPort: 14550, host: "192.168.144.101:14550" }
@@ -103,18 +107,39 @@ SettingsGroupLayout {
         return { localPort: 14551, host: "127.0.0.1:14552" }
     }
 
+    function _siyiUnircTelemetryParams() {
+        var addr = "192.168.144.20"
+        if (ScreenToolsController.isSiyiRadioEthernetReady()) {
+            var live = ScreenToolsController.siyiRadioEthernetAddress()
+            if (live && live.length) {
+                addr = live
+            }
+        }
+        return { localPort: 0, host: addr + ":19856" }
+    }
+
     function _effectivePreset(preset) {
-        if (!_isSkydroidPreset(preset)) {
-            return preset
+        if (_isSkydroidPreset(preset)) {
+            var sky = _skydroidTelemetryParams()
+            return {
+                name:       preset.name,
+                linkType:   preset.linkType,
+                localPort:  sky.localPort,
+                host:       sky.host,
+                extraHosts: preset.extraHosts
+            }
         }
-        var p = _skydroidTelemetryParams()
-        return {
-            name:       preset.name,
-            linkType:   preset.linkType,
-            localPort:  p.localPort,
-            host:       p.host,
-            extraHosts: preset.extraHosts
+        if (_isUnircPreset(preset)) {
+            var siyi = _siyiUnircTelemetryParams()
+            return {
+                name:       preset.name,
+                linkType:   preset.linkType,
+                localPort:  siyi.localPort,
+                host:       siyi.host,
+                extraHosts: preset.extraHosts
+            }
         }
+        return preset
     }
 
     function _findConfigByName(name) {
@@ -223,8 +248,13 @@ SettingsGroupLayout {
         preset = _effectivePreset(preset)
 
         // UniRC / MK presets need the radio ethernet subnet for handbook UDP and RTSP pods.
+        // Also turn off AutoConnect UDP so 14550 cannot attach the same vehicle as a secondary.
         if (preset.name.indexOf("UniRC") === 0 || preset.name.indexOf("MK") === 0) {
             ScreenToolsController.ensureSiyiRadioEthernet()
+            var autoUdp = QGroundControl.settingsManager.autoConnectSettings.autoConnectUDP
+            if (autoUdp && autoUdp.rawValue === true) {
+                autoUdp.rawValue = false
+            }
         }
 
         var configs = _linkManager.linkConfigurations

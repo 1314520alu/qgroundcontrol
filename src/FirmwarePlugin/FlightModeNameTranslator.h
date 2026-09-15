@@ -29,4 +29,5 @@ private:
     static QString _translateChinese(const QString& name, bool fixedWing);
     static QString _normalizedKey(const QString& name);
     static QString _canonicalKey(const QString& name);
+    static QString _stripDuplicateSuffix(const QString& name);
 };

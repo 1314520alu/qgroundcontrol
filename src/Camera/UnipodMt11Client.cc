@@ -17,6 +17,10 @@ UnipodMt11Client::UnipodMt11Client(QObject* parent) : QObject(parent)
     _pollTimer = new QTimer(this);
     _pollTimer->setInterval(1000);
     (void) connect(_pollTimer, &QTimer::timeout, this, &UnipodMt11Client::_onPollTimeout);
+
+    _zoomHoldTimer = new QTimer(this);
+    _zoomHoldTimer->setInterval(UnipodMt11Protocol::kCurrentZoomPollIntervalMs);
+    (void) connect(_zoomHoldTimer, &QTimer::timeout, this, &UnipodMt11Client::_onZoomHoldTimeout);
 }
 
 UnipodMt11Client::~UnipodMt11Client()
@@ -64,7 +68,9 @@ void UnipodMt11Client::start()
     _running = true;
     _setReady(true);
     _pollTimer->start();
+    _zoomHoldTimer->start();
     _pollSystemInfo();
+    requestCurrentZoom();
 
     qCDebug(UnipodMt11ClientLog) << "Started on local port" << _socket->localPort()
                                  << "ethernet:" << ScreenToolsController::siyiRadioEthernetAddress();
@@ -75,6 +81,10 @@ void UnipodMt11Client::stop()
     if (_pollTimer) {
         _pollTimer->stop();
     }
+    if (_zoomHoldTimer) {
+        _zoomHoldTimer->stop();
+    }
+    _stopZoomHold();
 
     if (_socket) {
         _socket->close();
@@ -121,17 +131,47 @@ void UnipodMt11Client::startZoom(int direction)
         return;
     }
 
-    const qint8 zoom = (direction > 0) ? 1 : ((direction < 0) ? -1 : 0);
+    const int holdDirection = (direction > 0) ? 1 : ((direction < 0) ? -1 : 0);
+    if (holdDirection == 0) {
+        stopZoom();
+        return;
+    }
+    if (_zoomHoldDirection == holdDirection) {
+        return;
+    }
+
+    _zoomHoldDirection = holdDirection;
+    _zoomHoldMotorStopped = false;
+    const qint8 zoom = static_cast<qint8>(holdDirection);
     (void) _sendDatagram(UnipodMt11Protocol::buildZoomCommand(++_seq, zoom));
+    requestCurrentZoom();
+    if (_zoomHoldTimer) {
+        _zoomHoldTimer->setInterval(UnipodMt11Protocol::kCurrentZoomHoldPollIntervalMs);
+        if (!_zoomHoldTimer->isActive()) {
+            _zoomHoldTimer->start();
+        }
+    }
 }
 
 void UnipodMt11Client::stopZoom()
 {
     if (!isReady()) {
+        _stopZoomHold();
         return;
     }
 
+    _stopZoomHold();
     (void) _sendDatagram(UnipodMt11Protocol::buildZoomCommand(++_seq, 0));
+    requestCurrentZoom();
+}
+
+void UnipodMt11Client::requestCurrentZoom()
+{
+    if (!isReady()) {
+        return;
+    }
+
+    (void) _sendDatagram(UnipodMt11Protocol::buildCurrentZoomRequest(++_seq));
 }
 
 void UnipodMt11Client::startFocus(int direction)
@@ -191,13 +231,20 @@ void UnipodMt11Client::ptzStop()
     (void) _sendDatagram(UnipodMt11Protocol::buildGimbalSpeedCommand(++_seq, 0, 0));
 }
 
-void UnipodMt11Client::ptzHome()
+void UnipodMt11Client::ptzCenter(quint8 mode)
 {
     if (!isReady()) {
         return;
     }
+    if (mode < 1 || mode > 4) {
+        return;
+    }
+    (void) _sendDatagram(UnipodMt11Protocol::buildCenterCommand(++_seq, mode));
+}
 
-    (void) _sendDatagram(UnipodMt11Protocol::buildCenterCommand(++_seq, 1));
+void UnipodMt11Client::ptzHome()
+{
+    ptzCenter(1);
 }
 
 void UnipodMt11Client::setVideoLayout(quint8 mainMode, quint8 secondaryMode)
@@ -272,7 +319,8 @@ bool UnipodMt11Client::_canStart()
     }
 
     const QString source = videoSettings->videoSource()->rawValue().toString();
-    if (source != VideoSettings::videoSourceUnipodMT11 && source != VideoSettings::videoSourceSiyiA8Mini) {
+    if (source != VideoSettings::videoSourceUnipodMT11 && source != VideoSettings::videoSourceSiyiA8Mini &&
+        source != VideoSettings::videoSourceSiyiZr10) {
         return false;
     }
 
@@ -338,6 +386,30 @@ void UnipodMt11Client::_pollSystemInfo()
     (void) _sendDatagram(frame);
 }
 
+void UnipodMt11Client::_stopZoomHold()
+{
+    _zoomHoldDirection = 0;
+    _zoomHoldMotorStopped = false;
+    if (_zoomHoldTimer) {
+        _zoomHoldTimer->setInterval(UnipodMt11Protocol::kCurrentZoomPollIntervalMs);
+    }
+}
+
+void UnipodMt11Client::_maybeStopHoldAtOpticalLimit()
+{
+    if (_zoomHoldDirection == 0 || _zoomHoldMotorStopped || !isReady()) {
+        return;
+    }
+    if (!UnipodMt11Protocol::holdZoomShouldStopMotor(_zoomHoldDirection, _zoomLevel, UnipodMt11Protocol::kHoldZoomMin,
+                                                     UnipodMt11Protocol::kHoldZoomMaxDefault)) {
+        return;
+    }
+
+    _zoomHoldMotorStopped = true;
+    (void) _sendDatagram(UnipodMt11Protocol::buildZoomCommand(++_seq, 0));
+    requestCurrentZoom();
+}
+
 void UnipodMt11Client::_onPollTimeout()
 {
     if (!_isEthernetReady()) {
@@ -347,6 +419,35 @@ void UnipodMt11Client::_onPollTimeout()
     }
 
     _pollSystemInfo();
+}
+
+void UnipodMt11Client::_onZoomHoldTimeout()
+{
+    if (!isReady()) {
+        return;
+    }
+
+    if (_zoomHoldDirection != 0) {
+        _maybeStopHoldAtOpticalLimit();
+    }
+    if (UnipodMt11Protocol::shouldRequestCurrentZoomOnPoll(_zoomHoldDirection, _zoomHoldMotorStopped)) {
+        requestCurrentZoom();
+    }
+}
+
+void UnipodMt11Client::_setZoomLevel(double zoomLevel)
+{
+    if (qIsNaN(zoomLevel) || zoomLevel <= 0.0) {
+        return;
+    }
+    _zoomLevelStamp.restart();
+    if (!qIsNaN(_zoomLevel) && qFuzzyCompare(_zoomLevel, zoomLevel)) {
+        _maybeStopHoldAtOpticalLimit();
+        return;
+    }
+    _zoomLevel = zoomLevel;
+    emit zoomLevelChanged();
+    _maybeStopHoldAtOpticalLimit();
 }
 
 void UnipodMt11Client::_onReadyRead()
@@ -360,40 +461,59 @@ void UnipodMt11Client::_onReadyRead()
         datagram.resize(static_cast<int>(_socket->pendingDatagramSize()));
         (void) _socket->readDatagram(datagram.data(), datagram.size());
 
-        quint8 ctrl = 0;
-        quint16 seq = 0;
-        quint8 cmd = 0;
-        QByteArray payload;
-        if (!UnipodMt11Protocol::parseFrame(datagram, &ctrl, &seq, &cmd, &payload)) {
-            qCDebug(UnipodMt11ClientLog) << "Dropped invalid frame:" << datagram.toHex(' ');
-            continue;
-        }
-
-        qCDebug(UnipodMt11ClientLog) << "Recv cmd" << Qt::hex << cmd << "seq" << seq << "payload" << payload.toHex(' ')
-                                     << Qt::dec;
-
-        if (cmd == 0x0A) {
-            UnipodMt11Protocol::SystemInfoAck ack;
-            if (UnipodMt11Protocol::parseSystemInfoAck(payload, &ack)) {
-                _setRecordSta(ack.recordSta);
-            }
-        } else if (cmd == 0x0B) {
-            quint8 infoType = 0;
-            if (UnipodMt11Protocol::parseFuncFeedback(payload, &infoType)) {
-                using UnipodMt11Protocol::FuncFeedback;
-                if (infoType == static_cast<quint8>(FuncFeedback::RecordStart)) {
-                    _setRecordSta(1);
-                } else if (infoType == static_cast<quint8>(FuncFeedback::RecordEnd)) {
-                    _setRecordSta(0);
+        QByteArray remaining = datagram;
+        bool parsedAny = false;
+        while (remaining.size() >= 10) {
+            quint8 ctrl = 0;
+            quint16 seq = 0;
+            quint8 cmd = 0;
+            QByteArray payload;
+            if (!UnipodMt11Protocol::parseFrame(remaining, &ctrl, &seq, &cmd, &payload)) {
+                if (!parsedAny) {
+                    qCWarning(UnipodMt11ClientLog) << "Dropped invalid frame:" << datagram.toHex(' ');
                 }
-                emit funcFeedback(infoType);
+                break;
             }
-        } else if (cmd == 0x15) {
-            quint16 distanceDm = 0;
-            if (UnipodMt11Protocol::parseLaserDistanceAck(payload, &distanceDm)) {
-                _laserDistanceMeters = static_cast<double>(distanceDm) / 10.0;
-                emit laserDistanceChanged();
+            parsedAny = true;
+
+            qCDebug(UnipodMt11ClientLog) << "Recv cmd" << Qt::hex << cmd << "seq" << seq << "payload"
+                                         << payload.toHex(' ') << Qt::dec;
+
+            if (cmd == 0x0A) {
+                UnipodMt11Protocol::SystemInfoAck ack;
+                if (UnipodMt11Protocol::parseSystemInfoAck(payload, &ack)) {
+                    _setRecordSta(ack.recordSta);
+                }
+            } else if (cmd == 0x0B) {
+                quint8 infoType = 0;
+                if (UnipodMt11Protocol::parseFuncFeedback(payload, &infoType)) {
+                    using UnipodMt11Protocol::FuncFeedback;
+                    if (infoType == static_cast<quint8>(FuncFeedback::RecordStart)) {
+                        _setRecordSta(1);
+                    } else if (infoType == static_cast<quint8>(FuncFeedback::RecordEnd)) {
+                        _setRecordSta(0);
+                    }
+                    emit funcFeedback(infoType);
+                }
+            } else if (cmd == 0x05) {
+                double zoom = 0.0;
+                if (UnipodMt11Protocol::parseZoomMultipleAck(payload, &zoom)) {
+                    _setZoomLevel(zoom);
+                }
+            } else if (cmd == 0x18) {
+                double zoom = 0.0;
+                if (UnipodMt11Protocol::parseCurrentZoomAck(payload, &zoom)) {
+                    _setZoomLevel(zoom);
+                }
+            } else if (cmd == 0x15) {
+                quint16 distanceDm = 0;
+                if (UnipodMt11Protocol::parseLaserDistanceAck(payload, &distanceDm)) {
+                    _laserDistanceMeters = static_cast<double>(distanceDm) / 10.0;
+                    emit laserDistanceChanged();
+                }
             }
+
+            remaining = remaining.mid(10 + payload.size());
         }
     }
 }

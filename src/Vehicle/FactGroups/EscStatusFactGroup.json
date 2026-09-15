@@ -19,7 +19,7 @@
     "name":             "current",
     "shortDesc":        "Current",
     "type":             "float",
-    "decimalPlaces":    2,
+    "decimalPlaces":    1,
     "default":          null,
     "units":            "A"
 
@@ -28,7 +28,7 @@
     "name":             "voltage",
     "shortDesc":        "Voltage",
     "type":             "float",
-    "decimalPlaces":    2,
+    "decimalPlaces":    1,
     "default":          null,
     "units":            "V"
 },

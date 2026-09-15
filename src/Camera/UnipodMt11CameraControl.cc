@@ -58,6 +58,8 @@ UnipodMt11CameraControl::UnipodMt11CameraControl(Vehicle* vehicle, UnipodMt11Cli
                    &UnipodMt11CameraControl::aiRecognitionEnabledChanged);
     (void) connect(_client, &UnipodMt11Client::laserDistanceChanged, this,
                    &UnipodMt11CameraControl::laserDistanceChanged);
+    (void) connect(_client, &UnipodMt11Client::zoomLevelChanged, this, &UnipodMt11CameraControl::zoomLevelChanged,
+                   Qt::QueuedConnection);
     (void) connect(this, &UnipodMt11CameraControl::photoCaptureStatusChanged, this,
                    &UnipodMt11CameraControl::captureVideoStateChanged);
     (void) connect(this, &UnipodMt11CameraControl::photoCaptureStatusChanged, this,
@@ -300,6 +302,14 @@ bool UnipodMt11CameraControl::hasZoom() const
     return unipodOverlayHas("zoom");
 }
 
+qreal UnipodMt11CameraControl::zoomLevel() const
+{
+    if (!_client || qIsNaN(_client->zoomLevel())) {
+        return 1.0;
+    }
+    return static_cast<qreal>(_client->zoomLevel());
+}
+
 bool UnipodMt11CameraControl::hasFocus() const
 {
     return unipodOverlayHas("focus");
@@ -308,6 +318,26 @@ bool UnipodMt11CameraControl::hasFocus() const
 bool UnipodMt11CameraControl::hasGimbalPad() const
 {
     return unipodOverlayHas("gimbal");
+}
+
+bool UnipodMt11CameraControl::hasGimbalRecenter() const
+{
+    return hasGimbalPad();
+}
+
+bool UnipodMt11CameraControl::hasGimbalLookDown() const
+{
+    return hasGimbalPad();
+}
+
+bool UnipodMt11CameraControl::hasGimbalYawRecenter() const
+{
+    return hasGimbalPad();
+}
+
+bool UnipodMt11CameraControl::hasGimbalPitchDown() const
+{
+    return hasGimbalPad();
 }
 
 bool UnipodMt11CameraControl::hasLensSwitch() const
@@ -413,6 +443,34 @@ void UnipodMt11CameraControl::ptzHome()
 {
     if (_client && hasGimbalPad()) {
         _client->ptzHome();
+    }
+}
+
+void UnipodMt11CameraControl::gimbalRecenter()
+{
+    if (_client && hasGimbalRecenter()) {
+        _client->ptzCenter(1);
+    }
+}
+
+void UnipodMt11CameraControl::gimbalLookDown()
+{
+    if (_client && hasGimbalLookDown()) {
+        _client->ptzCenter(4);
+    }
+}
+
+void UnipodMt11CameraControl::gimbalYawRecenter()
+{
+    if (_client && hasGimbalYawRecenter()) {
+        _client->ptzCenter(3);
+    }
+}
+
+void UnipodMt11CameraControl::gimbalPitchDown()
+{
+    if (_client && hasGimbalPitchDown()) {
+        _client->ptzCenter(2);
     }
 }
 

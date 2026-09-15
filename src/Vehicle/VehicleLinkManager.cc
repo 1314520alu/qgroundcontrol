@@ -330,6 +330,12 @@ bool VehicleLinkManager::_updatePrimaryLink()
         return false;
     }
 
+    const QString oldName =
+        (primaryLink && primaryLink->linkConfiguration()) ? primaryLink->linkConfiguration()->name() : QString();
+    const QString newName = (bestActivePrimaryLink && bestActivePrimaryLink->linkConfiguration())
+                                ? bestActivePrimaryLink->linkConfiguration()->name()
+                                : QString();
+
     if (primaryLink && primaryLink->linkConfiguration()->isHighLatency()) {
         _vehicle->sendMavCommand(MAV_COMP_ID_AUTOPILOT1, MAV_CMD_CONTROL_HIGH_LATENCY, true,
                                  0  // Stop transmission on this link
@@ -344,7 +350,9 @@ bool VehicleLinkManager::_updatePrimaryLink()
                                  1);  // Start transmission on this link
     }
 
-    return true;
+    // Same-name UDP flaps (duplicate UniRC sockets) must not spam "switching to secondary/primary".
+    // Only announce when the configuration identity actually changes (e.g. radio ↔ USB).
+    return !oldName.isEmpty() && (oldName != newName);
 }
 
 void VehicleLinkManager::closeVehicle()

@@ -33,7 +33,6 @@
         "laser",
         "ai",
         "follow",
-        "exposure_auto",
         "photo",
         "video",
         "zoom",
@@ -65,7 +64,35 @@
       },
       "overlay_phase1": [
         "gimbal",
-        "exposure_auto",
+        "photo",
+        "video",
+        "zoom"
+      ]
+    },
+    {
+      "id": "siyi-zr10",
+      "vendor": "SIYI",
+      "model_name": "SIYI ZR10",
+      "video_source": "SIYI ZR10",
+      "rtsp": "rtsp://192.168.144.25:8554/main.264",
+      "control_host": "192.168.144.25",
+      "control_port": 37260,
+      "hw_id": "0x6B",
+      "features": {
+        "gimbal": true,
+        "lens": false,
+        "laser": false,
+        "ai": "optional",
+        "follow": "optional",
+        "exposure_auto": true,
+        "photo": true,
+        "video": true,
+        "zoom": true,
+        "focus": false,
+        "media_library": false
+      },
+      "overlay_phase1": [
+        "gimbal",
         "photo",
         "video",
         "zoom"
@@ -95,7 +122,6 @@
       },
       "overlay_phase1": [
         "gimbal",
-        "exposure_auto",
         "photo",
         "video",
         "zoom"

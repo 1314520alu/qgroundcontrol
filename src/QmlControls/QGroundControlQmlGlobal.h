@@ -21,6 +21,7 @@ class SatcomAntennaController;
 class QGCPalette;
 class QGCPositionManager;
 class SettingsManager;
+class UpdateChecker;
 class VideoManager;
 class QmlObjectListModel;
 
@@ -37,6 +38,7 @@ Q_MOC_INCLUDE("QGCMapEngineManager.h")
 Q_MOC_INCLUDE("QGCPalette.h")
 Q_MOC_INCLUDE("PositionManager.h")
 Q_MOC_INCLUDE("SettingsManager.h")
+Q_MOC_INCLUDE("UpdateChecker.h")
 Q_MOC_INCLUDE("VideoManager.h")
 
 class QGroundControlQmlGlobal : public QObject
@@ -64,6 +66,7 @@ public:
 
     Q_PROPERTY(QString appName READ appName CONSTANT)
     Q_PROPERTY(LinkManager* linkManager READ linkManager CONSTANT)
+    Q_PROPERTY(UpdateChecker* updateChecker READ updateChecker CONSTANT)
     Q_PROPERTY(MultiVehicleManager* multiVehicleManager READ multiVehicleManager CONSTANT)
     Q_PROPERTY(QGCMapEngineManager* mapEngineManager READ mapEngineManager CONSTANT)
     Q_PROPERTY(QGCPositionManager* qgcPositionManger READ qgcPositionManger CONSTANT)
@@ -161,6 +164,9 @@ public:
     // Test audio output
     Q_INVOKABLE void testAudioOutput();
 
+    /// Speak text via TTS (respects mute / volume settings).
+    Q_INVOKABLE void say(const QString& text);
+
     /// Copy text to the system clipboard
     Q_INVOKABLE static void copyToClipboard(const QString& text);
 
@@ -169,6 +175,8 @@ public:
     static QString appName();
 
     LinkManager* linkManager() { return _linkManager; }
+
+    UpdateChecker* updateChecker() { return _updateChecker; }
 
     MultiVehicleManager* multiVehicleManager() { return _multiVehicleManager; }
 
@@ -254,6 +262,7 @@ private:
     MAVLinkSigningKeys* _mavlinkSigningKeys = nullptr;
     VideoManager* _videoManager = nullptr;
     LinkManager* _linkManager = nullptr;
+    UpdateChecker* _updateChecker = nullptr;
     MultiVehicleManager* _multiVehicleManager = nullptr;
     SettingsManager* _settingsManager = nullptr;
     QGCCorePlugin* _corePlugin = nullptr;

@@ -59,6 +59,7 @@ qt_add_resources(
           "${CMAKE_SOURCE_DIR}/src/Toolbar/Images/BatteryOrange.svg"
           "${CMAKE_SOURCE_DIR}/src/Toolbar/Images/BatteryCritical.svg"
           "${CMAKE_SOURCE_DIR}/src/Toolbar/Images/BatteryEMERGENCY.svg"
+          "${CMAKE_SOURCE_DIR}/src/Toolbar/Images/PowerSupply.svg"
           "${CMAKE_SOURCE_DIR}/src/Toolbar/Images/CameraIcon.svg"
           "${CMAKE_SOURCE_DIR}/src/Toolbar/Images/Connect.svg"
           "${CMAKE_SOURCE_DIR}/src/Toolbar/Images/Disarmed.svg"

@@ -144,8 +144,11 @@ Item {
             anchors.bottom:         parent.bottom
             anchors.left:           parent.left
             anchors.right:          guidedValueSlider.visible ? guidedValueSlider.left : parent.right
-            anchors.margins:        _widgetMargin
             anchors.topMargin:      toolbar.height + _widgetMargin
+            anchors.bottomMargin:   _widgetMargin
+            // Video main: flush left/right for payload sidebars; map keeps normal inset
+            anchors.leftMargin:     !_mainWindowIsMap && QGroundControl.videoManager.hasVideo ? 0 : _widgetMargin
+            anchors.rightMargin:    !_mainWindowIsMap && QGroundControl.videoManager.hasVideo ? 0 : _widgetMargin
             z:                      _fullItemZorder + 2
             parentToolInsets:       _toolInsets
             mapControl:             _mapControl

@@ -5,17 +5,17 @@ import QGroundControl
 import QGroundControl.Controls
 import QGroundControl.FlyView
 
-RowLayout {
-    TelemetryValuesBar {
-        Layout.alignment:       Qt.AlignBottom
-        extraWidth:             instrumentPanel.extraValuesWidth
-        settingsGroup:          factValueGrid.telemetryBarSettingsGroup
-        specificVehicleForCard: null // Tracks active vehicle
-    }
+Item {
+    id: root
+
+    // Telemetry lives bottom-center; this row only hosts the instrument panel.
+    width: instrumentPanel.visible ? instrumentPanel.width : 0
+    height: instrumentPanel.visible ? instrumentPanel.height : 0
 
     FlyViewInstrumentPanel {
         id:                 instrumentPanel
-        Layout.alignment:   Qt.AlignBottom
+        anchors.right:      parent.right
+        anchors.bottom:     parent.bottom
         visible:            QGroundControl.corePlugin.options.flyView.showInstrumentPanel && _showSingleVehicleUI
     }
 }

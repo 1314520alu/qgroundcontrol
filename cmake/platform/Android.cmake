@@ -174,6 +174,7 @@ qt_add_android_permission(${CMAKE_PROJECT_NAME} NAME android.permission.MANAGE_E
 qt_add_android_permission(${CMAKE_PROJECT_NAME} NAME android.permission.VIBRATE)
 
 qt_add_android_permission(${CMAKE_PROJECT_NAME} NAME android.permission.INTERNET)
+qt_add_android_permission(${CMAKE_PROJECT_NAME} NAME android.permission.REQUEST_INSTALL_PACKAGES)
 qt_add_android_permission(${CMAKE_PROJECT_NAME} NAME android.permission.WAKE_LOCK)
 qt_add_android_permission(${CMAKE_PROJECT_NAME} NAME android.permission.ACCESS_NETWORK_STATE)
 qt_add_android_permission(${CMAKE_PROJECT_NAME} NAME android.permission.CHANGE_NETWORK_STATE)

@@ -181,6 +181,12 @@ Explicit `control` values:
 | `slider` | Slider with optional enable-checkbox and adjacent button |
 | `browse` | File/path browser (desktop only; pair with `showWhen: "!ScreenTools.isMobile"`) |
 | `scaler` | Percentage scaler (for `uiScalePercent`) |
+| `radiogroup` | Vertical `QGCRadioButton` Repeater over `fact.enumStrings` / `fact.enumIndex` |
+
+#### `radiogroup`
+
+Requires Fact `enumStrings` / `enumValues`. Do not duplicate options in the UI JSON.
+Optional `label` emits a `QGCLabel` above the radios; omit it when the group heading is enough.
 
 #### `slider` extra keys
 
@@ -222,6 +228,7 @@ text/traversal matching:
 | Group (`SettingsGroupLayout`, headed groups only) | `settingsGroup_<Heading>` (characters outside `[A-Za-z0-9_]` stripped, e.g. `settingsGroup_EUVehicleInfo`) |
 | Text field (`LabelledFactTextField`) | `settingsTextField_<factName>` |
 | Checkbox (`FactCheckBoxSlider`) | `settingsCheckBox_<factName>` |
+| Radio group | `settingsRadioGroup_<factName>` |
 
 Page names and headings are sanitized to `[A-Za-z0-9_]` before being embedded in
 the objectName. Generation fails with an error if a heading sanitizes to an empty

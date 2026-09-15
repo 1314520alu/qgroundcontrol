@@ -147,15 +147,16 @@ bool LinkManager::createConnectedLink(SharedLinkConfigurationPtr& config)
     if (config->type() == LinkConfiguration::TypeUdp) {
         const auto* udpConfig = qobject_cast<const UDPConfiguration*>(config.get());
         if (udpConfig) {
-            if (const SharedLinkInterfacePtr existing = _existingUdpLinkForPort(udpConfig->localPort())) {
+            if (const SharedLinkInterfacePtr existing = _existingUdpLinkForConfig(udpConfig)) {
                 const SharedLinkConfigurationPtr existingConfig = existing->linkConfiguration();
-                if (existingConfig.get() == config.get()) {
-                    config->setLink(existing);
-                    return true;
+                // Reuse the live socket even when a second config object asks to connect
+                // (Android double LinkConfigurationManager + UniRC localPort 0).
+                config->setLink(existing);
+                if (existingConfig.get() != config.get()) {
+                    qCDebug(LinkManagerLog) << "Reuse existing UDP link for" << udpConfig->name() << "already owned by"
+                                            << (existingConfig ? existingConfig->name() : QString());
                 }
-                qCDebug(LinkManagerLog) << "Skip duplicate UDP bind on port" << udpConfig->localPort() << "owned by"
-                                        << (existingConfig ? existingConfig->name() : QString());
-                return false;
+                return true;
             }
         }
     }
@@ -495,8 +496,54 @@ SharedLinkInterfacePtr LinkManager::_existingUdpLinkForPort(quint16 port)
     return {};
 }
 
+SharedLinkInterfacePtr LinkManager::_existingUdpLinkForConfig(const UDPConfiguration* udpConfig)
+{
+    if (!udpConfig) {
+        return {};
+    }
+
+    if (const SharedLinkInterfacePtr byPort = _existingUdpLinkForPort(udpConfig->localPort())) {
+        return byPort;
+    }
+
+    QMutexLocker locker(&_linksMutex);
+    for (const SharedLinkInterfacePtr& link : _rgLinks) {
+        const SharedLinkConfigurationPtr linkConfig = link->linkConfiguration();
+        if (!linkConfig || (linkConfig->type() != LinkConfiguration::TypeUdp)) {
+            continue;
+        }
+        const auto* other = qobject_cast<const UDPConfiguration*>(linkConfig.get());
+        if (!other) {
+            continue;
+        }
+
+        // UniRC / MK presets use localPort 0; name collision is the reliable duplicate signal.
+        if (!udpConfig->name().isEmpty() && (other->name() == udpConfig->name())) {
+            return link;
+        }
+
+        // Same target hosts (e.g. both talk to 127.0.0.1:19856) — same vehicle twice.
+        if (!udpConfig->hostList().isEmpty() && (other->hostList() == udpConfig->hostList())) {
+            return link;
+        }
+    }
+
+    return {};
+}
+
 bool LinkManager::_hasConnectedDedicatedUdpLink()
 {
+    // Prefer any non-dynamic UDP *configuration* (e.g. UniRC 10 Pro / MK15 preset), not only
+    // currently-connected interfaces. Otherwise AutoConnect UDP (14550) races in while the
+    // preset is still binding and attaches the same vehicle as a flapping secondary link
+    // ("Switching communication to secondary link").
+    for (const SharedLinkConfigurationPtr& config : _rgLinkConfigs) {
+        if (config && (config->type() == LinkConfiguration::TypeUdp) && !config->isDynamic() &&
+            (config->name() != _defaultUDPLinkName)) {
+            return true;
+        }
+    }
+
     QMutexLocker locker(&_linksMutex);
     for (const SharedLinkInterfacePtr& link : _rgLinks) {
         const SharedLinkConfigurationPtr linkConfig = link->linkConfiguration();

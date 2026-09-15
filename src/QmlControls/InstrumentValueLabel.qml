@@ -7,13 +7,14 @@ import QGroundControl.Controls
 
 ColumnLayout {
     property var    instrumentValueData:        null
+    property real   fontScale:                  1.0
 
     property var    _rgFontSizes:               [ ScreenTools.defaultFontPointSize, ScreenTools.smallFontPointSize, ScreenTools.mediumFontPointSize, ScreenTools.largeFontPointSize ]
     property var    _rgFontSizeRatios:          [ 1, ScreenTools.smallFontPointRatio, ScreenTools.mediumFontPointRatio, ScreenTools.largeFontPointRatio ]
     property real   _doubleDescent:             ScreenTools.defaultFontDescent * 2
     property real   _tightDefaultFontHeight:    ScreenTools.defaultFontPixelHeight - _doubleDescent
     property var    _rgFontSizeTightHeights:    [ _tightDefaultFontHeight * _rgFontSizeRatios[0] + 2, _tightDefaultFontHeight * _rgFontSizeRatios[1] + 2, _tightDefaultFontHeight * _rgFontSizeRatios[2] + 2, _tightDefaultFontHeight * _rgFontSizeRatios[3] + 2 ]
-    property real   _tightHeight:               _rgFontSizeTightHeights[instrumentValueData.factValueGrid.fontSize]
+    property real   _tightHeight:               _rgFontSizeTightHeights[instrumentValueData.factValueGrid.fontSize] * fontScale
     property bool   _iconVisible:               instrumentValueData.rangeType === InstrumentValueData.IconSelectRange || instrumentValueData.icon
     property var    _color:                     instrumentValueData.isValidColor(instrumentValueData.currentColor) ? instrumentValueData.currentColor : qgcPal.text
 
@@ -56,7 +57,7 @@ ColumnLayout {
     QGCLabel {
         Layout.alignment:   Qt.AlignVCenter
         height:             _tightHeight
-        font.pointSize:     ScreenTools.smallFontPointSize
+        font.pointSize:     ScreenTools.smallFontPointSize * fontScale
         text:               instrumentValueData.text
         color:              _color
         opacity:            instrumentValueData.currentOpacity

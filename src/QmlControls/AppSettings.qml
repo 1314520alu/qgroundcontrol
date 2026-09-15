@@ -256,6 +256,11 @@ Rectangle {
                         objectName:    "settingsButton_" + (model.nameKey ?? pageName)
                         text:          pageName
                         icon.source:   pageIconUrl
+                        logo: {
+                            var src = String(pageIconUrl)
+                            return src.indexOf(".png") !== -1 || src.indexOf(".jpg") !== -1
+                                   || src.indexOf(".jpeg") !== -1 || src.indexOf(".webp") !== -1
+                        }
                         expandable:    hasMultipleSections
                         expanded:      isExpanded
                         checked:       isSelected && settingsView._selectedSectionIndex === -1

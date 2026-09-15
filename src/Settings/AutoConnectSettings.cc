@@ -1,7 +1,8 @@
 #include "AutoConnectSettings.h"
-#include "LinkManager.h"
 
 #include <QtCore/QCoreApplication>
+
+#include "LinkManager.h"
 
 DECLARE_SETTINGGROUP(AutoConnect, "AutoConnect")
 {
@@ -12,14 +13,14 @@ DECLARE_SETTINGGROUP(AutoConnect, "AutoConnect")
     if (settings.childGroups().contains(deprecatedGroupName)) {
         settings.beginGroup(deprecatedGroupName);
         QList<QPair<QString, QVariant>> values;
-        for (const QString& key: settings.childKeys()) {
+        for (const QString& key : settings.childKeys()) {
             values.append(QPair<QString, QVariant>(key, settings.value(key)));
         }
         settings.endGroup();
         settings.remove(deprecatedGroupName);
 
         settings.beginGroup(_name);
-        for (const QPair<QString, QVariant>& pair: values) {
+        for (const QPair<QString, QVariant>& pair : values) {
             settings.setValue(pair.first, pair.second);
         }
         settings.endGroup();
@@ -92,9 +93,9 @@ DECLARE_SETTINGSFACT_NO_FUNC(AutoConnectSettings, autoConnectLibrePilot)
 {
     if (!_autoConnectLibrePilotFact) {
         _autoConnectLibrePilotFact = _createSettingsFact(autoConnectLibrePilotName);
-#ifdef Q_OS_IOS
+        // Unused on Miduo/SIYI remotes; keep fact for settings migration but hide from UI.
         _autoConnectLibrePilotFact->setUserVisible(false);
-#endif
+        _autoConnectLibrePilotFact->setRawValue(false);
     }
     return _autoConnectLibrePilotFact;
 }
@@ -131,5 +132,3 @@ DECLARE_SETTINGSFACT_NO_FUNC(AutoConnectSettings, autoConnectNmeaBaud)
     }
     return _autoConnectNmeaBaudFact;
 }
-
-

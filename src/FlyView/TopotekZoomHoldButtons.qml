@@ -1,52 +1,83 @@
 import QtQuick
-import QtQuick.Layouts
+import QtMultimedia
 
 import QGroundControl
 import QGroundControl.Controls
+import QGroundControl.FlyView
 
-/// Hold +/- zoom or focus buttons for Topotek TQ10N (ZMC in/out, release stop).
-ColumnLayout {
+/// Hold zoom/focus: press starts continuous in/out, release (or cancel) stops.
+Column {
     id: root
 
     property var camera
     property bool useFocus: false
-    property real buttonSize: Math.max(ScreenTools.minTouchPixels, ScreenTools.defaultFontPixelWidth * 3.2)
+    property real circleSize: 0
 
-    spacing: ScreenTools.defaultFontPixelWidth / 2
+    signal zoomInteracted()
 
-    QGCPalette { id: qgcPal; colorGroupEnabled: true }
+    property var _appSettings: QGroundControl.settingsManager.appSettings
+    property bool _audioMuted: _appSettings && _appSettings.audioMuted.rawValue
+    property real _audioVolume: _appSettings ? _appSettings.audioVolume.rawValue : 50
 
-    TopotekZoomHoldButton {
-        Layout.alignment: Qt.AlignHCenter
-        label: "+"
-        enabled: root.camera
-        onPressed: {
-            if (!root.camera) { return }
-            if (root.useFocus) { root.camera.startFocus(1) } else { root.camera.startZoom(1) }
+    spacing: ScreenTools.defaultFontPixelHeight * 0.3
+
+    function _playSound(effect) {
+        if (_audioMuted || _audioVolume <= 0 || !effect) {
+            return
         }
-        onReleased: {
-            if (!root.camera) { return }
-            if (root.useFocus) { root.camera.stopFocus() } else { root.camera.stopZoom() }
+        effect.volume = Math.max(0.05, Math.min(1.0, _audioVolume / 100.0))
+        effect.play()
+    }
+
+    function _start(direction) {
+        if (!root.camera) {
+            return
+        }
+        _playSound(direction > 0 ? zoomInSound : zoomOutSound)
+        if (root.useFocus) {
+            root.camera.startFocus(direction)
+        } else {
+            root.camera.startZoom(direction)
+            root.zoomInteracted()
         }
     }
 
-    QGCLabel {
-        Layout.alignment: Qt.AlignHCenter
-        text: root.useFocus ? qsTr("Focus") : qsTr("Zoom")
-        font.pointSize: ScreenTools.smallFontPointSize
+    function _stop() {
+        if (!root.camera) {
+            return
+        }
+        if (root.useFocus) {
+            root.camera.stopFocus()
+        } else {
+            root.camera.stopZoom()
+        }
     }
 
-    TopotekZoomHoldButton {
-        Layout.alignment: Qt.AlignHCenter
-        label: "\u2212"
+    SoundEffect {
+        id: zoomInSound
+        source: "qrc:/res/audio/zoom_in.wav"
+    }
+
+    SoundEffect {
+        id: zoomOutSound
+        source: "qrc:/res/audio/zoom_out.wav"
+    }
+
+    FlyViewPayloadIconButton {
+        circleSize: root.circleSize
         enabled: root.camera
-        onPressed: {
-            if (!root.camera) { return }
-            if (root.useFocus) { root.camera.startFocus(-1) } else { root.camera.startZoom(-1) }
-        }
-        onReleased: {
-            if (!root.camera) { return }
-            if (root.useFocus) { root.camera.stopFocus() } else { root.camera.stopZoom() }
-        }
+        iconSource: "/InstrumentValueIcons/zoom-in.svg"
+        label: root.useFocus ? qsTr("Near") : qsTr("Zoom In")
+        onPressed: root._start(1)
+        onReleased: root._stop()
+    }
+
+    FlyViewPayloadIconButton {
+        circleSize: root.circleSize
+        enabled: root.camera
+        iconSource: "/InstrumentValueIcons/zoom-out.svg"
+        label: root.useFocus ? qsTr("Far") : qsTr("Zoom Out")
+        onPressed: root._start(-1)
+        onReleased: root._stop()
     }
 }

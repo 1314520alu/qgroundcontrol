@@ -16,8 +16,10 @@
 #include <QtCore/QDir>
 #include <QtCore/QSettings>
 #include <QtCore/QStandardPaths>
+#include <QtCore/QVariantList>
 #include <QtCore/QVariantMap>
 
+#include <algorithm>
 #include <iterator>
 
 QGC_LOGGING_CATEGORY(AppSettingsLog, "Settings.AppSettings")
@@ -182,6 +184,8 @@ DECLARE_SETTINGGROUP(App, "")
 
 DECLARE_SETTINGSFACT(AppSettings, preferredFirmwareClass)
 DECLARE_SETTINGSFACT(AppSettings, preferredVehicleClass)
+DECLARE_SETTINGSFACT(AppSettings, aircraftModel)
+DECLARE_SETTINGSFACT(AppSettings, updateManifestUrl)
 DECLARE_SETTINGSFACT(AppSettings, offlineEditingFirmwareClass)
 DECLARE_SETTINGSFACT(AppSettings, offlineEditingVehicleClass)
 DECLARE_SETTINGSFACT(AppSettings, offlineEditingCruiseSpeed)
@@ -564,6 +568,46 @@ int AppSettings::vehicleSetupComponentSortKey(const QString& id) const
         }
     }
     return 1000;
+}
+
+QVariantList AppSettings::visibleVehicleSetupComponentIndices(const QStringList& setupSources,
+                                                              const QStringList& summarySources,
+                                                              const QStringList& names) const
+{
+    struct VisibleEntry
+    {
+        int index = 0;
+        int sortKey = 0;
+        QString name;
+    };
+
+    const int count = std::min({setupSources.size(), summarySources.size(), names.size()});
+    QList<VisibleEntry> entries;
+    entries.reserve(count);
+    for (int i = 0; i < count; ++i) {
+        if (setupSources.at(i).isEmpty()) {
+            continue;
+        }
+        const QString id = resolveVehicleSetupComponentId(setupSources.at(i), summarySources.at(i));
+        if (!isVehicleSetupComponentVisible(id)) {
+            continue;
+        }
+        entries.append({i, vehicleSetupComponentSortKey(id), names.at(i)});
+    }
+
+    std::sort(entries.begin(), entries.end(), [](const VisibleEntry& a, const VisibleEntry& b) {
+        if (a.sortKey != b.sortKey) {
+            return a.sortKey < b.sortKey;
+        }
+        return QString::localeAwareCompare(a.name, b.name) < 0;
+    });
+
+    QVariantList indices;
+    indices.reserve(entries.size());
+    for (const VisibleEntry& entry : entries) {
+        indices.append(entry.index);
+    }
+    return indices;
 }
 
 /// Returns the current qLocaleLanguage setting bypassing the standard SettingsGroup path. It also validates

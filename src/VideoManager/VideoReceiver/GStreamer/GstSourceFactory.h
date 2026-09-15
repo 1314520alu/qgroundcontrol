@@ -25,9 +25,14 @@ struct Config
     bool doRetransmission = true;
 };
 
-/// Two-hop radio ethernet (MK22 relay / SIYI / Skydroid `192.168.144.x`) typically has ~100 ms RTT.
-/// Floor jitter latency so `rtspsrc` is not dropping against the mean RTT. No-op for low-latency
-/// (`JitterBuffer::None`) and for non-radio hosts. Callers may still request a higher value.
+/// Two-hop radio ethernet (MK22 relay / SIYI / Skydroid `192.168.144.x`) needs more
+/// playout headroom than LAN. Floor jitter latency at 180 ms so `rtspsrc` does not
+/// underrun on typical HEVC IDR bursts. No-op for low-latency (`JitterBuffer::None`)
+/// and for non-radio hosts. Callers may still request a higher value.
+constexpr int kRadioEthernetMinLatencyMs = 180;
+
+bool isRadioEthernetHost(const QString& host);
+
 int effectiveRtspLatencyMs(int requestedMs, bool radioEthernetHost, JitterBuffer jitterBuffer);
 
 /// Build a source bin (`source` [+ `tsdemux`] [+ `rtpjitterbuffer`] + `parsebin`)

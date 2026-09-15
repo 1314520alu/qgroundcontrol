@@ -2,6 +2,8 @@
 
 #include <QtCore/QtEndian>
 
+#include <algorithm>
+#include <cmath>
 #include <cstring>
 
 namespace UnipodMt11Protocol {
@@ -14,41 +16,22 @@ static constexpr int kCrcSize = 2;
 static constexpr int kMinFrameSize = kHeaderSize + kCrcSize;
 static constexpr int kRecordStaOffset = 3;
 
-// CRC16-CCITT (poly 0x1021), init 0 — matches UniPod MT11 SDK handbook.
-static const quint16 kCrc16Table[256] = {
-    0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50A5, 0x60C6, 0x70E7, 0x8108, 0x9129, 0xA14A, 0xB16B, 0xC18C, 0xD1AD,
-    0xE1CE, 0xF1EF, 0x1231, 0x0210, 0x3273, 0x2252, 0x52B5, 0x4294, 0x72F7, 0x62D6, 0x9339, 0x8318, 0xB37B, 0xA35A,
-    0xD3BD, 0xC39C, 0xF3FF, 0xE3DE, 0x2462, 0x3443, 0x0420, 0x1401, 0x64E6, 0x74C7, 0x44A4, 0x5485, 0xA56A, 0xB54B,
-    0x8528, 0x9509, 0xE5EE, 0xF5CF, 0xC5AC, 0xD58D, 0x3653, 0x2672, 0x1611, 0x0600, 0x76D7, 0x66F6, 0x5695, 0x46B4,
-    0xB75B, 0xA77A, 0x9719, 0x8738, 0xF7DF, 0xE7FE, 0xD79D, 0xC7BC, 0x48C4, 0x58E5, 0x6886, 0x78A7, 0x0840, 0x1861,
-    0x2802, 0x3823, 0xC9CC, 0xD9ED, 0xE98E, 0xF9AF, 0x8948, 0x9969, 0xA90A, 0xB92B, 0x5AF5, 0x4AD4, 0x7AB7, 0x6A96,
-    0x1A71, 0x0A50, 0x3A33, 0x2A12, 0xDBFD, 0xCBDC, 0xFBFF, 0xEBDE, 0x9B79, 0x8B58, 0xBB3B, 0xAB1A, 0x6CA6, 0x7C87,
-    0x4CE4, 0x5CC5, 0x2C22, 0x3C03, 0x0C60, 0x1C41, 0xEDAE, 0xFD8F, 0xCDEC, 0xDDCD, 0xAD2A, 0xBD0B, 0x8D68, 0x9D49,
-    0x7E97, 0x6EB6, 0x5ED5, 0x4EF4, 0x3E13, 0x2E32, 0x1E51, 0x0E70, 0xFF9F, 0xEFBE, 0xDFDD, 0xCFFC, 0xBF1B, 0xAF3A,
-    0x9F59, 0x8F78, 0x9188, 0x81A9, 0xB1CA, 0xA1EB, 0xD10C, 0xC12D, 0xF14E, 0xE16F, 0x1080, 0x00A1, 0x30C2, 0x20E3,
-    0x5004, 0x4025, 0x7046, 0x6067, 0x83B9, 0x9398, 0xA3FB, 0xB3DA, 0xC33D, 0xD31C, 0xE37F, 0xF35E, 0x02B1, 0x1290,
-    0x22F3, 0x32D2, 0x4235, 0x5214, 0x6277, 0x7256, 0xB5EA, 0xA5CB, 0x95A8, 0x8589, 0xF56E, 0xE54F, 0xD52C, 0xC50D,
-    0x34E2, 0x24C3, 0x14A0, 0x0481, 0x7466, 0x6447, 0x5424, 0x4405, 0xA7DB, 0xB7FA, 0x8799, 0x97B8, 0xE75F, 0xF77E,
-    0xC71D, 0xD73C, 0x26D3, 0x36F2, 0x0691, 0x16B0, 0x6657, 0x7676, 0x4615, 0x5634, 0xD94C, 0xC96D, 0xF90E, 0xE92F,
-    0x99C8, 0x89E9, 0xB98A, 0xA9AB, 0x5844, 0x4865, 0x7806, 0x6827, 0x18C0, 0x08E1, 0x3882, 0x28A3, 0xCB7D, 0xDB5C,
-    0xEB3F, 0xFB1E, 0x8BF9, 0x9BD8, 0xABBB, 0xBB9A, 0x4A75, 0x5A54, 0x6A37, 0x7A16, 0x0AF1, 0x1AD0, 0x2AB3, 0x3A92,
-    0xFD2E, 0xED0F, 0xDD6C, 0xCD4D, 0xBDAA, 0xAD8B, 0x9DE8, 0x8DC9, 0x7C26, 0x6C07, 0x5C64, 0x4C45, 0x3CA2, 0x2C83,
-    0x1CE0, 0x0CC1, 0xEF1F, 0xFF3E, 0xCF5D, 0xDF7C, 0xAF9B, 0xBFBA, 0x8FD9, 0x9FF8, 0x6E17, 0x7E36, 0x4E55, 0x5E74,
-    0x2E93, 0x3EB2, 0x0ED1, 0x1EF0,
-};
-
-quint16 _crc16Update(quint16 crc, quint8 byte)
-{
-    return static_cast<quint16>((crc << 8) ^ kCrc16Table[((crc >> 8) ^ byte) & 0xFF]);
-}
-
 }  // namespace
 
+// CRC16-CCITT/XMODEM (poly 0x1021, init 0). Computed, not copied from the SDK PDF table
+// (that table had OCR typos and dropped live ZR10 ACKs).
 quint16 crc16(const QByteArray& data)
 {
     quint16 crc = 0;
-    for (const char byte : data) {
-        crc = _crc16Update(crc, static_cast<quint8>(byte));
+    for (const char ch : data) {
+        crc ^= static_cast<quint16>(static_cast<quint8>(ch)) << 8;
+        for (int bit = 0; bit < 8; ++bit) {
+            if (crc & 0x8000U) {
+                crc = static_cast<quint16>((crc << 1) ^ 0x1021U);
+            } else {
+                crc = static_cast<quint16>(crc << 1);
+            }
+        }
     }
     return crc;
 }
@@ -98,23 +81,24 @@ bool parseFrame(const QByteArray& datagram, quint8* ctrlOut, quint16* seqOut, qu
 
     const int payloadLen = qFromLittleEndian<quint16>(reinterpret_cast<const uchar*>(datagram.constData() + 3));
     const int expectedSize = kHeaderSize + payloadLen + kCrcSize;
-    if (datagram.size() != expectedSize) {
+    if (datagram.size() < expectedSize) {
         return false;
     }
 
-    const QByteArray frameWithoutCrc = datagram.left(datagram.size() - kCrcSize);
+    const QByteArray frame = datagram.left(expectedSize);
+    const QByteArray frameWithoutCrc = frame.left(frame.size() - kCrcSize);
     quint16 receivedCrc = 0;
-    memcpy(&receivedCrc, datagram.constData() + datagram.size() - kCrcSize, sizeof(receivedCrc));
+    memcpy(&receivedCrc, frame.constData() + frame.size() - kCrcSize, sizeof(receivedCrc));
     receivedCrc = qFromLittleEndian(receivedCrc);
 
     if (crc16(frameWithoutCrc) != receivedCrc) {
         return false;
     }
 
-    *ctrlOut = static_cast<quint8>(datagram.at(2));
-    *seqOut = qFromLittleEndian<quint16>(reinterpret_cast<const uchar*>(datagram.constData() + 5));
-    *cmdOut = static_cast<quint8>(datagram.at(7));
-    *payloadOut = datagram.mid(kHeaderSize, payloadLen);
+    *ctrlOut = static_cast<quint8>(frame.at(2));
+    *seqOut = qFromLittleEndian<quint16>(reinterpret_cast<const uchar*>(frame.constData() + 5));
+    *cmdOut = static_cast<quint8>(frame.at(7));
+    *payloadOut = frame.mid(kHeaderSize, payloadLen);
     return true;
 }
 
@@ -136,6 +120,122 @@ QByteArray buildSystemInfoRequest(quint16 seq)
 QByteArray buildZoomCommand(quint16 seq, qint8 zoom)
 {
     return buildFrame(0x01, seq, 0x05, QByteArray(1, static_cast<char>(zoom)));
+}
+
+QByteArray buildAbsoluteZoomCommand(quint16 seq, double zoom)
+{
+    if (!std::isfinite(zoom)) {
+        zoom = kHoldZoomMin;
+    }
+    const double tenths = std::round(std::clamp(zoom, kHoldZoomMin, 255.9) * 10.0);
+    const int zoomInt = static_cast<int>(tenths) / 10;
+    const int zoomFrac = static_cast<int>(tenths) % 10;
+    QByteArray payload(2, char(0));
+    payload[0] = static_cast<char>(zoomInt);
+    payload[1] = static_cast<char>(zoomFrac);
+    return buildFrame(0x01, seq, 0x0F, payload);
+}
+
+QByteArray buildZoomRangeRequest(quint16 seq)
+{
+    return buildFrame(0x01, seq, 0x16, QByteArray());
+}
+
+QByteArray buildCurrentZoomRequest(quint16 seq)
+{
+    return buildFrame(0x01, seq, 0x18, QByteArray());
+}
+
+QByteArray buildGimbalAttitudeRequest(quint16 seq)
+{
+    return buildFrame(0x01, seq, 0x0D, QByteArray());
+}
+
+bool parseGimbalAttitudeAck(const QByteArray& payload, double* pitchDegOut)
+{
+    if (!pitchDegOut || payload.size() < 4) {
+        return false;
+    }
+
+    qint16 pitchRaw = 0;
+    memcpy(&pitchRaw, payload.constData() + 2, sizeof(pitchRaw));
+    *pitchDegOut = static_cast<double>(qFromLittleEndian(pitchRaw)) / 10.0;
+    return true;
+}
+
+double nextHoldZoomCommand(double startZoom, double elapsedSec, double actual, int actualAgeMs, int direction,
+                           double ratioPerSec, double maxLeadRatio, double minZoom, double maxZoom)
+{
+    if (direction == 0 || !(startZoom > 0.0) || !(elapsedSec >= 0.0) || !(ratioPerSec > 1.0)) {
+        return startZoom;
+    }
+
+    const double factor = std::pow(ratioPerSec, elapsedSec);
+    double target = (direction > 0) ? (startZoom * factor) : (startZoom / factor);
+
+    const bool actualFresh =
+        std::isfinite(actual) && actual > 0.0 && actualAgeMs >= 0 && actualAgeMs <= kHoldZoomActualFreshMs;
+    if (actualFresh && maxLeadRatio > 1.0) {
+        if (direction > 0) {
+            target = std::min(target, actual * maxLeadRatio);
+        } else {
+            target = std::max(target, actual / maxLeadRatio);
+        }
+    }
+
+    if (std::isfinite(minZoom) && std::isfinite(maxZoom) && maxZoom >= minZoom) {
+        target = std::clamp(target, minZoom, maxZoom);
+    }
+
+    return std::round(target * 10.0) / 10.0;
+}
+
+bool holdZoomShouldStopMotor(int direction, double zoom, double minZoom, double maxZoom)
+{
+    if (direction == 0 || !std::isfinite(zoom)) {
+        return false;
+    }
+    if (direction > 0) {
+        return std::isfinite(maxZoom) && zoom >= maxZoom;
+    }
+    return std::isfinite(minZoom) && zoom <= minZoom;
+}
+
+bool shouldRequestCurrentZoomOnPoll(int holdDirection, bool holdMotorStopped)
+{
+    Q_UNUSED(holdDirection);
+    Q_UNUSED(holdMotorStopped);
+    // ZR10 0x05 ACK does not stream the multiple while the motor runs. Idle covers
+    // RC/SBUS zoom; overlay hold also needs 0x18 so the HUD can keep up.
+    return true;
+}
+
+bool parseZoomMultipleAck(const QByteArray& payload, double* zoomOut)
+{
+    if (!zoomOut || payload.size() < 2) {
+        return false;
+    }
+
+    quint16 multiple = 0;
+    memcpy(&multiple, payload.constData(), sizeof(multiple));
+    *zoomOut = static_cast<double>(qFromLittleEndian(multiple)) / 10.0;
+    return true;
+}
+
+bool parseCurrentZoomAck(const QByteArray& payload, double* zoomOut)
+{
+    if (!zoomOut || payload.size() < 2) {
+        return false;
+    }
+
+    const auto zoomInt = static_cast<quint8>(payload.at(0));
+    const auto zoomFrac = static_cast<quint8>(payload.at(1));
+    if (zoomFrac > 9) {
+        // Some ZR10 builds ACK 0x18 with the 0x05 uint16 / 10 layout.
+        return parseZoomMultipleAck(payload, zoomOut);
+    }
+    *zoomOut = static_cast<double>(zoomInt) + (static_cast<double>(zoomFrac) / 10.0);
+    return true;
 }
 
 QByteArray buildFocusCommand(quint16 seq, qint8 focus)

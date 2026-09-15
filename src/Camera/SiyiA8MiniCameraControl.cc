@@ -1,8 +1,10 @@
 #include "SiyiA8MiniCameraControl.h"
 
 #include <QtCore/QTime>
+#include <QtCore/QtNumeric>
 
 #include "AppMessages.h"
+#include "Fact.h"
 #include "PayloadCapabilityCatalog.h"
 #include "QGCLoggingCategory.h"
 #include "SettingsManager.h"
@@ -16,10 +18,17 @@ QGC_LOGGING_CATEGORY(SiyiA8MiniCameraControlLog, "Camera.SiyiA8MiniCameraControl
 
 namespace {
 
-bool a8OverlayHas(const char* feature)
+QString currentSiyiGimbalModelName()
 {
-    return PayloadCapabilityCatalog::overlayHas(
-        PayloadCapabilityCatalog::instance().byModelName(QStringLiteral("SIYI A8 Mini")), QString::fromLatin1(feature));
+    SettingsManager* const settingsManager = SettingsManager::instance();
+    if (!settingsManager || !settingsManager->videoSettings() || !settingsManager->videoSettings()->videoSource()) {
+        return QStringLiteral("SIYI A8 Mini");
+    }
+    if (settingsManager->videoSettings()->videoSource()->rawValue().toString() ==
+        QLatin1String(VideoSettings::videoSourceSiyiZr10)) {
+        return QStringLiteral("SIYI ZR10");
+    }
+    return QStringLiteral("SIYI A8 Mini");
 }
 
 }  // namespace
@@ -46,6 +55,8 @@ SiyiA8MiniCameraControl::SiyiA8MiniCameraControl(Vehicle* vehicle, UnipodMt11Cli
     (void) connect(_client, &UnipodMt11Client::recordStaChanged, this, &SiyiA8MiniCameraControl::_onRecordStaChanged);
     (void) connect(_client, &UnipodMt11Client::funcFeedback, this, &SiyiA8MiniCameraControl::_onFuncFeedback);
     (void) connect(_client, &UnipodMt11Client::sendFailed, this, &SiyiA8MiniCameraControl::_onSendFailed);
+    (void) connect(_client, &UnipodMt11Client::zoomLevelChanged, this, &SiyiA8MiniCameraControl::zoomLevelChanged,
+                   Qt::QueuedConnection);
     (void) connect(this, &SiyiA8MiniCameraControl::photoCaptureStatusChanged, this,
                    &SiyiA8MiniCameraControl::captureVideoStateChanged);
     (void) connect(this, &SiyiA8MiniCameraControl::photoCaptureStatusChanged, this,
@@ -53,6 +64,12 @@ SiyiA8MiniCameraControl::SiyiA8MiniCameraControl(Vehicle* vehicle, UnipodMt11Cli
 
     _videoRecordTimeUpdateTimer.setInterval(1000);
     (void) connect(&_videoRecordTimeUpdateTimer, &QTimer::timeout, this, &SiyiA8MiniCameraControl::recordTimeChanged);
+
+    SettingsManager* const settingsManager = SettingsManager::instance();
+    if (settingsManager && settingsManager->videoSettings() && settingsManager->videoSettings()->videoSource()) {
+        (void) connect(settingsManager->videoSettings()->videoSource(), &Fact::rawValueChanged, this,
+                       [this]() { emit infoChanged(); });
+    }
 
     if (capturesVideo()) {
         _cameraMode = CAM_MODE_VIDEO;
@@ -83,8 +100,20 @@ bool SiyiA8MiniCameraControl::_isSelectedVideoSource() const
     if (!settingsManager || !settingsManager->videoSettings() || !settingsManager->videoSettings()->videoSource()) {
         return false;
     }
-    return settingsManager->videoSettings()->videoSource()->rawValue().toString() ==
-           QLatin1String(VideoSettings::videoSourceSiyiA8Mini);
+    const QString source = settingsManager->videoSettings()->videoSource()->rawValue().toString();
+    return (source == QLatin1String(VideoSettings::videoSourceSiyiA8Mini)) ||
+           (source == QLatin1String(VideoSettings::videoSourceSiyiZr10));
+}
+
+QString SiyiA8MiniCameraControl::modelName() const
+{
+    return currentSiyiGimbalModelName();
+}
+
+bool SiyiA8MiniCameraControl::_overlayHas(const char* feature) const
+{
+    return PayloadCapabilityCatalog::overlayHas(PayloadCapabilityCatalog::instance().byModelName(modelName()),
+                                                QString::fromLatin1(feature));
 }
 
 void SiyiA8MiniCameraControl::_onRecordStaChanged(quint8 recordSta)
@@ -120,10 +149,10 @@ void SiyiA8MiniCameraControl::_onFuncFeedback(quint8 infoType)
 
     switch (static_cast<FuncFeedback>(infoType)) {
         case FuncFeedback::PhotoFailNoCard:
-            QGC::showAppMessage(tr("SIYI A8 Mini: photo failed — no storage card"));
+            QGC::showAppMessage(tr("%1: photo failed — no storage card").arg(modelName()));
             break;
         case FuncFeedback::PhotoFail:
-            QGC::showAppMessage(tr("SIYI A8 Mini: photo failed"));
+            QGC::showAppMessage(tr("%1: photo failed").arg(modelName()));
             break;
         case FuncFeedback::RecordStart:
         case FuncFeedback::RecordEnd:
@@ -204,27 +233,55 @@ quint32 SiyiA8MiniCameraControl::recordTime() const
 
 bool SiyiA8MiniCameraControl::capturesVideo() const
 {
-    return a8OverlayHas("video");
+    return _overlayHas("video");
 }
 
 bool SiyiA8MiniCameraControl::capturesPhotos() const
 {
-    return a8OverlayHas("photo");
+    return _overlayHas("photo");
 }
 
 bool SiyiA8MiniCameraControl::hasZoom() const
 {
-    return a8OverlayHas("zoom");
+    return _overlayHas("zoom");
+}
+
+qreal SiyiA8MiniCameraControl::zoomLevel() const
+{
+    if (!_client || qIsNaN(_client->zoomLevel())) {
+        return 1.0;
+    }
+    return static_cast<qreal>(_client->zoomLevel());
 }
 
 bool SiyiA8MiniCameraControl::hasGimbalPad() const
 {
-    return a8OverlayHas("gimbal");
+    return _overlayHas("gimbal");
+}
+
+bool SiyiA8MiniCameraControl::hasGimbalRecenter() const
+{
+    return hasGimbalPad();
+}
+
+bool SiyiA8MiniCameraControl::hasGimbalLookDown() const
+{
+    return hasGimbalPad();
+}
+
+bool SiyiA8MiniCameraControl::hasGimbalYawRecenter() const
+{
+    return hasGimbalPad();
+}
+
+bool SiyiA8MiniCameraControl::hasGimbalPitchDown() const
+{
+    return hasGimbalPad();
 }
 
 bool SiyiA8MiniCameraControl::hasExposureAuto() const
 {
-    return a8OverlayHas("exposure_auto");
+    return _overlayHas("exposure_auto");
 }
 
 bool SiyiA8MiniCameraControl::hasVideoStream() const
@@ -270,6 +327,34 @@ void SiyiA8MiniCameraControl::ptzHome()
 {
     if (_client && hasGimbalPad()) {
         _client->ptzHome();
+    }
+}
+
+void SiyiA8MiniCameraControl::gimbalRecenter()
+{
+    if (_client && hasGimbalRecenter()) {
+        _client->ptzCenter(1);
+    }
+}
+
+void SiyiA8MiniCameraControl::gimbalLookDown()
+{
+    if (_client && hasGimbalLookDown()) {
+        _client->ptzCenter(4);
+    }
+}
+
+void SiyiA8MiniCameraControl::gimbalYawRecenter()
+{
+    if (_client && hasGimbalYawRecenter()) {
+        _client->ptzCenter(3);
+    }
+}
+
+void SiyiA8MiniCameraControl::gimbalPitchDown()
+{
+    if (_client && hasGimbalPitchDown()) {
+        _client->ptzCenter(2);
     }
 }
 

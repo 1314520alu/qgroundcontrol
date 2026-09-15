@@ -13,6 +13,8 @@ HorizontalFactValueGridTemplate {
     Layout.preferredHeight: topLayout.height
 
     property bool   settingsUnlocked:       false
+    /// Multiplier for value/label/icon size (telemetry bar uses 2 on short landscape remotes)
+    property real   fontScale:              1.0
 
     property real   _margins:               ScreenTools.defaultFontPixelWidth / 2
     property int    _rowMax:                2
@@ -30,7 +32,7 @@ HorizontalFactValueGridTemplate {
             spacing: parent.spacing
             RowLayout {
                 id:         labelValueColumnLayout
-                spacing:    ScreenTools.defaultFontPixelWidth * 1.25
+                spacing:    ScreenTools.defaultFontPixelWidth * 1.25 * Math.max(1.0, _root.fontScale * 0.75)
 
                 Repeater {
                     model: _root.columns
@@ -50,6 +52,7 @@ HorizontalFactValueGridTemplate {
                                 Layout.fillHeight:      true
                                 Layout.alignment:       Qt.AlignRight
                                 instrumentValueData:    object
+                                fontScale:              _root.fontScale
                             }
                         }
 
@@ -74,6 +77,7 @@ HorizontalFactValueGridTemplate {
                                 Layout.alignment:       Qt.AlignLeft
                                 Layout.preferredWidth:  valueRepeater.maxWidth
                                 instrumentValueData:    object
+                                fontScale:              _root.fontScale
 
                                 property real lastContentWidth
 

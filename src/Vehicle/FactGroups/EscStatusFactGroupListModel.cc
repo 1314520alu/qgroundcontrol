@@ -1,88 +1,119 @@
 #include "EscStatusFactGroupListModel.h"
+
+#include "AppSettings.h"
 #include "MAVLinkLib.h"
 #include "QGCMAVLink.h"
+#include "SettingsManager.h"
+
+float escTelemetryDegCFromCelsiusAsKelvinMavlink(uint8_t mavlinkTempDegC)
+{
+    // uint8 wrap of (degC - 273) for degC in ~17..100 → telem = degC - 17
+    return static_cast<float>(mavlinkTempDegC) + 17.0f;
+}
 
 namespace {
-bool _escTelemetryFirstIndex(uint32_t msgid, uint32_t &firstIndex)
+// ZY-XF200系留 / 200kg系留 only — App.SettingsGroup.json aircraftModel enum value 3
+constexpr int kZyXf200TetheredAircraftModel = 3;
+
+bool _xf200CelsiusAsKelvinEscTemp()
+{
+    SettingsManager* const settingsManager = SettingsManager::instance();
+    if (!settingsManager || !settingsManager->appSettings()) {
+        return false;
+    }
+    Fact* const aircraftModel = settingsManager->appSettings()->aircraftModel();
+    if (!aircraftModel) {
+        return false;
+    }
+    return aircraftModel->rawValue().toInt() == kZyXf200TetheredAircraftModel;
+}
+
+float _escTelemetryTemperatureCentiCelsius(uint8_t mavlinkTempDegC)
+{
+    float degC = static_cast<float>(mavlinkTempDegC);
+    // 0 means "no temperature" on the ArduPilot ESC_TELEMETRY path — do not offset.
+    if (mavlinkTempDegC > 0 && _xf200CelsiusAsKelvinEscTemp()) {
+        degC = escTelemetryDegCFromCelsiusAsKelvinMavlink(mavlinkTempDegC);
+    }
+    return degC * 100.0f;
+}
+
+bool _escTelemetryFirstIndex(uint32_t msgid, uint32_t& firstIndex)
 {
     switch (msgid) {
-    case MAVLINK_MSG_ID_ESC_TELEMETRY_1_TO_4:
-        firstIndex = 0;
-        return true;
-    case MAVLINK_MSG_ID_ESC_TELEMETRY_5_TO_8:
-        firstIndex = 4;
-        return true;
-    case MAVLINK_MSG_ID_ESC_TELEMETRY_9_TO_12:
-        firstIndex = 8;
-        return true;
-    case MAVLINK_MSG_ID_ESC_TELEMETRY_13_TO_16:
-        firstIndex = 12;
-        return true;
-    case MAVLINK_MSG_ID_ESC_TELEMETRY_17_TO_20:
-        firstIndex = 16;
-        return true;
-    case MAVLINK_MSG_ID_ESC_TELEMETRY_21_TO_24:
-        firstIndex = 20;
-        return true;
-    case MAVLINK_MSG_ID_ESC_TELEMETRY_25_TO_28:
-        firstIndex = 24;
-        return true;
-    case MAVLINK_MSG_ID_ESC_TELEMETRY_29_TO_32:
-        firstIndex = 28;
-        return true;
-    default:
-        return false;
+        case MAVLINK_MSG_ID_ESC_TELEMETRY_1_TO_4:
+            firstIndex = 0;
+            return true;
+        case MAVLINK_MSG_ID_ESC_TELEMETRY_5_TO_8:
+            firstIndex = 4;
+            return true;
+        case MAVLINK_MSG_ID_ESC_TELEMETRY_9_TO_12:
+            firstIndex = 8;
+            return true;
+        case MAVLINK_MSG_ID_ESC_TELEMETRY_13_TO_16:
+            firstIndex = 12;
+            return true;
+        case MAVLINK_MSG_ID_ESC_TELEMETRY_17_TO_20:
+            firstIndex = 16;
+            return true;
+        case MAVLINK_MSG_ID_ESC_TELEMETRY_21_TO_24:
+            firstIndex = 20;
+            return true;
+        case MAVLINK_MSG_ID_ESC_TELEMETRY_25_TO_28:
+            firstIndex = 24;
+            return true;
+        case MAVLINK_MSG_ID_ESC_TELEMETRY_29_TO_32:
+            firstIndex = 28;
+            return true;
+        default:
+            return false;
     }
 }
 
-bool _decodeEscTelemetry(const mavlink_message_t &message, mavlink_esc_telemetry_1_to_4_t &telem)
+bool _decodeEscTelemetry(const mavlink_message_t& message, mavlink_esc_telemetry_1_to_4_t& telem)
 {
     // All ESC_TELEMETRY_*_TO_* payloads share the same layout.
     switch (message.msgid) {
-    case MAVLINK_MSG_ID_ESC_TELEMETRY_1_TO_4:
-        mavlink_msg_esc_telemetry_1_to_4_decode(&message, &telem);
-        return true;
-    case MAVLINK_MSG_ID_ESC_TELEMETRY_5_TO_8:
-        mavlink_msg_esc_telemetry_5_to_8_decode(
-            &message, reinterpret_cast<mavlink_esc_telemetry_5_to_8_t *>(&telem));
-        return true;
-    case MAVLINK_MSG_ID_ESC_TELEMETRY_9_TO_12:
-        mavlink_msg_esc_telemetry_9_to_12_decode(
-            &message, reinterpret_cast<mavlink_esc_telemetry_9_to_12_t *>(&telem));
-        return true;
-    case MAVLINK_MSG_ID_ESC_TELEMETRY_13_TO_16:
-        mavlink_msg_esc_telemetry_13_to_16_decode(
-            &message, reinterpret_cast<mavlink_esc_telemetry_13_to_16_t *>(&telem));
-        return true;
-    case MAVLINK_MSG_ID_ESC_TELEMETRY_17_TO_20:
-        mavlink_msg_esc_telemetry_17_to_20_decode(
-            &message, reinterpret_cast<mavlink_esc_telemetry_17_to_20_t *>(&telem));
-        return true;
-    case MAVLINK_MSG_ID_ESC_TELEMETRY_21_TO_24:
-        mavlink_msg_esc_telemetry_21_to_24_decode(
-            &message, reinterpret_cast<mavlink_esc_telemetry_21_to_24_t *>(&telem));
-        return true;
-    case MAVLINK_MSG_ID_ESC_TELEMETRY_25_TO_28:
-        mavlink_msg_esc_telemetry_25_to_28_decode(
-            &message, reinterpret_cast<mavlink_esc_telemetry_25_to_28_t *>(&telem));
-        return true;
-    case MAVLINK_MSG_ID_ESC_TELEMETRY_29_TO_32:
-        mavlink_msg_esc_telemetry_29_to_32_decode(
-            &message, reinterpret_cast<mavlink_esc_telemetry_29_to_32_t *>(&telem));
-        return true;
-    default:
-        return false;
+        case MAVLINK_MSG_ID_ESC_TELEMETRY_1_TO_4:
+            mavlink_msg_esc_telemetry_1_to_4_decode(&message, &telem);
+            return true;
+        case MAVLINK_MSG_ID_ESC_TELEMETRY_5_TO_8:
+            mavlink_msg_esc_telemetry_5_to_8_decode(&message,
+                                                    reinterpret_cast<mavlink_esc_telemetry_5_to_8_t*>(&telem));
+            return true;
+        case MAVLINK_MSG_ID_ESC_TELEMETRY_9_TO_12:
+            mavlink_msg_esc_telemetry_9_to_12_decode(&message,
+                                                     reinterpret_cast<mavlink_esc_telemetry_9_to_12_t*>(&telem));
+            return true;
+        case MAVLINK_MSG_ID_ESC_TELEMETRY_13_TO_16:
+            mavlink_msg_esc_telemetry_13_to_16_decode(&message,
+                                                      reinterpret_cast<mavlink_esc_telemetry_13_to_16_t*>(&telem));
+            return true;
+        case MAVLINK_MSG_ID_ESC_TELEMETRY_17_TO_20:
+            mavlink_msg_esc_telemetry_17_to_20_decode(&message,
+                                                      reinterpret_cast<mavlink_esc_telemetry_17_to_20_t*>(&telem));
+            return true;
+        case MAVLINK_MSG_ID_ESC_TELEMETRY_21_TO_24:
+            mavlink_msg_esc_telemetry_21_to_24_decode(&message,
+                                                      reinterpret_cast<mavlink_esc_telemetry_21_to_24_t*>(&telem));
+            return true;
+        case MAVLINK_MSG_ID_ESC_TELEMETRY_25_TO_28:
+            mavlink_msg_esc_telemetry_25_to_28_decode(&message,
+                                                      reinterpret_cast<mavlink_esc_telemetry_25_to_28_t*>(&telem));
+            return true;
+        case MAVLINK_MSG_ID_ESC_TELEMETRY_29_TO_32:
+            mavlink_msg_esc_telemetry_29_to_32_decode(&message,
+                                                      reinterpret_cast<mavlink_esc_telemetry_29_to_32_t*>(&telem));
+            return true;
+        default:
+            return false;
     }
 }
-} // namespace
+}  // namespace
 
-EscStatusFactGroupListModel::EscStatusFactGroupListModel(QObject* parent)
-    : FactGroupListModel("escStatus", parent)
-{
+EscStatusFactGroupListModel::EscStatusFactGroupListModel(QObject* parent) : FactGroupListModel("escStatus", parent) {}
 
-}
-
-bool EscStatusFactGroupListModel::_shouldHandleMessage(const mavlink_message_t &message, QList<uint32_t> &ids) const
+bool EscStatusFactGroupListModel::_shouldHandleMessage(const mavlink_message_t& message, QList<uint32_t>& ids) const
 {
     bool shouldHandle = false;
     uint32_t firstIndex = 0;
@@ -90,27 +121,23 @@ bool EscStatusFactGroupListModel::_shouldHandleMessage(const mavlink_message_t &
     ids.clear();
 
     switch (message.msgid) {
-    case MAVLINK_MSG_ID_ESC_INFO:
-    {
-        mavlink_esc_info_t escInfo{};
-        mavlink_msg_esc_info_decode(&message, &escInfo);
-        firstIndex = escInfo.index;
-        shouldHandle = true;
-    }
-        break;
-    case MAVLINK_MSG_ID_ESC_STATUS:
-    {
-        mavlink_esc_status_t escStatus{};
-        mavlink_msg_esc_status_decode(&message, &escStatus);
-        firstIndex = escStatus.index;
-        shouldHandle = true;
-    }
-        break;
-    default:
-        if (_escTelemetryFirstIndex(message.msgid, firstIndex)) {
+        case MAVLINK_MSG_ID_ESC_INFO: {
+            mavlink_esc_info_t escInfo{};
+            mavlink_msg_esc_info_decode(&message, &escInfo);
+            firstIndex = escInfo.index;
             shouldHandle = true;
-        }
-        break;
+        } break;
+        case MAVLINK_MSG_ID_ESC_STATUS: {
+            mavlink_esc_status_t escStatus{};
+            mavlink_msg_esc_status_decode(&message, &escStatus);
+            firstIndex = escStatus.index;
+            shouldHandle = true;
+        } break;
+        default:
+            if (_escTelemetryFirstIndex(message.msgid, firstIndex)) {
+                shouldHandle = true;
+            }
+            break;
     }
 
     if (shouldHandle) {
@@ -122,12 +149,12 @@ bool EscStatusFactGroupListModel::_shouldHandleMessage(const mavlink_message_t &
     return shouldHandle;
 }
 
-FactGroupWithId *EscStatusFactGroupListModel::_createFactGroupWithId(uint32_t id)
+FactGroupWithId* EscStatusFactGroupListModel::_createFactGroupWithId(uint32_t id)
 {
     return new EscStatusFactGroup(id, this);
 }
 
-EscStatusFactGroup::EscStatusFactGroup(uint32_t escIndex, QObject *parent)
+EscStatusFactGroup::EscStatusFactGroup(uint32_t escIndex, QObject* parent)
     : FactGroupWithId(1000, QStringLiteral(":/json/Vehicle/EscStatusFactGroup.json"), parent)
 {
     _addFact(&_rpmFact);
@@ -152,26 +179,26 @@ EscStatusFactGroup::EscStatusFactGroup(uint32_t escIndex, QObject *parent)
     _temperatureFact.setRawValue(0);
 }
 
-void EscStatusFactGroup::handleMessage(Vehicle *vehicle, const mavlink_message_t &message)
+void EscStatusFactGroup::handleMessage(Vehicle* vehicle, const mavlink_message_t& message)
 {
     switch (message.msgid) {
-    case MAVLINK_MSG_ID_ESC_INFO:
-        _handleEscInfo(vehicle, message);
-        break;
-    case MAVLINK_MSG_ID_ESC_STATUS:
-        _handleEscStatus(vehicle, message);
-        break;
-    default: {
-        uint32_t firstIndex = 0;
-        if (_escTelemetryFirstIndex(message.msgid, firstIndex)) {
-            _handleEscTelemetry(vehicle, message);
+        case MAVLINK_MSG_ID_ESC_INFO:
+            _handleEscInfo(vehicle, message);
+            break;
+        case MAVLINK_MSG_ID_ESC_STATUS:
+            _handleEscStatus(vehicle, message);
+            break;
+        default: {
+            uint32_t firstIndex = 0;
+            if (_escTelemetryFirstIndex(message.msgid, firstIndex)) {
+                _handleEscTelemetry(vehicle, message);
+            }
+            break;
         }
-        break;
-    }
     }
 }
 
-void EscStatusFactGroup::_handleEscInfo(Vehicle * /*vehicle*/, const mavlink_message_t &message)
+void EscStatusFactGroup::_handleEscInfo(Vehicle* /*vehicle*/, const mavlink_message_t& message)
 {
     mavlink_esc_info_t escInfo{};
     mavlink_msg_esc_info_decode(&message, &escInfo);
@@ -183,7 +210,7 @@ void EscStatusFactGroup::_handleEscInfo(Vehicle * /*vehicle*/, const mavlink_mes
         return;
     }
 
-    index %= 4; // Convert to 0-based index for the arrays in escInfo
+    index %= 4;  // Convert to 0-based index for the arrays in escInfo
     _countFact.setRawValue(escInfo.count);
     _connectionTypeFact.setRawValue(escInfo.connection_type);
     _infoFact.setRawValue(escInfo.info);
@@ -194,7 +221,7 @@ void EscStatusFactGroup::_handleEscInfo(Vehicle * /*vehicle*/, const mavlink_mes
     _setTelemetryAvailable(true);
 }
 
-void EscStatusFactGroup::_handleEscStatus(Vehicle * /*vehicle*/, const mavlink_message_t &message)
+void EscStatusFactGroup::_handleEscStatus(Vehicle* /*vehicle*/, const mavlink_message_t& message)
 {
     mavlink_esc_status_t escStatus{};
     mavlink_msg_esc_status_decode(&message, &escStatus);
@@ -206,7 +233,7 @@ void EscStatusFactGroup::_handleEscStatus(Vehicle * /*vehicle*/, const mavlink_m
         return;
     }
 
-    index %= 4; // Convert to 0-based index for the arrays in escStatus
+    index %= 4;  // Convert to 0-based index for the arrays in escStatus
     _rpmFact.setRawValue(escStatus.rpm[index]);
     _currentFact.setRawValue(escStatus.current[index]);
     _voltageFact.setRawValue(escStatus.voltage[index]);
@@ -214,7 +241,7 @@ void EscStatusFactGroup::_handleEscStatus(Vehicle * /*vehicle*/, const mavlink_m
     _setTelemetryAvailable(true);
 }
 
-void EscStatusFactGroup::_handleEscTelemetry(Vehicle * /*vehicle*/, const mavlink_message_t &message)
+void EscStatusFactGroup::_handleEscTelemetry(Vehicle* /*vehicle*/, const mavlink_message_t& message)
 {
     uint32_t firstIndex = 0;
     if (!_escTelemetryFirstIndex(message.msgid, firstIndex)) {
@@ -236,7 +263,8 @@ void EscStatusFactGroup::_handleEscTelemetry(Vehicle * /*vehicle*/, const mavlin
     // Mark online slots from ArduPilot packet counters / live values.
     uint8_t onlineMask = 0;
     for (uint32_t j = 0; j < 4; j++) {
-        if (telem.count[j] > 0 || telem.rpm[j] > 0 || telem.voltage[j] > 0 || telem.current[j] > 0 || telem.temperature[j] > 0) {
+        if (telem.count[j] > 0 || telem.rpm[j] > 0 || telem.voltage[j] > 0 || telem.current[j] > 0 ||
+            telem.temperature[j] > 0) {
             onlineMask |= static_cast<uint8_t>(1u << j);
         }
     }
@@ -246,7 +274,7 @@ void EscStatusFactGroup::_handleEscTelemetry(Vehicle * /*vehicle*/, const mavlin
     _rpmFact.setRawValue(telem.rpm[slot]);
     _voltageFact.setRawValue(telem.voltage[slot] / 100.0f);
     _currentFact.setRawValue(telem.current[slot] / 100.0f);
-    _temperatureFact.setRawValue(static_cast<float>(telem.temperature[slot]) * 100.0f);
+    _temperatureFact.setRawValue(_escTelemetryTemperatureCentiCelsius(telem.temperature[slot]));
     _infoFact.setRawValue(onlineMask);
     _countFact.setRawValue(static_cast<int>(firstIndex + 4));
     // ArduPilot packet counter is not an error count; leave failureFlags at 0.

@@ -203,8 +203,7 @@ Rectangle {
                         Layout.maximumHeight: _cardHeight
                         radius: _cardRadius
                         clip: true
-                        // Match Vehicle Config panels: windowShade + groupBorder
-                        color: qgcPal.windowShade
+                        color: qgcPal.window
                         border.width: 1
                         border.color: qgcPal.groupBorder
 
@@ -212,59 +211,67 @@ Rectangle {
                         readonly property bool setupOk: _summaryRoot._statusOk(modelData)
                         readonly property bool setupWarn: _summaryRoot._statusWarn(modelData)
                         readonly property string pillText: _summaryRoot._statusText(modelData)
+                        readonly property color headerColor: (setupOk && !setupWarn) ? qgcPal.buttonHighlight : qgcPal.colorOrange
+                        readonly property color headerTextColor: qgcPal.buttonHighlightText
 
                         ColumnLayout {
                             id: mainLayout
                             anchors.fill: parent
-                            anchors.margins: _margins
-                            spacing: ScreenTools.defaultFontPixelHeight * 0.35
+                            spacing: 0
 
-                            RowLayout {
-                                Layout.fillWidth: true
-                                spacing: ScreenTools.defaultFontPixelWidth * 0.55
-
-                                Rectangle {
-                                    width: ScreenTools.defaultFontPixelHeight * 1.25
-                                    height: width
-                                    radius: width / 2
-                                    color: qgcPal.button
-                                    border.width: 1
-                                    border.color: qgcPal.buttonBorder
-                                    QGCLabel {
-                                        anchors.centerIn: parent
-                                        text: card.cardIndex
-                                        font.bold: true
-                                        color: qgcPal.buttonText
-                                        font.pointSize: ScreenTools.defaultFontPointSize * 0.85
-                                    }
-                                }
-
-                                QGCLabel {
-                                    Layout.fillWidth: true
-                                    text: capitalizeWords(modelData.name)
-                                    font.bold: true
-                                    font.pointSize: ScreenTools.defaultFontPointSize * 1.02
-                                    elide: Text.ElideRight
-                                }
-
-                                SummaryStatusPill {
-                                    text: card.pillText
-                                    ok: card.setupOk
-                                    warn: card.setupWarn
-                                }
-                            }
-
-                            // Match SettingsGroupLayout dividers (groupBorder, not windowShadeDark)
                             Rectangle {
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: 1
-                                color: qgcPal.groupBorder
+                                Layout.preferredHeight: ScreenTools.defaultFontPixelHeight * 2.2
+                                color: card.headerColor
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: _margins
+                                    anchors.rightMargin: _margins
+                                    spacing: ScreenTools.defaultFontPixelWidth * 0.55
+
+                                    Rectangle {
+                                        width: ScreenTools.defaultFontPixelHeight * 1.25
+                                        height: width
+                                        radius: width / 2
+                                        color: "transparent"
+                                        border.width: 1
+                                        border.color: card.headerTextColor
+                                        QGCLabel {
+                                            anchors.centerIn: parent
+                                            text: card.cardIndex
+                                            font.bold: true
+                                            color: card.headerTextColor
+                                            font.pointSize: ScreenTools.defaultFontPointSize * 0.85
+                                        }
+                                    }
+
+                                    QGCLabel {
+                                        Layout.fillWidth: true
+                                        text: capitalizeWords(modelData.name)
+                                        font.bold: true
+                                        font.pointSize: ScreenTools.defaultFontPointSize * 1.02
+                                        elide: Text.ElideRight
+                                        color: card.headerTextColor
+                                    }
+
+                                    SummaryStatusPill {
+                                        text: card.pillText
+                                        ok: card.setupOk
+                                        warn: card.setupWarn
+                                        onAccent: true
+                                    }
+                                }
                             }
 
                             Item {
                                 id: contentClip
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
+                                Layout.leftMargin: _margins
+                                Layout.rightMargin: _margins
+                                Layout.topMargin: _margins
+                                Layout.bottomMargin: _margins
                                 clip: true
 
                                 // Shrink card body when content exceeds available height (min 62%).

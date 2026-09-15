@@ -17,6 +17,8 @@ target_sources(
             RemoteIDSettingsTest.h
             SettingsManagerTest.cc
             SettingsManagerTest.h
+            VideoSettingsTest.cc
+            VideoSettingsTest.h
 )
 
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -27,3 +29,4 @@ add_qgc_test(FlyViewSettingsTest LABELS Unit)
 add_qgc_test(MyAircraftSettingsTest LABELS Unit)
 add_qgc_test(RemoteIDSettingsTest LABELS Unit)
 add_qgc_test(SettingsManagerTest LABELS Unit)
+add_qgc_test(VideoSettingsTest LABELS Unit)

@@ -72,6 +72,8 @@ target_sources(
             TransformPositionController.h
             ServoOutputMonitorController.cc
             ServoOutputMonitorController.h
+            Xf200TetheredPowerVisual.cc
+            Xf200TetheredPowerVisual.h
 )
 
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -182,6 +184,7 @@ qt_add_qml_module(
               ToolStrip.qml
               ToolStripDropPanel.qml
               ToolStripHoverButton.qml
+              UpdateAvailableDialog.qml
               ValueSlider.qml
               VehicleRotationCal.qml
               VehicleSummaryRow.qml

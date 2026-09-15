@@ -99,6 +99,7 @@ private slots:
     void _testSourceFactoryNegativeLatencyClamped();
     void _testSourceFactoryDynamicRtpLinkFailureCleansJitterBuffer();
     void _testEffectiveRtspLatencyMs();
+    void _testLiveDisplayQueueAndSinkSync();
     void _testSourceFactoryRadioEthernetFloorsLatency();
     void _testColorimetryColorRangeMapping();
     void _testPixelFormatAcceptedButNotAdvertised();

@@ -1,0 +1,22 @@
+{{ indent }}ColumnLayout {
+{{ indent }}    objectName: "settingsRadioGroup_{{ fact_name }}"
+{{ indent }}    Layout.fillWidth: true
+{{ indent }}    spacing: 0
+{% if enable_when %}
+{{ indent }}    enabled: {{ enable_when }}
+{% endif %}
+{% if label_expr %}
+{{ indent }}    QGCLabel {
+{{ indent }}        text: {{ label_expr }}
+{{ indent }}    }
+{% endif %}
+{{ indent }}    Repeater {
+{{ indent }}        model: {{ fact_ref }}.enumStrings
+{{ indent }}        QGCRadioButton {
+{{ indent }}            autoExclusive: false
+{{ indent }}            text: modelData
+{{ indent }}            checked: {{ fact_ref }}.enumIndex === index
+{{ indent }}            onClicked: {{ fact_ref }}.enumIndex = index
+{{ indent }}        }
+{{ indent }}    }
+{{ indent }}}

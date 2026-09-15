@@ -5,6 +5,7 @@
 #include <QtCore/QMap>
 #include <QtCore/QObject>
 #include <QtCore/QPointer>
+#include <QtCore/QString>
 #include <QtCore/QTimer>
 #include <QtCore/QVariantList>
 #include <QtQmlIntegration/QtQmlIntegration>
@@ -43,8 +44,14 @@ class QGCCameraManager : public QObject
         MavlinkCameraControlInterface* currentCameraInstance READ currentCameraInstance NOTIFY currentCameraChanged)
     Q_PROPERTY(int currentCamera READ currentCamera WRITE setCurrentCamera NOTIFY currentCameraChanged)
     Q_PROPERTY(int currentZoomLevel READ currentZoomLevel NOTIFY currentZoomLevelChanged)
+    /// SIYI/UniPod UDP zoom multiple. Pass the value in NOTIFY so QML does not re-read a cached property.
+    Q_PROPERTY(qreal siyiZoomLevel READ siyiZoomLevel NOTIFY siyiZoomLevelChanged)
+    Q_PROPERTY(bool siyiZoomHudVisible READ siyiZoomHudVisible NOTIFY siyiZoomHudVisibleChanged)
+    Q_PROPERTY(QString siyiZoomHudText READ siyiZoomHudText NOTIFY siyiZoomHudTextChanged)
     Q_PROPERTY(UnipodMt11MediaClient* unipodMediaClient READ unipodMediaClient CONSTANT)
+    Q_PROPERTY(UnipodMt11Client* unipodClient READ unipodClient CONSTANT)
     Q_MOC_INCLUDE("UnipodMt11MediaClient.h")
+    Q_MOC_INCLUDE("UnipodMt11Client.h")
 
 #ifdef QGC_UNITTEST_BUILD
     friend class QGCCameraManagerTest;
@@ -97,6 +104,8 @@ public:
 
     UnipodMt11MediaClient* unipodMediaClient() const { return _unipodMediaClient; }
 
+    UnipodMt11Client* unipodClient() const { return _unipodClient; }
+
     void setCurrentCamera(int sel);
     QGCVideoStreamInfo* currentStreamInstance();
     QGCVideoStreamInfo* thermalStreamInstance();
@@ -111,12 +120,28 @@ public:
     }
 
     int currentZoomLevel() const;
+
+    qreal siyiZoomLevel() const { return _siyiZoomLevel; }
+
+    /// Bypass QML property cache; always calls the C++ getter.
+    Q_INVOKABLE qreal readSiyiZoomLevel() const { return _siyiZoomLevel; }
+
+    bool siyiZoomHudVisible() const { return _siyiZoomHudVisible; }
+
+    QString siyiZoomHudText() const { return _siyiZoomHudText; }
+
+    /// Screen +/- zoom: show HUD immediately without waiting for a multiple change.
+    Q_INVOKABLE void showSiyiZoomHud();
+
     double aspectForComp(int compId) const;
     double currentCameraAspect();
     Q_INVOKABLE void requestCameraFovForComp(int compId);
 
 private:
     int _zoomValueCurrent = 0;
+    qreal _siyiZoomLevel = 0;
+    bool _siyiZoomHudVisible = false;
+    QString _siyiZoomHudText;
 
 signals:
     void camerasChanged();
@@ -125,6 +150,9 @@ signals:
     void streamChanged();
 
     void currentZoomLevelChanged();
+    void siyiZoomLevelChanged(qreal siyiZoomLevel);
+    void siyiZoomHudVisibleChanged(bool siyiZoomHudVisible);
+    void siyiZoomHudTextChanged(const QString& siyiZoomHudText);
 
 protected slots:
     void _vehicleReady(bool ready);
@@ -147,6 +175,8 @@ protected slots:
 private slots:
     void _initialConnectCompleted();
     void _setCurrentZoomLevel(int level);
+    void _onUnipodZoomLevelChanged();
+    void _hideSiyiZoomHud();
     void _onUnipodStartRetry();
     void _onTopotekStartRetry();
 
@@ -168,9 +198,11 @@ private:
     void _ensureSimulatedCameraForLocalRecord();
     void _syncSiyiUdpCamera();
     void _syncTopotekCamera();
-    /// Only the video-source payload (UniPod / A8 Mini / Topotek) is visible as a camera.
+    /// Only the video-source payload (UniPod / A8 Mini / ZR10 / Topotek) is visible as a camera.
     void _syncPayloadCameraList();
     void _handleCameraFovStatus(const mavlink_message_t& message);
+    void _setSiyiZoomHudVisible(bool visible);
+    void _updateSiyiZoomHudText();
 
     Vehicle* _vehicle;  ///< Raw pointer is safe: QGCCameraManager is a QObject child of Vehicle, so Vehicle always
                         ///< outlives us
@@ -183,6 +215,7 @@ private:
     TopotekTq10CameraControl* _topotekCameraControl = nullptr;
     QTimer _unipodStartRetryTimer;
     QTimer _topotekStartRetryTimer;
+    QTimer _siyiZoomHudHideTimer;
     int _unipodStartRetryTicks = 0;
     int _topotekStartRetryTicks = 0;
     QPointer<Joystick> _activeJoystick;

@@ -35,7 +35,7 @@ void CameraPayloadCapabilitiesTest::testCatalogPhase1Sets()
     QVERIFY(PayloadCapabilityCatalog::overlayHas(mt11, QStringLiteral("laser")));
     QVERIFY(PayloadCapabilityCatalog::overlayHas(mt11, QStringLiteral("ai")));
     QVERIFY(PayloadCapabilityCatalog::overlayHas(mt11, QStringLiteral("follow")));
-    QVERIFY(PayloadCapabilityCatalog::overlayHas(mt11, QStringLiteral("exposure_auto")));
+    QVERIFY(!PayloadCapabilityCatalog::overlayHas(mt11, QStringLiteral("exposure_auto")));
     QVERIFY(PayloadCapabilityCatalog::overlayHas(mt11, QStringLiteral("zoom")));
     QVERIFY(PayloadCapabilityCatalog::overlayHas(mt11, QStringLiteral("focus")));
     QVERIFY(PayloadCapabilityCatalog::overlayHas(mt11, QStringLiteral("media_library")));
@@ -43,7 +43,7 @@ void CameraPayloadCapabilitiesTest::testCatalogPhase1Sets()
     const auto* a8 = catalog.byVideoSource(QStringLiteral("SIYI A8 Mini"));
     QVERIFY(a8);
     QVERIFY(PayloadCapabilityCatalog::overlayHas(a8, QStringLiteral("gimbal")));
-    QVERIFY(PayloadCapabilityCatalog::overlayHas(a8, QStringLiteral("exposure_auto")));
+    QVERIFY(!PayloadCapabilityCatalog::overlayHas(a8, QStringLiteral("exposure_auto")));
     QVERIFY(PayloadCapabilityCatalog::overlayHas(a8, QStringLiteral("zoom")));
     QVERIFY(!PayloadCapabilityCatalog::overlayHas(a8, QStringLiteral("focus")));
     QVERIFY(!PayloadCapabilityCatalog::overlayHas(a8, QStringLiteral("media_library")));
@@ -52,11 +52,30 @@ void CameraPayloadCapabilitiesTest::testCatalogPhase1Sets()
     const auto* tq10 = catalog.byModelName(QStringLiteral("Topotek TQ10N"));
     QVERIFY(tq10);
     QVERIFY(PayloadCapabilityCatalog::overlayHas(tq10, QStringLiteral("gimbal")));
-    QVERIFY(PayloadCapabilityCatalog::overlayHas(tq10, QStringLiteral("exposure_auto")));
+    QVERIFY(!PayloadCapabilityCatalog::overlayHas(tq10, QStringLiteral("exposure_auto")));
     QVERIFY(PayloadCapabilityCatalog::overlayHas(tq10, QStringLiteral("zoom")));
     QVERIFY(!PayloadCapabilityCatalog::overlayHas(tq10, QStringLiteral("focus")));
     QVERIFY(!PayloadCapabilityCatalog::overlayHas(tq10, QStringLiteral("laser")));
     QVERIFY(!PayloadCapabilityCatalog::overlayHas(tq10, QStringLiteral("media_library")));
+}
+
+void CameraPayloadCapabilitiesTest::testZr10CatalogPhase1()
+{
+    auto& catalog = PayloadCapabilityCatalog::instance();
+    QVERIFY(catalog.isLoaded());
+
+    const auto* zr10 = catalog.byVideoSource(QStringLiteral("SIYI ZR10"));
+    QVERIFY(zr10);
+    QCOMPARE(zr10->modelName, QStringLiteral("SIYI ZR10"));
+    QVERIFY(PayloadCapabilityCatalog::overlayHas(zr10, QStringLiteral("gimbal")));
+    QVERIFY(!PayloadCapabilityCatalog::overlayHas(zr10, QStringLiteral("exposure_auto")));
+    QVERIFY(PayloadCapabilityCatalog::overlayHas(zr10, QStringLiteral("photo")));
+    QVERIFY(PayloadCapabilityCatalog::overlayHas(zr10, QStringLiteral("video")));
+    QVERIFY(PayloadCapabilityCatalog::overlayHas(zr10, QStringLiteral("zoom")));
+    QVERIFY(!PayloadCapabilityCatalog::overlayHas(zr10, QStringLiteral("focus")));
+    QVERIFY(!PayloadCapabilityCatalog::overlayHas(zr10, QStringLiteral("media_library")));
+    QVERIFY(!PayloadCapabilityCatalog::overlayHas(zr10, QStringLiteral("laser")));
+    QVERIFY(!PayloadCapabilityCatalog::overlayHas(zr10, QStringLiteral("ai")));
 }
 
 void CameraPayloadCapabilitiesTest::testTopotekHasGimbalPad()
@@ -69,6 +88,7 @@ void CameraPayloadCapabilitiesTest::testTopotekHasGimbalPad()
     QCOMPARE(cam.hasLensSwitch(), false);
     QCOMPARE(cam.hasLaserRange(), false);
     QCOMPARE(cam.hasMediaLibrary(), false);
+    QCOMPARE(cam.hasExposureAuto(), false);
 }
 
 void CameraPayloadCapabilitiesTest::testUnipodPhase1Flags()
@@ -80,7 +100,7 @@ void CameraPayloadCapabilitiesTest::testUnipodPhase1Flags()
     QCOMPARE(cam.hasLaserRange(), true);
     QCOMPARE(cam.hasAiRecognition(), true);
     QCOMPARE(cam.hasFollowFlight(), true);
-    QCOMPARE(cam.hasExposureAuto(), true);
+    QCOMPARE(cam.hasExposureAuto(), false);
     QCOMPARE(cam.hasZoom(), true);
     QCOMPARE(cam.hasFocus(), true);
     QCOMPARE(cam.hasMediaLibrary(), false);
@@ -95,6 +115,7 @@ void CameraPayloadCapabilitiesTest::testA8Phase1Flags()
     QCOMPARE(cam.hasZoom(), true);
     QCOMPARE(cam.hasFocus(), false);
     QCOMPARE(cam.hasMediaLibrary(), false);
+    QCOMPARE(cam.hasExposureAuto(), false);
     QCOMPARE(cam.capturesPhotos(), true);
     QCOMPARE(cam.capturesVideo(), true);
 }

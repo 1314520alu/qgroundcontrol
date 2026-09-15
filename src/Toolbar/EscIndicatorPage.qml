@@ -20,14 +20,26 @@ ToolIndicatorPage {
     property bool   _showTable:     _escCount > 4
     property bool   _denseTable:    _escCount > 8
 
+    // ZY-XF200系留 uses Hobbywing H15MD Plus — official ESC temp bands.
+    property var    _appSettings:   QGroundControl.settingsManager.appSettings
+    readonly property bool _h15EscTempLimits: _appSettings
+                                              && _appSettings.aircraftModel.rawValue === Xf200TetheredPowerVisual.aircraftModelZyXf200Tethered
+    readonly property real _h15WarnC:  90
+    readonly property real _h15AlarmC: 105
+
+    // Table mode: content-sized width (12-esc dense on UniRC ≈ 40% screen, not 62%).
+    // Card mode: a bit wider for 2×2 labels without stretching empty columns.
     readonly property real _panelWidth: {
         const mw = (typeof mainWindow !== "undefined" && mainWindow && mainWindow.contentItem)
                    ? mainWindow.contentItem.width
                    : ScreenTools.defaultFontPixelWidth * 120
-        const target = mw * 0.62
-        const minW = ScreenTools.defaultFontPixelWidth * 58
-        const maxW = ScreenTools.defaultFontPixelWidth * 92
-        return Math.min(maxW, Math.max(minW, target))
+        const fw = ScreenTools.defaultFontPixelWidth
+        if (_showTable) {
+            const target = mw * 0.46
+            return Math.min(fw * 74, Math.max(fw * 56, target))
+        }
+        const target = mw * 0.48
+        return Math.min(fw * 72, Math.max(fw * 52, target))
     }
 
     QGCPalette {
@@ -53,7 +65,47 @@ ToolIndicatorPage {
     }
 
     function _isHealthy(esc) {
-        return _bitOnline(esc) && !_hasFaultFlags(esc) && _errorCount(esc) === 0
+        return _bitOnline(esc) && !_hasFaultFlags(esc) && _errorCount(esc) === 0 && _h15TempLevel(esc) === 0
+    }
+
+    function _tempDegC(esc) {
+        if (!esc) {
+            return NaN
+        }
+        const raw = Number(esc.temperature.rawValue)
+        if (raw === 32767) {
+            return NaN
+        }
+        return raw / 100
+    }
+
+    /// 0 = ok / N/A, 1 = H15 warn (90–105°C), 2 = H15 alarm (≥105°C). Only active on ZY-XF200系留.
+    function _h15TempLevel(esc) {
+        if (!_h15EscTempLimits || !esc) {
+            return 0
+        }
+        const t = _tempDegC(esc)
+        if (isNaN(t)) {
+            return 0
+        }
+        if (t >= _h15AlarmC) {
+            return 2
+        }
+        if (t >= _h15WarnC) {
+            return 1
+        }
+        return 0
+    }
+
+    function _tempColor(esc) {
+        const level = _h15TempLevel(esc)
+        if (level === 2) {
+            return qgcPal.colorRed
+        }
+        if (level === 1) {
+            return qgcPal.colorOrange
+        }
+        return qgcPal.text
     }
 
     function _countHealthy() {
@@ -80,12 +132,37 @@ ToolIndicatorPage {
         return n
     }
 
+    function _sumPowerKw() {
+        if (!_escs) {
+            return 0
+        }
+        let watts = 0
+        for (let i = 0; i < _escCount; i++) {
+            const esc = _escs.get(i)
+            watts += Number(esc.voltage.rawValue) * Number(esc.current.rawValue)
+        }
+        return watts / 1000
+    }
+
     function _tempText(esc) {
         const raw = Number(esc.temperature.rawValue)
         if (raw === 32767) {
             return qsTr("—")
         }
         return (raw / 100).toFixed(1) + " °C"
+    }
+
+    function _voltText(esc) {
+        return Number(esc.voltage.rawValue).toFixed(1) + " V"
+    }
+
+    function _ampText(esc) {
+        return Number(esc.current.rawValue).toFixed(1) + " A"
+    }
+
+    function _powerText(esc) {
+        const watts = Number(esc.voltage.rawValue) * Number(esc.current.rawValue)
+        return (watts / 1000).toFixed(2) + " kW"
     }
 
     function _failureText(esc) {
@@ -113,7 +190,11 @@ ToolIndicatorPage {
         if (!_bitOnline(esc)) {
             return qgcPal.colorRed
         }
-        if (_hasFaultFlags(esc) || _errorCount(esc) > 0) {
+        const tempLevel = _h15TempLevel(esc)
+        if (tempLevel === 2 || _hasFaultFlags(esc)) {
+            return qgcPal.colorRed
+        }
+        if (tempLevel === 1 || _errorCount(esc) > 0) {
             return qgcPal.colorOrange
         }
         return qgcPal.buttonHighlight
@@ -147,8 +228,12 @@ ToolIndicatorPage {
             readonly property color _headerFill: Qt.rgba(qgcPal.windowShade.r, qgcPal.windowShade.g, qgcPal.windowShade.b, 0.28)
 
             function _rowFill(index, esc) {
-                if (!control._bitOnline(esc) || control._hasFaultFlags(esc) || control._errorCount(esc) > 0) {
-                    return (!control._bitOnline(esc) || control._hasFaultFlags(esc)) ? _rowFault : _rowWarn
+                const tempLevel = control._h15TempLevel(esc)
+                if (!control._bitOnline(esc) || control._hasFaultFlags(esc) || tempLevel === 2) {
+                    return _rowFault
+                }
+                if (control._errorCount(esc) > 0 || tempLevel === 1) {
+                    return _rowWarn
                 }
                 return (index % 2 === 1) ? _rowAlt : "transparent"
             }
@@ -160,7 +245,11 @@ ToolIndicatorPage {
                 if (emphasizeError) {
                     return qgcPal.colorRed
                 }
-                if (control._hasFaultFlags(esc)) {
+                const tempLevel = control._h15TempLevel(esc)
+                if (tempLevel === 2 || control._hasFaultFlags(esc)) {
+                    return tempLevel === 2 ? qgcPal.colorRed : qgcPal.colorOrange
+                }
+                if (tempLevel === 1) {
                     return qgcPal.colorOrange
                 }
                 return qgcPal.text
@@ -194,6 +283,13 @@ ToolIndicatorPage {
                     visible: control._hasTelemetry
                 }
 
+                QGCLabel {
+                    text: qsTr("总功率 %1 kW").arg(control._sumPowerKw().toFixed(1))
+                    font.pointSize: pageRoot._fontPt
+                    font.bold: true
+                    visible: control._hasTelemetry
+                }
+
                 Item { Layout.fillWidth: true }
             }
 
@@ -221,18 +317,29 @@ ToolIndicatorPage {
                         required property int index
 
                         Layout.fillWidth: true
-                        Layout.preferredHeight: ScreenTools.defaultFontPixelHeight * 7.2
+                        Layout.preferredHeight: ScreenTools.defaultFontPixelHeight * 8.0
                         radius: pageRoot._panelRadius
                         color: {
                             const esc = control._escs.get(index)
-                            if (control._errorCount(esc) > 0 || control._hasFaultFlags(esc) || !control._bitOnline(esc)) {
+                            if (control._errorCount(esc) > 0 || control._hasFaultFlags(esc) || !control._bitOnline(esc)
+                                    || control._h15TempLevel(esc) === 2) {
                                 return pageRoot._rowFault
+                            }
+                            if (control._h15TempLevel(esc) === 1) {
+                                return pageRoot._rowWarn
                             }
                             return pageRoot._panelFill
                         }
                         border.width: 1
                         border.color: {
                             const esc = control._escs.get(index)
+                            const tempLevel = control._h15TempLevel(esc)
+                            if (tempLevel === 2) {
+                                return qgcPal.colorRed
+                            }
+                            if (tempLevel === 1) {
+                                return qgcPal.colorOrange
+                            }
                             return control._isHealthy(esc) ? qgcPal.colorGreen : qgcPal.colorRed
                         }
 
@@ -284,13 +391,21 @@ ToolIndicatorPage {
                                 QGCLabel { text: esc.rpm.valueString; font.bold: true; font.pointSize: pageRoot._fontPt }
 
                                 QGCLabel { text: qsTr("电压"); opacity: 0.55; font.pointSize: pageRoot._fontPt * 0.92 }
-                                QGCLabel { text: esc.voltage.valueString + " V"; font.bold: true; font.pointSize: pageRoot._fontPt }
+                                QGCLabel { text: control._voltText(esc); font.bold: true; font.pointSize: pageRoot._fontPt }
 
                                 QGCLabel { text: qsTr("电流"); opacity: 0.55; font.pointSize: pageRoot._fontPt * 0.92 }
-                                QGCLabel { text: esc.current.valueString + " A"; font.bold: true; font.pointSize: pageRoot._fontPt }
+                                QGCLabel { text: control._ampText(esc); font.bold: true; font.pointSize: pageRoot._fontPt }
+
+                                QGCLabel { text: qsTr("功率"); opacity: 0.55; font.pointSize: pageRoot._fontPt * 0.92 }
+                                QGCLabel { text: control._powerText(esc); font.bold: true; font.pointSize: pageRoot._fontPt }
 
                                 QGCLabel { text: qsTr("温度"); opacity: 0.55; font.pointSize: pageRoot._fontPt * 0.92 }
-                                QGCLabel { text: control._tempText(esc); font.bold: true; font.pointSize: pageRoot._fontPt }
+                                QGCLabel {
+                                    text: control._tempText(esc)
+                                    font.bold: true
+                                    font.pointSize: pageRoot._fontPt
+                                    color: control._tempColor(esc)
+                                }
 
                                 QGCLabel { text: qsTr("错误"); opacity: 0.55; font.pointSize: pageRoot._fontPt * 0.92 }
                                 QGCLabel {
@@ -317,18 +432,19 @@ ToolIndicatorPage {
                 radius: pageRoot._panelRadius
                 clip: true
 
-                // Relative weights + pixel floors so "100.18 V" / "23.0 °C" never elide on remotes
+                // Prefer content floors; weights only share leftover. rpm/err/fault stay narrow.
                 readonly property real _fw: ScreenTools.defaultFontPixelWidth
-                readonly property real _units: 16 + 26 + 48 + 26 + 36 + 20 + 24
-                readonly property real _innerW: Math.max(1, width - 2 - pageRoot._hPad * 2 - pageRoot._gap * 6)
+                readonly property real _units: 12 + 18 + 28 + 20 + 26 + 24 + 12 + 14
+                readonly property real _innerW: Math.max(1, width - 2 - pageRoot._hPad * 2 - pageRoot._gap * 7)
                 readonly property real _u: _innerW / _units
-                readonly property real _colIndex: Math.max(16 * _u, _fw * 2.2)
-                readonly property real _colRpm:   Math.max(26 * _u, _fw * 3.5)
-                readonly property real _colV:     Math.max(48 * _u, _fw * 8.5)
-                readonly property real _colA:     Math.max(26 * _u, _fw * 4.5)
-                readonly property real _colT:     Math.max(36 * _u, _fw * 6.5)
-                readonly property real _colErr:   Math.max(20 * _u, _fw * 3.2)
-                readonly property real _colFault: Math.max(24 * _u, _fw * 3.5)
+                readonly property real _colIndex: Math.max(12 * _u, _fw * 2.0)
+                readonly property real _colRpm:   Math.max(18 * _u, _fw * 3.0)
+                readonly property real _colV:     Math.max(28 * _u, _fw * 6.5)
+                readonly property real _colA:     Math.max(20 * _u, _fw * 3.8)
+                readonly property real _colP:     Math.max(26 * _u, _fw * 6.2)
+                readonly property real _colT:     Math.max(24 * _u, _fw * 5.5)
+                readonly property real _colErr:   Math.max(12 * _u, _fw * 2.6)
+                readonly property real _colFault: Math.max(14 * _u, _fw * 2.8)
                 readonly property real _headerH: Math.max(15, ScreenTools.defaultFontPixelHeight * 0.95)
                 readonly property real _rowH: control._denseTable
                                              ? Math.max(16, ScreenTools.defaultFontPixelHeight * 1.0)
@@ -355,6 +471,7 @@ ToolIndicatorPage {
                             QGCLabel { width: matrixPanel._colRpm; anchors.verticalCenter: parent.verticalCenter; text: qsTr("转速"); font.bold: true; font.pointSize: pageRoot._fontPt }
                             QGCLabel { width: matrixPanel._colV; anchors.verticalCenter: parent.verticalCenter; text: qsTr("电压"); font.bold: true; font.pointSize: pageRoot._fontPt }
                             QGCLabel { width: matrixPanel._colA; anchors.verticalCenter: parent.verticalCenter; text: qsTr("电流"); font.bold: true; font.pointSize: pageRoot._fontPt }
+                            QGCLabel { width: matrixPanel._colP; anchors.verticalCenter: parent.verticalCenter; text: qsTr("功率"); font.bold: true; font.pointSize: pageRoot._fontPt }
                             QGCLabel { width: matrixPanel._colT; anchors.verticalCenter: parent.verticalCenter; text: qsTr("温度"); font.bold: true; font.pointSize: pageRoot._fontPt }
                             QGCLabel { width: matrixPanel._colErr; anchors.verticalCenter: parent.verticalCenter; text: qsTr("错误"); font.bold: true; font.pointSize: pageRoot._fontPt }
                             QGCLabel { width: matrixPanel._colFault; anchors.verticalCenter: parent.verticalCenter; text: qsTr("故障"); font.bold: true; font.pointSize: pageRoot._fontPt }
@@ -425,7 +542,7 @@ ToolIndicatorPage {
                                 QGCLabel {
                                     width: matrixPanel._colV
                                     anchors.verticalCenter: parent.verticalCenter
-                                    text: online ? (esc.voltage.valueString + " V") : control._dash()
+                                    text: online ? control._voltText(esc) : control._dash()
                                     font.pointSize: pageRoot._fontPt
                                     font.bold: true
                                     color: pageRoot._valueColor(esc, false)
@@ -434,7 +551,16 @@ ToolIndicatorPage {
                                 QGCLabel {
                                     width: matrixPanel._colA
                                     anchors.verticalCenter: parent.verticalCenter
-                                    text: online ? (esc.current.valueString + " A") : control._dash()
+                                    text: online ? control._ampText(esc) : control._dash()
+                                    font.pointSize: pageRoot._fontPt
+                                    font.bold: true
+                                    color: pageRoot._valueColor(esc, false)
+                                    opacity: online ? 1 : 0.45
+                                }
+                                QGCLabel {
+                                    width: matrixPanel._colP
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: online ? control._powerText(esc) : control._dash()
                                     font.pointSize: pageRoot._fontPt
                                     font.bold: true
                                     color: pageRoot._valueColor(esc, false)
@@ -446,7 +572,7 @@ ToolIndicatorPage {
                                     text: online ? control._tempText(esc) : control._dash()
                                     font.pointSize: pageRoot._fontPt
                                     font.bold: true
-                                    color: pageRoot._valueColor(esc, false)
+                                    color: online ? control._tempColor(esc) : pageRoot._valueColor(esc, false)
                                     opacity: online ? 1 : 0.45
                                 }
                                 QGCLabel {

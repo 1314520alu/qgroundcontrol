@@ -99,6 +99,8 @@ qt_add_resources(
           "${CMAKE_SOURCE_DIR}/resources/audio/camera_shutter.wav"
           "${CMAKE_SOURCE_DIR}/resources/audio/record_start.wav"
           "${CMAKE_SOURCE_DIR}/resources/audio/record_stop.wav"
+          "${CMAKE_SOURCE_DIR}/resources/audio/zoom_in.wav"
+          "${CMAKE_SOURCE_DIR}/resources/audio/zoom_out.wav"
 )
 
 qt_add_resources(

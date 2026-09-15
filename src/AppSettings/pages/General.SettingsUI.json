@@ -59,6 +59,26 @@
             ]
         },
         {
+            "heading": "Aircraft Model",
+            "keywords": ["aircraft model", "airframe", "ZY-XF100", "ZY-XF200", "tethered", "机型", "系留"],
+            "controls": [
+                {
+                    "setting": "appSettings.aircraftModel",
+                    "control": "radiogroup"
+                }
+            ]
+        },
+        {
+            "heading": "Software Update",
+            "keywords": ["update", "oss", "latest.json", "software update", "更新"],
+            "controls": [
+                {
+                    "setting": "appSettings.updateManifestUrl",
+                    "control": "textfield"
+                }
+            ]
+        },
+        {
             "heading": "Vehicle Preferences",
             "keywords": ["firmware", "ardupilot", "px4", "vehicle", "multirotor", "fixed wing", "vtol", "rover", "sub"],
             "controls": [
