@@ -11,23 +11,26 @@ Rectangle {
     property string text: qsTr("Ready")
     property bool ok: true
     property bool warn: false
+    property bool onAccent: false
 
     readonly property color _accent: warn ? QGroundControl.globalPalette.colorOrange
                                           : (ok ? QGroundControl.globalPalette.colorGreen
                                                 : QGroundControl.globalPalette.colorRed)
+    readonly property color _onAccentText: QGroundControl.globalPalette.buttonHighlightText
 
     implicitWidth: label.implicitWidth + ScreenTools.defaultFontPixelWidth * 1.6
     implicitHeight: ScreenTools.defaultFontPixelHeight * 1.35
     radius: ScreenTools.defaultFontPixelHeight * 0.25
-    color: QGroundControl.globalPalette.button
+    color: onAccent ? Qt.rgba(_onAccentText.r, _onAccentText.g, _onAccentText.b, 0.16)
+                    : QGroundControl.globalPalette.button
     border.width: 1
-    border.color: _accent
+    border.color: onAccent ? _onAccentText : _accent
 
     QGCLabel {
         id: label
         anchors.centerIn: parent
         text: root.text
-        color: root._accent
+        color: root.onAccent ? root._onAccentText : root._accent
         font.pointSize: ScreenTools.defaultFontPointSize * 0.8
         font.bold: true
     }
