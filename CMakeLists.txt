@@ -444,7 +444,7 @@ if(QGC_BUILD_TESTING)
     # Exclude test directory from translation scanning
     set_property(
         DIRECTORY
-        TEST
+        "${CMAKE_SOURCE_DIR}/test"
         PROPERTY QT_EXCLUDE_FROM_TRANSLATION ON
     )
     add_subdirectory(cmake/GStreamer/tests)
