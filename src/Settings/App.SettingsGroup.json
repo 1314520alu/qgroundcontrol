@@ -25,6 +25,17 @@
             "keywords": "vehicle,multirotor,fixed wing,vtol,rover,sub"
         },
         {
+            "name": "aircraftModel",
+            "shortDesc": "Product airframe used by this ground station.",
+            "longDesc": "Selects a Zhongyun airframe profile. ZY-XF200 Tethered uses five toolbar power slots (PSU ids 1-4 and bus id 5).",
+            "type": "uint32",
+            "enumStrings": "ZY-XF100,ZY-XF100 Tethered,ZY-XF200 Tethered,Default",
+            "enumValues": "1,2,3,0",
+            "default": 0,
+            "label": "Aircraft Model",
+            "keywords": "aircraft model,airframe,ZY-XF100,ZY-XF200,tethered,机型"
+        },
+        {
             "name": "updateManifestUrl",
             "shortDesc": "HTTPS URL of latest.json on Aliyun OSS. Empty disables update checks.",
             "longDesc": "Full URL to the software-update manifest. Leave empty to skip checking. Android and macOS installer URLs are inside that JSON.",
